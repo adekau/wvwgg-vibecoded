@@ -309,6 +309,19 @@
   opacity: 0.3;
 }
 
+/* Header elevation shadow */
+.header-shadow {
+  box-shadow:
+    0 4px 6px -1px rgb(0 0 0 / 0.1),
+    0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+.dark .header-shadow {
+  box-shadow:
+    0 4px 6px -1px rgb(0 0 0 / 0.3),
+    0 2px 4px -2px rgb(0 0 0 / 0.2);
+}
+
 /* Animated pulsing wave glow at the very top of the page */
 .top-page-glow {
   position: fixed;
@@ -418,37 +431,9 @@
   navigation: auto;
 }
 
-::view-transition-old(match-card),
-::view-transition-new(match-card) {
-  animation-duration: 0.5s;
-}
-
-::view-transition-old(match-card) {
-  animation-name: slide-out;
-}
-
-::view-transition-new(match-card) {
-  animation-name: slide-in;
-}
-
-@keyframes slide-out {
-  from {
-    transform: translateY(0);
-    opacity: 1;
-  }
-  to {
-    transform: translateY(-20px);
-    opacity: 0;
-  }
-}
-
-@keyframes slide-in {
-  from {
-    transform: translateY(20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+/* Smooth morph transition - applies to all view transitions */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.4s;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }

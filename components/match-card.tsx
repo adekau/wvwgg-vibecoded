@@ -33,12 +33,17 @@ export function MatchCard({ match, index }: MatchCardProps) {
   const totalActivity = match.worlds.reduce((sum, world) => sum + world.kills + world.deaths, 0)
   
   return (
-    <Link 
+    <Link
       href={`/matches/${match.tier.toLowerCase()}`}
       className="block"
-      style={{ viewTransitionName: `match-${match.tier}` }}
     >
-      <Card className="panel-border inset-card overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-[1.02] relative" style={{ animationDelay: `${index * 0.1}s` }}>
+      <Card
+        className="panel-border inset-card overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-[1.02] relative"
+        style={{
+          animationDelay: `${index * 0.1}s`,
+          viewTransitionName: `match-${match.tier}`
+        }}
+      >
         <div className="p-5 space-y-4">
           {/* Header */}
           <div className="flex items-center justify-between">
