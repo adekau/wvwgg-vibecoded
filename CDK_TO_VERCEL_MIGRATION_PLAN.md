@@ -10,6 +10,8 @@ This document outlines the migration strategy for porting the WvW.gg application
 - Data Layer: Keep DynamoDB as external database (hybrid approach)
 - Automation: Keep AWS Step Functions for guild sync (hybrid approach)
 
+> **📘 Alternative Plan Available:** This document covers the hybrid AWS/Vercel approach. For a **fully AWS-free architecture using Supabase + Vercel**, see [SUPABASE_VERCEL_ALTERNATIVE.md](./SUPABASE_VERCEL_ALTERNATIVE.md)
+
 ---
 
 ## Table of Contents
