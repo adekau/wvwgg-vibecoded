@@ -32,35 +32,36 @@ interface Match {
 
 interface MatchDashboardProps {
   match: Match
+  matchId: string
 }
 
 const colorClasses = {
   red: {
-    bg: 'bg-chart-1/10',
+    bg: 'bg-chart-1/18',
     text: 'text-chart-1',
-    border: 'border-chart-1/20',
+    border: 'border-chart-1/25',
     primary: 'bg-chart-1'
   },
   blue: {
-    bg: 'bg-chart-2/10',
+    bg: 'bg-chart-2/18',
     text: 'text-chart-2',
-    border: 'border-chart-2/20',
+    border: 'border-chart-2/25',
     primary: 'bg-chart-2'
   },
   green: {
-    bg: 'bg-chart-3/10',
+    bg: 'bg-chart-3/18',
     text: 'text-chart-3',
-    border: 'border-chart-3/20',
+    border: 'border-chart-3/25',
     primary: 'bg-chart-3'
   },
 }
 
-export function MatchDashboard({ match }: MatchDashboardProps) {
+export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
   const totalScore = match.worlds.reduce((sum, world) => sum + world.score, 0)
   const sortedWorlds = [...match.worlds].sort((a, b) => b.score - a.score)
   
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500" style={{ viewTransitionName: `match-${matchId.toUpperCase()}` }}>
       {/* Header with back button */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild className="rounded-md brushstroke-button">
@@ -85,9 +86,10 @@ export function MatchDashboard({ match }: MatchDashboardProps) {
           const scorePercentage = (world.score / totalScore) * 100
           const kdRatio = (world.kills / world.deaths).toFixed(2)
           const classes = colorClasses[world.color]
-          
+          const frostedClass = world.color === 'red' ? 'frosted-card-red' : world.color === 'blue' ? 'frosted-card-blue' : 'frosted-card-green'
+
           return (
-            <Card key={world.name} className={`panel-border inset-card relative overflow-hidden ${classes.bg}`}>
+            <Card key={world.name} className={`panel-border relative overflow-hidden ${frostedClass}`}>
               {idx === 0 && (
                 <div className="absolute top-3 right-3">
                   <Trophy className={`h-5 w-5 ${classes.text}`} />
@@ -109,7 +111,7 @@ export function MatchDashboard({ match }: MatchDashboardProps) {
                     <span className="text-2xl font-bold font-mono">{world.score.toLocaleString()}</span>
                     <span className={`text-sm font-medium ${classes.text}`}>{scorePercentage.toFixed(1)}%</span>
                   </div>
-                  <Progress value={scorePercentage} className="h-2" />
+                  <Progress value={scorePercentage} className={`h-2 progress-${world.color}`} />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border/50">
@@ -142,7 +144,7 @@ export function MatchDashboard({ match }: MatchDashboardProps) {
               {match.worlds.map((world) => {
                 const classes = colorClasses[world.color]
                 return (
-                  <div key={world.name} className={`rounded-md p-4 border ${classes.bg} ${classes.border}`}>
+                  <div key={world.name} className={`rounded-md p-4 border world-card-frosted ${classes.bg} ${classes.border}`}>
                     <div className="flex items-center justify-between mb-3">
                       <span className="font-medium text-sm">{world.name}</span>
                       <Badge variant="secondary" className="font-mono text-xs">
@@ -196,7 +198,7 @@ export function MatchDashboard({ match }: MatchDashboardProps) {
                 const totalObjectives = objectives.keeps + objectives.towers + objectives.camps + objectives.castles
                 
                 return (
-                  <div key={world.name} className={`rounded-md p-4 border ${classes.bg} ${classes.border}`}>
+                  <div key={world.name} className={`rounded-md p-4 border world-card-frosted ${classes.bg} ${classes.border}`}>
                     <div className="flex items-center justify-between mb-3">
                       <span className="font-medium text-sm">{world.name}</span>
                       <Badge variant="secondary" className="font-mono text-xs">
@@ -248,7 +250,7 @@ export function MatchDashboard({ match }: MatchDashboardProps) {
               const winRate = ((world.skirmishes.won / totalSkirmishes) * 100).toFixed(0)
               
               return (
-                <div key={world.name} className={`rounded-md p-4 border ${classes.bg} ${classes.border}`}>
+                <div key={world.name} className={`rounded-md p-4 border world-card-frosted ${classes.bg} ${classes.border}`}>
                   <div className="mb-3">
                     <div className="font-medium text-sm mb-1">{world.name}</div>
                     <Badge variant="secondary" className="text-xs font-mono">

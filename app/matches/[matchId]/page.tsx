@@ -99,11 +99,11 @@ export default async function MatchDetailPage({ params }: PageProps) {
   }
   
   return (
-    <div className="min-h-screen" style={{ viewTransitionName: `match-${matchId.toUpperCase()}` }}>
+    <div className="min-h-screen">
       <MatchesHeader />
 
       <main className="container mx-auto px-4 py-8">
-        <MatchDashboard match={match} />
+        <MatchDashboard match={match} matchId={matchId} />
       </main>
     </div>
   )

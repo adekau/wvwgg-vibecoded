@@ -309,6 +309,148 @@
   opacity: 0.3;
 }
 
+/* Colored frosted glass cards for score overview */
+.frosted-card-red,
+.frosted-card-blue,
+.frosted-card-green {
+  position: relative;
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  box-shadow:
+    0 1px 2px 0 rgb(0 0 0 / 0.08),
+    0 2px 4px 0 rgb(0 0 0 / 0.06),
+    0 4px 8px 0 rgb(0 0 0 / 0.05),
+    0 0 0 1px rgb(0 0 0 / 0.03);
+}
+
+.frosted-card-red {
+  background-color: oklch(from var(--chart-1) l c h / 0.08);
+  border: 1px solid oklch(from var(--chart-1) l c h / 0.25);
+}
+
+.frosted-card-blue {
+  background-color: oklch(from var(--chart-2) l c h / 0.08);
+  border: 1px solid oklch(from var(--chart-2) l c h / 0.25);
+}
+
+.frosted-card-green {
+  background-color: oklch(from var(--chart-3) l c h / 0.08);
+  border: 1px solid oklch(from var(--chart-3) l c h / 0.25);
+}
+
+.dark .frosted-card-red,
+.dark .frosted-card-blue,
+.dark .frosted-card-green {
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  box-shadow:
+    0 1px 2px 0 rgb(0 0 0 / 0.2),
+    0 2px 4px 0 rgb(0 0 0 / 0.15),
+    0 4px 8px 0 rgb(0 0 0 / 0.1);
+}
+
+.dark .frosted-card-red {
+  background-color: oklch(from var(--chart-1) l c h / 0.12);
+  border: 1px solid oklch(from var(--chart-1) l c h / 0.35);
+}
+
+.dark .frosted-card-blue {
+  background-color: oklch(from var(--chart-2) l c h / 0.12);
+  border: 1px solid oklch(from var(--chart-2) l c h / 0.35);
+}
+
+.dark .frosted-card-green {
+  background-color: oklch(from var(--chart-3) l c h / 0.12);
+  border: 1px solid oklch(from var(--chart-3) l c h / 0.35);
+}
+
+/* Grain texture overlay for colored frosted cards */
+.frosted-card-red::before,
+.frosted-card-blue::before,
+.frosted-card-green::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='frostGrain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='4' seed='7'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' fill='%23ffffff' opacity='0.15' filter='url(%23frostGrain)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  background-repeat: repeat;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  opacity: 0.2;
+  z-index: 0;
+}
+
+.dark .frosted-card-red::before,
+.dark .frosted-card-blue::before,
+.dark .frosted-card-green::before {
+  background-image: url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='frostGrain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='4' seed='7'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' fill='%23000000' opacity='0.18' filter='url(%23frostGrain)'/%3E%3C/svg%3E");
+  opacity: 0.3;
+}
+
+.frosted-card-red > div:not(.absolute),
+.frosted-card-blue > div:not(.absolute),
+.frosted-card-green > div:not(.absolute) {
+  position: relative;
+  z-index: 1;
+}
+
+/* Colored progress bars */
+.progress-red[data-slot="progress"] {
+  background: oklch(from var(--chart-1) l c h / 0.2) !important;
+}
+
+.progress-red [data-slot="progress-indicator"] {
+  background: var(--chart-1) !important;
+}
+
+.progress-blue[data-slot="progress"] {
+  background: oklch(from var(--chart-2) l c h / 0.2) !important;
+}
+
+.progress-blue [data-slot="progress-indicator"] {
+  background: var(--chart-2) !important;
+}
+
+.progress-green[data-slot="progress"] {
+  background: oklch(from var(--chart-3) l c h / 0.2) !important;
+}
+
+.progress-green [data-slot="progress-indicator"] {
+  background: var(--chart-3) !important;
+}
+
+/* World card frosted glass with colors */
+.world-card-frosted {
+  position: relative;
+  backdrop-filter: blur(8px) saturate(150%);
+  -webkit-backdrop-filter: blur(8px) saturate(150%);
+}
+
+.world-card-frosted > * {
+  position: relative;
+  z-index: 1;
+}
+
+.world-card-frosted::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='frostGrain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='4' seed='7'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' fill='%23ffffff' opacity='0.15' filter='url(%23frostGrain)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  background-repeat: repeat;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  opacity: 0.15;
+  z-index: 0;
+}
+
+.dark .world-card-frosted::before {
+  background-image: url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='frostGrain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='4' seed='7'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' fill='%23000000' opacity='0.18' filter='url(%23frostGrain)'/%3E%3C/svg%3E");
+  opacity: 0.2;
+}
+
 /* Header elevation shadow */
 .header-shadow {
   box-shadow:
