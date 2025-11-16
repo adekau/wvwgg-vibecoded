@@ -38,7 +38,7 @@ export function MatchCard({ match, index }: MatchCardProps) {
       className="block"
     >
       <Card
-        className="panel-border inset-card overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-[1.02] relative"
+        className="panel-border inset-card frosted-panel overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-[1.02] relative"
         style={{
           animationDelay: `${index * 0.1}s`,
           viewTransitionName: `match-${match.tier}`

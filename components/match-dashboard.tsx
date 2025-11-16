@@ -61,7 +61,7 @@ export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
   const sortedWorlds = [...match.worlds].sort((a, b) => b.score - a.score)
   
   return (
-    <div className="space-y-6 animate-in fade-in duration-500" style={{ viewTransitionName: `match-${matchId.toUpperCase()}` }}>
+    <div className="space-y-6">
       {/* Header with back button */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild className="rounded-md brushstroke-button">
@@ -89,13 +89,13 @@ export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
           const frostedClass = world.color === 'red' ? 'frosted-card-red' : world.color === 'blue' ? 'frosted-card-blue' : 'frosted-card-green'
 
           return (
-            <Card key={world.name} className={`panel-border relative overflow-hidden ${frostedClass}`}>
+            <Card key={world.name} className={`panel-border relative overflow-hidden ${frostedClass}`} style={{ background: 'transparent' }}>
               {idx === 0 && (
-                <div className="absolute top-3 right-3">
+                <div className="absolute top-3 right-3" style={{ zIndex: 10 }}>
                   <Trophy className={`h-5 w-5 ${classes.text}`} />
                 </div>
               )}
-              <div className="p-6 space-y-4">
+              <div className="p-6 space-y-4" style={{ position: 'relative', zIndex: 1 }}>
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <Badge variant="outline" className={`${classes.text} ${classes.border} font-mono text-xs`}>
@@ -133,18 +133,18 @@ export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
       {/* Detailed Stats Grid */}
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Combat Statistics */}
-        <Card className="panel-border inset-card">
+        <Card className="panel-border inset-card frosted-panel" style={{ background: 'transparent' }}>
           <div className="p-6 space-y-4">
             <div className="flex items-center gap-2 mb-4">
               <Swords className="h-5 w-5 text-primary" />
               <h2 className="text-xl font-bold">Combat Statistics</h2>
             </div>
-            
+
             <div className="space-y-4">
               {match.worlds.map((world) => {
                 const classes = colorClasses[world.color]
                 return (
-                  <div key={world.name} className={`rounded-md p-4 border world-card-frosted ${classes.bg} ${classes.border}`}>
+                  <div key={world.name} className={`rounded-md p-4 border ${classes.bg} ${classes.border}`}>
                     <div className="flex items-center justify-between mb-3">
                       <span className="font-medium text-sm">{world.name}</span>
                       <Badge variant="secondary" className="font-mono text-xs">
@@ -184,7 +184,7 @@ export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
         </Card>
 
         {/* Objectives Control */}
-        <Card className="panel-border inset-card">
+        <Card className="panel-border inset-card frosted-panel" style={{ background: 'transparent' }}>
           <div className="p-6 space-y-4">
             <div className="flex items-center gap-2 mb-4">
               <Castle className="h-5 w-5 text-primary" />
@@ -198,7 +198,7 @@ export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
                 const totalObjectives = objectives.keeps + objectives.towers + objectives.camps + objectives.castles
                 
                 return (
-                  <div key={world.name} className={`rounded-md p-4 border world-card-frosted ${classes.bg} ${classes.border}`}>
+                  <div key={world.name} className={`rounded-md p-4 border ${classes.bg} ${classes.border}`}>
                     <div className="flex items-center justify-between mb-3">
                       <span className="font-medium text-sm">{world.name}</span>
                       <Badge variant="secondary" className="font-mono text-xs">
@@ -236,7 +236,7 @@ export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
       </div>
 
       {/* Skirmish Performance */}
-      <Card className="panel-border inset-card">
+      <Card className="panel-border inset-card frosted-panel" style={{ background: 'transparent' }}>
         <div className="p-6">
           <div className="flex items-center gap-2 mb-6">
             <Trophy className="h-5 w-5 text-primary" />
