@@ -170,3 +170,40 @@ export const getGuilds = unstable_cache(
   ['guilds'],
   { revalidate: 86400, tags: ['guilds'] }
 );
+
+export interface HistoricalSnapshot {
+  timestamp: number;
+  hour: number;
+  data: Record<string, IFormattedMatch>;
+}
+
+export const getMatchHistory = async (hours: number = 24): Promise<HistoricalSnapshot[]> => {
+  try {
+    const now = Date.now();
+    const currentHour = Math.floor(now / (1000 * 60 * 60));
+    const startHour = currentHour - hours;
+
+    const response = await docClient.send(
+      new ScanCommand({
+        TableName: process.env.TABLE_NAME,
+        FilterExpression: '#type = :type AND #hour >= :startHour',
+        ExpressionAttributeNames: {
+          '#type': 'type',
+          '#hour': 'hour',
+        },
+        ExpressionAttributeValues: {
+          ':type': 'match-history',
+          ':startHour': startHour,
+        },
+      })
+    );
+
+    const snapshots = (response.Items || []) as HistoricalSnapshot[];
+
+    // Sort by timestamp ascending (oldest first)
+    return snapshots.sort((a, b) => a.timestamp - b.timestamp);
+  } catch (error) {
+    console.error('Error fetching match history:', error);
+    return [];
+  }
+};

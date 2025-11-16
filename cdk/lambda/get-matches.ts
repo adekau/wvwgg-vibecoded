@@ -46,16 +46,42 @@ const saveMatchesToDynamo = async (matchesResponse: IMatchResponse[], worlds: IW
     throw new Error('TABLE_NAME environment variable is empty');
   }
   const formattedMatches = formatMatches(matchesResponse, worlds);
+  const now = Date.now();
 
+  // Save current match data
   await dynamoDb.put({
     TableName: TABLE_NAME,
     Item: {
       type: "matches",
       id: "all",
       data: formattedMatches,
-      updatedAt: Date.now()
+      updatedAt: now
     }
   });
+
+  // Save historical snapshot (every hour)
+  const currentHour = Math.floor(now / (1000 * 60 * 60)); // Hour timestamp
+  const snapshotId = `snapshot-${currentHour}`;
+
+  // Only save snapshot once per hour
+  const existingSnapshot = await dynamoDb.get({
+    TableName: TABLE_NAME,
+    Key: { type: "match-history", id: snapshotId }
+  });
+
+  if (!existingSnapshot.Item) {
+    await dynamoDb.put({
+      TableName: TABLE_NAME,
+      Item: {
+        type: "match-history",
+        id: snapshotId,
+        timestamp: now,
+        hour: currentHour,
+        data: formattedMatches,
+        ttl: Math.floor(now / 1000) + (7 * 24 * 60 * 60) // 7 days TTL
+      }
+    });
+  }
 }
 
 const getWorldsFromDynamo = async (): Promise<IWorld[] | undefined> => {
