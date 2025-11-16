@@ -1,90 +1,7 @@
 import { MatchesHeader } from '@/components/matches-header'
 import { MatchDashboard } from '@/components/match-dashboard'
 import { notFound } from 'next/navigation'
-
-// Mock data - replace with your actual data fetching
-const mockMatches: Record<string, any> = {
-  'na-1': {
-    tier: 'NA-1',
-    region: 'North America',
-    startDate: '2025-01-10',
-    endDate: '2025-01-17',
-    worlds: [
-      { 
-        name: 'Ruined Cathedral of Blood', 
-        kills: 27908, 
-        deaths: 38418, 
-        color: 'red',
-        score: 245678,
-        victoryPoints: 42,
-        skirmishes: { won: 12, lost: 9, current: 2 }
-      },
-      { 
-        name: 'Lutgardis Conservatory', 
-        kills: 52599, 
-        deaths: 36721, 
-        color: 'blue',
-        score: 312456,
-        victoryPoints: 56,
-        skirmishes: { won: 15, lost: 6, current: 1 }
-      },
-      { 
-        name: "Dwayna's Temple", 
-        kills: 29069, 
-        deaths: 37052, 
-        color: 'green',
-        score: 198234,
-        victoryPoints: 38,
-        skirmishes: { won: 8, lost: 13, current: 3 }
-      },
-    ],
-    objectives: {
-      red: { keeps: 4, towers: 8, camps: 12, castles: 1 },
-      blue: { keeps: 6, towers: 12, camps: 15, castles: 2 },
-      green: { keeps: 2, towers: 5, camps: 8, castles: 0 },
-    }
-  },
-  'na-2': {
-    tier: 'NA-2',
-    region: 'North America',
-    startDate: '2025-01-10',
-    endDate: '2025-01-17',
-    worlds: [
-      { 
-        name: 'Moogooloo', 
-        kills: 44646, 
-        deaths: 40240, 
-        color: 'red',
-        score: 278901,
-        victoryPoints: 48,
-        skirmishes: { won: 14, lost: 7, current: 2 }
-      },
-      { 
-        name: 'Tombs of Drascir', 
-        kills: 25657, 
-        deaths: 38383, 
-        color: 'blue',
-        score: 189432,
-        victoryPoints: 35,
-        skirmishes: { won: 7, lost: 14, current: 3 }
-      },
-      { 
-        name: 'Yohlon Haven', 
-        kills: 44304, 
-        deaths: 39170, 
-        color: 'green',
-        score: 265789,
-        victoryPoints: 46,
-        skirmishes: { won: 13, lost: 8, current: 1 }
-      },
-    ],
-    objectives: {
-      red: { keeps: 5, towers: 10, camps: 13, castles: 1 },
-      blue: { keeps: 3, towers: 6, camps: 9, castles: 0 },
-      green: { keeps: 4, towers: 9, camps: 13, castles: 2 },
-    }
-  },
-}
+import { getMatches, getWorlds } from '@/server/queries'
 
 interface PageProps {
   params: Promise<{ matchId: string }>
@@ -92,12 +9,109 @@ interface PageProps {
 
 export default async function MatchDetailPage({ params }: PageProps) {
   const { matchId } = await params
-  const match = mockMatches[matchId]
-  
-  if (!match) {
+
+  // Fetch real data from DynamoDB
+  const [matchesData, worldsData] = await Promise.all([
+    getMatches(),
+    getWorlds(),
+  ]);
+
+  if (!matchesData || !worldsData) {
     notFound()
   }
-  
+
+  const matchData = matchesData[matchId]
+
+  if (!matchData) {
+    notFound()
+  }
+
+  // Transform data for display
+  const regionName = matchData.region === 'NA' ? 'North America' : 'Europe'
+
+  // Group worlds by color
+  const worldsByColor = matchData.all_worlds.reduce((acc, world) => {
+    if (!acc[world.color]) {
+      acc[world.color] = [];
+    }
+    acc[world.color].push(world);
+    return acc;
+  }, {} as Record<string, typeof matchData.all_worlds>);
+
+  // Get primary world for each color (first in the list)
+  const redWorlds = worldsByColor.red || [];
+  const blueWorlds = worldsByColor.blue || [];
+  const greenWorlds = worldsByColor.green || [];
+
+  // Find world names
+  const getWorldName = (worldId: number) => {
+    const world = worldsData.find((w) => w.id === worldId);
+    return world?.name || `World ${worldId}`;
+  };
+
+  // Calculate skirmish stats from skirmishes array
+  const calculateSkirmishStats = (color: 'red' | 'blue' | 'green') => {
+    if (!matchData.skirmish) {
+      return { won: 0, lost: 0, current: 0 };
+    }
+
+    // For now, use placeholder logic - you can enhance this with actual skirmish history
+    const currentRank =
+      matchData.scores.red > matchData.scores.blue && matchData.scores.red > matchData.scores.green ? 'red' :
+      matchData.scores.blue > matchData.scores.green ? 'blue' : 'green';
+
+    return {
+      won: 0, // Would need skirmish history
+      lost: 0, // Would need skirmish history
+      current: currentRank === color ? 1 : (
+        currentRank === (color === 'red' ? 'blue' : color === 'blue' ? 'green' : 'red') ? 2 : 3
+      ),
+    };
+  };
+
+  const match = {
+    tier: `${matchData.region}-${matchData.tier}`,
+    region: regionName,
+    startDate: matchData.start_time,
+    endDate: matchData.end_time,
+    worlds: [
+      ...(redWorlds.length > 0 ? [{
+        name: getWorldName(redWorlds[0].id),
+        kills: redWorlds[0].kills,
+        deaths: redWorlds[0].deaths,
+        color: 'red' as const,
+        score: matchData.scores.red,
+        victoryPoints: redWorlds[0].victory_points,
+        skirmishes: calculateSkirmishStats('red'),
+      }] : []),
+      ...(blueWorlds.length > 0 ? [{
+        name: getWorldName(blueWorlds[0].id),
+        kills: blueWorlds[0].kills,
+        deaths: blueWorlds[0].deaths,
+        color: 'blue' as const,
+        score: matchData.scores.blue,
+        victoryPoints: blueWorlds[0].victory_points,
+        skirmishes: calculateSkirmishStats('blue'),
+      }] : []),
+      ...(greenWorlds.length > 0 ? [{
+        name: getWorldName(greenWorlds[0].id),
+        kills: greenWorlds[0].kills,
+        deaths: greenWorlds[0].deaths,
+        color: 'green' as const,
+        score: matchData.scores.green,
+        victoryPoints: greenWorlds[0].victory_points,
+        skirmishes: calculateSkirmishStats('green'),
+      }] : []),
+    ],
+    // Note: Objectives data not available in basic match endpoint
+    // Would need additional API calls to get current map objectives
+    objectives: {
+      red: { keeps: 0, towers: 0, camps: 0, castles: 0 },
+      blue: { keeps: 0, towers: 0, camps: 0, castles: 0 },
+      green: { keeps: 0, towers: 0, camps: 0, castles: 0 },
+    },
+  };
+
   return (
     <div className="min-h-screen">
       <MatchesHeader />

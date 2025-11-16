@@ -1,54 +1,94 @@
 import { MatchesHeader } from '@/components/matches-header'
 import { RegionTabs } from '@/components/region-tabs'
 import { MatchesGrid } from '@/components/matches-grid'
+import { getMatches, getWorlds } from '@/server/queries'
 
-// Mock data - replace with your actual data fetching
-const mockMatches = [
-  {
-    tier: 'NA-1',
-    worlds: [
-      { name: 'Ruined Cathedral of Blood', kills: 27908, deaths: 38418, color: 'red' },
-      { name: 'Lutgardis Conservatory', kills: 52599, deaths: 36721, color: 'blue' },
-      { name: "Dwayna's Temple", kills: 29069, deaths: 37052, color: 'green' },
-    ]
-  },
-  {
-    tier: 'NA-2',
-    worlds: [
-      { name: 'Moogooloo', kills: 44646, deaths: 40240, color: 'red' },
-      { name: 'Tombs of Drascir', kills: 25657, deaths: 38383, color: 'blue' },
-      { name: 'Yohlon Haven', kills: 44304, deaths: 39170, color: 'green' },
-    ]
-  },
-  {
-    tier: 'NA-3',
-    worlds: [
-      { name: 'Hall of Judgment', kills: 48296, deaths: 38998, color: 'red' },
-      { name: 'Domain of Torment', kills: 32273, deaths: 39899, color: 'blue' },
-      { name: "Abbaddon's Prison", kills: 36349, deaths: 41337, color: 'green' },
-    ]
-  },
-  {
-    tier: 'EU-1',
-    worlds: [
-      { name: 'Frost Citadel', kills: 2737, deaths: 2430, color: 'red' },
-      { name: "Ettin's Back", kills: 2033, deaths: 2781, color: 'blue' },
-      { name: 'Skrittsburgh', kills: 2526, deaths: 2324, color: 'green' },
-    ]
-  },
-]
+export default async function MatchesPage() {
+  // Fetch real data from DynamoDB
+  const [matchesData, worldsData] = await Promise.all([
+    getMatches(),
+    getWorlds(),
+  ]);
 
-export default function MatchesPage() {
+  // Transform data for display
+  const matches = matchesData && worldsData
+    ? Object.values(matchesData)
+        .filter((match) => match.all_worlds && match.all_worlds.length > 0) // Filter out matches without world data
+        .sort((a, b) => {
+          // Sort by region (NA first, then EU) and tier
+          if (a.region !== b.region) {
+            return a.region === 'NA' ? -1 : 1;
+          }
+          return a.tier - b.tier;
+        })
+        .map((match) => {
+          // Group worlds by color and get their names
+          const worldsByColor = match.all_worlds.reduce((acc, world) => {
+            if (!acc[world.color]) {
+              acc[world.color] = [];
+            }
+            acc[world.color].push(world);
+            return acc;
+          }, {} as Record<string, typeof match.all_worlds>);
+
+          // Get primary world for each color (first in the list)
+          const redWorld = worldsByColor.red?.[0];
+          const blueWorld = worldsByColor.blue?.[0];
+          const greenWorld = worldsByColor.green?.[0];
+
+          // Find world names from worlds data
+          const getWorldName = (worldId: number) => {
+            const world = worldsData.find((w) => w.id === worldId);
+            return world?.name || `World ${worldId}`;
+          };
+
+          return {
+            tier: `${match.region}-${match.tier}`,
+            worlds: [
+              redWorld && {
+                name: getWorldName(redWorld.id),
+                kills: redWorld.kills,
+                deaths: redWorld.deaths,
+                color: 'red' as const,
+              },
+              blueWorld && {
+                name: getWorldName(blueWorld.id),
+                kills: blueWorld.kills,
+                deaths: blueWorld.deaths,
+                color: 'blue' as const,
+              },
+              greenWorld && {
+                name: getWorldName(greenWorld.id),
+                kills: greenWorld.kills,
+                deaths: greenWorld.deaths,
+                color: 'green' as const,
+              },
+            ].filter(Boolean) as Array<{
+              name: string;
+              kills: number;
+              deaths: number;
+              color: 'red' | 'blue' | 'green';
+            }>,
+          };
+        })
+    : [];
+
   return (
     <div className="min-h-screen">
       <MatchesHeader />
-      
+
       <main className="container mx-auto px-4 py-8 space-y-8">
         <div className="brushstroke-accent rounded-lg">
           <RegionTabs />
         </div>
-        
-        <MatchesGrid matches={mockMatches} />
+
+        {matches.length > 0 ? (
+          <MatchesGrid matches={matches} />
+        ) : (
+          <div className="text-center py-12 text-muted-foreground">
+            No matches data available. Data will be updated daily at 12:00 UTC.
+          </div>
+        )}
       </main>
     </div>
   )
