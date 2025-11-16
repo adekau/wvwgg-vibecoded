@@ -49,7 +49,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`font-sans antialiased brushstroke-texture-bg`}>
+      <body className={`font-sans antialiased brushstroke-texture-bg relative`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -57,9 +57,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <div className="fixed top-0 left-0 right-0 h-[12px] z-40 top-page-glow" />
-          <div className="relative z-10">
-            {children}
-          </div>
+          {children}
         </ThemeProvider>
         <Analytics />
       </body>

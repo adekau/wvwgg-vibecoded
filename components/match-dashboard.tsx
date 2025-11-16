@@ -72,7 +72,7 @@ export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-1">
             <h1 className="text-3xl font-bold">{match.tier}</h1>
-            <Badge variant="outline" className="font-mono">{match.region}</Badge>
+            <Badge variant="outline" className="font-mono inset-card">{match.region}</Badge>
           </div>
           <p className="text-sm text-muted-foreground">
             {new Date(match.startDate).toLocaleDateString()} - {new Date(match.endDate).toLocaleDateString()}

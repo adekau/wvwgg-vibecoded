@@ -13,7 +13,7 @@ export function RegionTabs() {
   const [activeRegion, setActiveRegion] = useState('all')
   
   return (
-    <div className="bg-card panel-border rounded-lg p-1 inline-flex gap-1">
+    <div className="bg-card panel-border rounded-lg p-1 inline-flex gap-1 inset-card">
       {regions.map((region) => (
         <Button
           key={region.id}
