@@ -1,3 +1,6 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Trophy, TrendingUp, Activity, Users } from 'lucide-react';
@@ -20,6 +23,7 @@ interface EnhancedMatchCardProps {
 }
 
 export function EnhancedMatchCard({ tier, worlds }: EnhancedMatchCardProps) {
+  const router = useRouter();
   // Sort worlds by score to determine rankings
   const rankedWorlds = [...worlds].sort((a, b) => (b.score || 0) - (a.score || 0));
 
@@ -50,12 +54,20 @@ export function EnhancedMatchCard({ tier, worlds }: EnhancedMatchCardProps) {
   };
 
   return (
-    <Card className="panel-border overflow-hidden hover:shadow-lg transition-all duration-300">
+    <Card
+      className="frosted-panel inset-card panel-border overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer group"
+      onClick={() => router.push(`/matches/${tier}`)}
+      style={{ background: 'transparent' }}
+    >
       <div className="p-4 space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h3 className="font-bold text-lg">{tier}</h3>
+          <h3 className="font-bold text-lg group-hover:text-primary transition-colors">{tier}</h3>
           <Badge variant="outline" className="font-mono">
+            <span className="relative flex h-2 w-2 mr-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            </span>
             Live
           </Badge>
         </div>

@@ -1,9 +1,9 @@
 import { DynamoDB } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocument } from '@aws-sdk/lib-dynamodb';
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { IMatchResponse } from '../../shared/interfaces/match-response.interface';
-import { IWorld } from '../../shared/interfaces/world.interface';
-import { formatMatches } from '../../shared/util/format-matches';
+import { IMatchResponse } from '../shared/interfaces/match-response.interface';
+import { IWorld } from '../shared/interfaces/world.interface';
+import { formatMatches } from '../shared/util/format-matches';
 import AllianceWorldsData from './tmp-alliance-worlds.json' with { type: 'json' };
 
 const TABLE_NAME = process.env.TABLE_NAME;
