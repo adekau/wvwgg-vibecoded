@@ -14,24 +14,24 @@ const automationStack = new AutomationStack(app, 'WvWGG-Automation', {
 
 // Development environment
 if (process.env.WVWGG_STAGE === 'dev') {
-  const devDeployment = new WvWGGStack(app, 'WvWGG-Dev-DataLayer', {
+  new WvWGGStack(app, 'WvWGG-Dev-DataLayer', {
     stage: 'dev',
     automationStack,
     env: {
       region: 'us-east-1'
     }
   });
-  devDeployment.node.addDependency(automationStack);
+  // Removed explicit dependency - CDK will infer it from resource references
 }
 
 // Production environment
 if (process.env.WVWGG_STAGE === 'prod') {
-  const prodDeployment = new WvWGGStack(app, 'WvWGG-Prod-DataLayer', {
+  new WvWGGStack(app, 'WvWGG-Prod-DataLayer', {
     stage: 'prod',
     automationStack,
     env: {
       region: 'us-east-1'
     }
   });
-  prodDeployment.node.addDependency(automationStack);
+  // Removed explicit dependency - CDK will infer it from resource references
 }
