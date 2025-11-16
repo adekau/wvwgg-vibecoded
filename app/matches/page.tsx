@@ -1,6 +1,7 @@
 import { MatchesHeader } from '@/components/matches-header'
 import { RegionTabs } from '@/components/region-tabs'
 import { MatchesGrid } from '@/components/matches-grid'
+import { AutoRefresh } from '@/components/auto-refresh'
 import { getMatches, getWorlds } from '@/server/queries'
 
 export const dynamic = 'force-dynamic';
@@ -37,18 +38,33 @@ export default async function MatchesPage() {
                 kills: match.red.kills,
                 deaths: match.red.deaths,
                 color: 'red' as const,
+                score: match.red.skirmishScore,
+                victoryPoints: match.red.victoryPoints,
+                ratio: match.red.ratio,
+                activity: match.red.activity,
+                population: match.red.world.population,
               },
               {
                 name: match.blue.world.name,
                 kills: match.blue.kills,
                 deaths: match.blue.deaths,
                 color: 'blue' as const,
+                score: match.blue.skirmishScore,
+                victoryPoints: match.blue.victoryPoints,
+                ratio: match.blue.ratio,
+                activity: match.blue.activity,
+                population: match.blue.world.population,
               },
               {
                 name: match.green.world.name,
                 kills: match.green.kills,
                 deaths: match.green.deaths,
                 color: 'green' as const,
+                score: match.green.skirmishScore,
+                victoryPoints: match.green.victoryPoints,
+                ratio: match.green.ratio,
+                activity: match.green.activity,
+                population: match.green.world.population,
               },
             ],
           };
@@ -60,15 +76,19 @@ export default async function MatchesPage() {
       <MatchesHeader />
 
       <main className="container mx-auto px-4 py-8 space-y-8">
-        <div className="brushstroke-accent rounded-lg">
-          <RegionTabs />
+        <div className="flex items-center justify-between">
+          <div className="brushstroke-accent rounded-lg flex-1">
+            <RegionTabs />
+          </div>
+          <AutoRefresh interval={60000} />
         </div>
 
         {matches.length > 0 ? (
           <MatchesGrid matches={matches} />
         ) : (
           <div className="text-center py-12 text-muted-foreground">
-            No matches data available. Data will be updated daily at 12:00 UTC.
+            <p className="mb-2">No matches data available.</p>
+            <p className="text-sm">Match data is automatically updated every 60 seconds.</p>
           </div>
         )}
       </main>

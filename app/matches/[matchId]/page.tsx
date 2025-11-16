@@ -1,5 +1,6 @@
 import { MatchesHeader } from '@/components/matches-header'
 import { MatchDashboard } from '@/components/match-dashboard'
+import { ObjectivesDisplay } from '@/components/objectives-display'
 import { notFound } from 'next/navigation'
 import { getMatches, getWorlds } from '@/server/queries'
 
@@ -97,8 +98,9 @@ export default async function MatchDetailPage({ params }: PageProps) {
     <div className="min-h-screen">
       <MatchesHeader />
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 space-y-6">
         <MatchDashboard match={match} matchId={matchId} />
+        <ObjectivesDisplay matchId={matchId} />
       </main>
     </div>
   )
