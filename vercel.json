@@ -1,0 +1,21 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "framework": "nextjs",
+  "crons": [
+    {
+      "path": "/api/cron/matches",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/worlds",
+      "schedule": "0 0 * * *"
+    }
+  ],
+  "regions": ["iad1"],
+  "functions": {
+    "app/**/*.tsx": {
+      "maxDuration": 30
+    }
+  }
+}
