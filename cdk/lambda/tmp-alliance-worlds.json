@@ -1,0 +1,200 @@
+[
+    {
+        "name": "Moogooloo",
+        "id": 11001,
+        "associated_world_id": 1001,
+        "population": "High"
+    },
+    {
+        "name": "Rall's Rest",
+        "id": 11002,
+        "associated_world_id": 1002,
+        "population": "High"
+    },
+    {
+        "name": "Domain of Torment",
+        "id": 11003,
+        "associated_world_id": 1003,
+        "population": "High"
+    },
+    {
+        "name": "Yohlon Haven",
+        "id": 11004,
+        "associated_world_id": 1004,
+        "population": "High"
+    },
+    {
+        "name": "Tombs of Drascir",
+        "id": 11005,
+        "associated_world_id": 1005,
+        "population": "High"
+    },
+    {
+        "name": "Hall of Judgment",
+        "id": 11006,
+        "associated_world_id": 1006,
+        "population": "High"
+    },
+    {
+        "name": "Throne of Balthazar",
+        "id": 11007,
+        "associated_world_id": 1007,
+        "population": "High"
+    },
+    {
+        "name": "Dwayna's Temple",
+        "id": 11008,
+        "associated_world_id": 1008,
+        "population": "High"
+    },
+    {
+        "name": "Abbaddon's Prison",
+        "id": 11009,
+        "associated_world_id": 1009,
+        "population": "High"
+    },
+    {
+        "name": "Ruined Cathedral of Blood",
+        "id": 11010,
+        "associated_world_id": 1010,
+        "population": "High"
+    },
+    {
+        "name": "Lutgardis Conservatory",
+        "id": 11011,
+        "associated_world_id": 1011,
+        "population": "High"
+    },
+    {
+        "name": "Mosswood",
+        "id": 11012,
+        "associated_world_id": 1012,
+        "population": "High"
+    },
+    {
+        "name": "Mithric Cliffs",
+        "id": 11013,
+        "associated_world_id": 1013,
+        "population": "High"
+    },
+    {
+        "name": "Lagula's Kraal",
+        "id": 11014,
+        "associated_world_id": 1014,
+        "population": "High"
+    },
+    {
+        "name": "De Molish Post",
+        "id": 11015,
+        "associated_world_id": 1015,
+        "population": "High"
+    },
+    {
+        "name": "Skrittsburgh",
+        "id": 12001,
+        "associated_world_id": 2001,
+        "population": "High"
+    },
+    {
+        "name": "Fotune's Vale",
+        "id": 12002,
+        "associated_world_id": 2002,
+        "population": "High"
+    },
+    {
+        "name": "Silent Woods",
+        "id": 12003,
+        "associated_world_id": 2003,
+        "population": "High"
+    },
+    {
+        "name": "Ettin's Back",
+        "id": 12004,
+        "associated_world_id": 2004,
+        "population": "High"
+    },
+    {
+        "name": "Domain of Anguish",
+        "id": 12005,
+        "associated_world_id": 2005,
+        "population": "High"
+    },
+    {
+        "name": "Palawadan",
+        "id": 12006,
+        "associated_world_id": 2006,
+        "population": "High"
+    },
+    {
+        "name": "Bloodstone Gulch",
+        "id": 12007,
+        "associated_world_id": 2007,
+        "population": "High"
+    },
+    {
+        "name": "Frost Citadel",
+        "id": 12008,
+        "associated_world_id": 2008,
+        "population": "High"
+    },
+    {
+        "name": "Dragrimmar",
+        "id": 12009,
+        "associated_world_id": 2009,
+        "population": "High"
+    },
+    {
+        "name": "Grenth's Door",
+        "id": 12010,
+        "associated_world_id": 2010,
+        "population": "High"
+    },
+    {
+        "name": "Mirror of Lyssa",
+        "id": 12011,
+        "associated_world_id": 2011,
+        "population": "High"
+    },
+    {
+        "name": "Melandru's Dome",
+        "id": 12012,
+        "associated_world_id": 2012,
+        "population": "High"
+    },
+    {
+        "name": "Kormir's Library",
+        "id": 12013,
+        "associated_world_id": 2013,
+        "population": "High"
+    },
+    {
+        "name": "Great House Aviary",
+        "id": 12014,
+        "associated_world_id": 2014,
+        "population": "High"
+    },
+    {
+        "name": "Bava Nisos",
+        "id": 12015,
+        "associated_world_id": 2101,
+        "population": "High"
+    },
+    {
+        "name": "Temple of Febe",
+        "id": 12016,
+        "associated_world_id": 2102,
+        "population": "High"
+    },
+    {
+        "name": "Gyala Hatchery",
+        "id": 12017,
+        "associated_world_id": 2103,
+        "population": "High"
+    },
+    {
+        "name": "Grekvelnn Burrows",
+        "id": 12018,
+        "associated_world_id": 2104,
+        "population": "High"
+    }
+]

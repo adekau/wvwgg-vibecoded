@@ -35,3 +35,12 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .env*.local
+
+# cdk
+cdk/node_modules
+cdk/.cdk.staging
+cdk/cdk.out
+cdk/*.js
+cdk/**/*.js
+cdk/**/*.d.ts
+!cdk/*.Dockerfile
