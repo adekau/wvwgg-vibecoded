@@ -20,45 +20,27 @@ export default async function MatchDetailPage({ params }: PageProps) {
     notFound()
   }
 
-  const matchData = matchesData[matchId]
+  const matchData = matchesData[matchId] as any
 
   if (!matchData) {
     notFound()
   }
 
-  // Transform data for display
-  const regionName = matchData.region === 'NA' ? 'North America' : 'Europe'
+  // Extract region from match ID (e.g., "1-1" = NA, "2-1" = EU)
+  const [regionCode] = matchId.split('-')
+  const regionName = regionCode === '1' ? 'North America' : 'Europe'
 
-  // Group worlds by color
-  const worldsByColor = matchData.all_worlds.reduce((acc, world) => {
-    if (!acc[world.color]) {
-      acc[world.color] = [];
-    }
-    acc[world.color].push(world);
-    return acc;
-  }, {} as Record<string, typeof matchData.all_worlds>);
-
-  // Get primary world for each color (first in the list)
-  const redWorlds = worldsByColor.red || [];
-  const blueWorlds = worldsByColor.blue || [];
-  const greenWorlds = worldsByColor.green || [];
-
-  // Find world names
-  const getWorldName = (worldId: number) => {
-    const world = worldsData.find((w) => w.id === worldId);
-    return world?.name || `World ${worldId}`;
-  };
-
-  // Calculate skirmish stats from skirmishes array
+  // Calculate skirmish stats
   const calculateSkirmishStats = (color: 'red' | 'blue' | 'green') => {
-    if (!matchData.skirmish) {
-      return { won: 0, lost: 0, current: 0 };
-    }
+    const scores = {
+      red: matchData.red?.skirmishScore || 0,
+      blue: matchData.blue?.skirmishScore || 0,
+      green: matchData.green?.skirmishScore || 0,
+    };
 
-    // For now, use placeholder logic - you can enhance this with actual skirmish history
     const currentRank =
-      matchData.scores.red > matchData.scores.blue && matchData.scores.red > matchData.scores.green ? 'red' :
-      matchData.scores.blue > matchData.scores.green ? 'blue' : 'green';
+      scores.red > scores.blue && scores.red > scores.green ? 'red' :
+      scores.blue > scores.green ? 'blue' : 'green';
 
     return {
       won: 0, // Would need skirmish history
@@ -70,41 +52,40 @@ export default async function MatchDetailPage({ params }: PageProps) {
   };
 
   const match = {
-    tier: `${matchData.region}-${matchData.tier}`,
+    tier: matchId,
     region: regionName,
-    startDate: matchData.start_time,
-    endDate: matchData.end_time,
+    startDate: new Date().toISOString(), // Placeholder - not in current data
+    endDate: new Date().toISOString(), // Placeholder - not in current data
     worlds: [
-      ...(redWorlds.length > 0 ? [{
-        name: getWorldName(redWorlds[0].id),
-        kills: redWorlds[0].kills,
-        deaths: redWorlds[0].deaths,
+      {
+        name: matchData.red?.world?.name || 'Unknown',
+        kills: matchData.red?.kills || 0,
+        deaths: matchData.red?.deaths || 0,
         color: 'red' as const,
-        score: matchData.scores.red,
-        victoryPoints: redWorlds[0].victory_points,
+        score: matchData.red?.skirmishScore || 0,
+        victoryPoints: matchData.red?.victoryPoints || 0,
         skirmishes: calculateSkirmishStats('red'),
-      }] : []),
-      ...(blueWorlds.length > 0 ? [{
-        name: getWorldName(blueWorlds[0].id),
-        kills: blueWorlds[0].kills,
-        deaths: blueWorlds[0].deaths,
+      },
+      {
+        name: matchData.blue?.world?.name || 'Unknown',
+        kills: matchData.blue?.kills || 0,
+        deaths: matchData.blue?.deaths || 0,
         color: 'blue' as const,
-        score: matchData.scores.blue,
-        victoryPoints: blueWorlds[0].victory_points,
+        score: matchData.blue?.skirmishScore || 0,
+        victoryPoints: matchData.blue?.victoryPoints || 0,
         skirmishes: calculateSkirmishStats('blue'),
-      }] : []),
-      ...(greenWorlds.length > 0 ? [{
-        name: getWorldName(greenWorlds[0].id),
-        kills: greenWorlds[0].kills,
-        deaths: greenWorlds[0].deaths,
+      },
+      {
+        name: matchData.green?.world?.name || 'Unknown',
+        kills: matchData.green?.kills || 0,
+        deaths: matchData.green?.deaths || 0,
         color: 'green' as const,
-        score: matchData.scores.green,
-        victoryPoints: greenWorlds[0].victory_points,
+        score: matchData.green?.skirmishScore || 0,
+        victoryPoints: matchData.green?.victoryPoints || 0,
         skirmishes: calculateSkirmishStats('green'),
-      }] : []),
+      },
     ],
-    // Note: Objectives data not available in basic match endpoint
-    // Would need additional API calls to get current map objectives
+    // Note: Objectives data not available in current data structure
     objectives: {
       red: { keeps: 0, towers: 0, camps: 0, castles: 0 },
       blue: { keeps: 0, towers: 0, camps: 0, castles: 0 },

@@ -3,6 +3,9 @@ import { RegionTabs } from '@/components/region-tabs'
 import { MatchesGrid } from '@/components/matches-grid'
 import { getMatches, getWorlds } from '@/server/queries'
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function MatchesPage() {
   // Fetch real data from DynamoDB
   const [matchesData, worldsData] = await Promise.all([
@@ -13,62 +16,41 @@ export default async function MatchesPage() {
   // Transform data for display
   const matches = matchesData && worldsData
     ? Object.values(matchesData)
-        .filter((match) => match.all_worlds && match.all_worlds.length > 0) // Filter out matches without world data
-        .sort((a, b) => {
-          // Sort by region (NA first, then EU) and tier
-          if (a.region !== b.region) {
-            return a.region === 'NA' ? -1 : 1;
+        .filter((match: any) => match.red && match.blue && match.green) // Filter out incomplete matches
+        .sort((a: any, b: any) => {
+          // Extract region and tier from match ID (e.g., "1-1" = NA tier 1, "2-1" = EU tier 1)
+          const [aRegion, aTier] = a.id.split('-');
+          const [bRegion, bTier] = b.id.split('-');
+
+          // Sort by region (NA=1 first, then EU=2) and tier
+          if (aRegion !== bRegion) {
+            return parseInt(aRegion) - parseInt(bRegion);
           }
-          return a.tier - b.tier;
+          return parseInt(aTier) - parseInt(bTier);
         })
-        .map((match) => {
-          // Group worlds by color and get their names
-          const worldsByColor = match.all_worlds.reduce((acc, world) => {
-            if (!acc[world.color]) {
-              acc[world.color] = [];
-            }
-            acc[world.color].push(world);
-            return acc;
-          }, {} as Record<string, typeof match.all_worlds>);
-
-          // Get primary world for each color (first in the list)
-          const redWorld = worldsByColor.red?.[0];
-          const blueWorld = worldsByColor.blue?.[0];
-          const greenWorld = worldsByColor.green?.[0];
-
-          // Find world names from worlds data
-          const getWorldName = (worldId: number) => {
-            const world = worldsData.find((w) => w.id === worldId);
-            return world?.name || `World ${worldId}`;
-          };
-
+        .map((match: any) => {
           return {
-            tier: `${match.region}-${match.tier}`,
+            tier: match.id, // Use the match ID as tier (e.g., "1-1")
             worlds: [
-              redWorld && {
-                name: getWorldName(redWorld.id),
-                kills: redWorld.kills,
-                deaths: redWorld.deaths,
+              {
+                name: match.red.world.name,
+                kills: match.red.kills,
+                deaths: match.red.deaths,
                 color: 'red' as const,
               },
-              blueWorld && {
-                name: getWorldName(blueWorld.id),
-                kills: blueWorld.kills,
-                deaths: blueWorld.deaths,
+              {
+                name: match.blue.world.name,
+                kills: match.blue.kills,
+                deaths: match.blue.deaths,
                 color: 'blue' as const,
               },
-              greenWorld && {
-                name: getWorldName(greenWorld.id),
-                kills: greenWorld.kills,
-                deaths: greenWorld.deaths,
+              {
+                name: match.green.world.name,
+                kills: match.green.kills,
+                deaths: match.green.deaths,
                 color: 'green' as const,
               },
-            ].filter(Boolean) as Array<{
-              name: string;
-              kills: number;
-              deaths: number;
-              color: 'red' | 'blue' | 'green';
-            }>,
+            ],
           };
         })
     : [];

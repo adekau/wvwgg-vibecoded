@@ -107,7 +107,7 @@ export const getMatches = unstable_cache(
       return null;
     }
   },
-  ['matches'],
+  ['matches-v2'],
   { revalidate: 60, tags: ['matches'] }
 );
 
@@ -145,7 +145,7 @@ export const getWorlds = unstable_cache(
       return null;
     }
   },
-  ['worlds'],
+  ['worlds-v2'],
   { revalidate: 86400, tags: ['worlds'] }
 );
 
