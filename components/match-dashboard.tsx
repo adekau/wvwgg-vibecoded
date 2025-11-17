@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft, Trophy, Swords, Skull, TrendingUp, Castle, Flag, Tent } from 'lucide-react'
 import Link from 'next/link'
 import { Progress } from '@/components/ui/progress'
+import { ObjectivesDisplay } from '@/components/objectives-display'
 
 interface World {
   name: string
@@ -59,7 +60,8 @@ const colorClasses = {
 export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
   const totalScore = match.worlds.reduce((sum, world) => sum + world.score, 0)
   const sortedWorlds = [...match.worlds].sort((a, b) => b.score - a.score)
-  
+  const highestScore = sortedWorlds[0]?.score || 1 // Prevent division by zero
+
   return (
     <div className="space-y-6">
       {/* Header with back button */}
@@ -83,7 +85,7 @@ export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
       {/* Score Overview Cards */}
       <div className="grid gap-4 md:grid-cols-3">
         {sortedWorlds.map((world, idx) => {
-          const scorePercentage = (world.score / totalScore) * 100
+          const scorePercentage = (world.score / highestScore) * 100
           const kdRatio = (world.kills / world.deaths).toFixed(2)
           const classes = colorClasses[world.color]
           const frostedClass = world.color === 'red' ? 'frosted-card-red' : world.color === 'blue' ? 'frosted-card-blue' : 'frosted-card-green'
@@ -130,9 +132,8 @@ export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
         })}
       </div>
 
-      {/* Detailed Stats Grid */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        {/* Combat Statistics */}
+      {/* Combat Statistics & Map Objectives */}
+      <div className="grid gap-6 md:grid-cols-2">
         <Card className="panel-border inset-card frosted-panel" style={{ background: 'transparent' }}>
           <div className="p-6 space-y-4">
             <div className="flex items-center gap-2 mb-4">
@@ -154,21 +155,21 @@ export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
                     <div className="grid grid-cols-3 gap-4">
                       <div>
                         <div className="flex items-center gap-1.5 mb-1">
-                          <Swords className="h-3.5 w-3.5 opacity-60" />
+                          <Swords className="h-3.5 w-3.5 text-white" />
                           <span className="text-xs text-muted-foreground">Kills</span>
                         </div>
                         <span className="text-lg font-bold font-mono">{world.kills.toLocaleString()}</span>
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5 mb-1">
-                          <Skull className="h-3.5 w-3.5 opacity-60" />
+                          <Skull className="h-3.5 w-3.5 text-white" />
                           <span className="text-xs text-muted-foreground">Deaths</span>
                         </div>
                         <span className="text-lg font-bold font-mono">{world.deaths.toLocaleString()}</span>
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5 mb-1">
-                          <TrendingUp className="h-3.5 w-3.5 opacity-60" />
+                          <TrendingUp className="h-3.5 w-3.5 text-white" />
                           <span className="text-xs text-muted-foreground">K/D</span>
                         </div>
                         <span className="text-lg font-bold font-mono">
@@ -183,56 +184,10 @@ export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
           </div>
         </Card>
 
-        {/* Objectives Control */}
-        <Card className="panel-border inset-card frosted-panel" style={{ background: 'transparent' }}>
-          <div className="p-6 space-y-4">
-            <div className="flex items-center gap-2 mb-4">
-              <Castle className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-bold">Objective Control</h2>
-            </div>
-            
-            <div className="space-y-4">
-              {match.worlds.map((world) => {
-                const classes = colorClasses[world.color]
-                const objectives = match.objectives[world.color]
-                const totalObjectives = objectives.keeps + objectives.towers + objectives.camps + objectives.castles
-                
-                return (
-                  <div key={world.name} className={`rounded-md p-4 border ${classes.bg} ${classes.border}`}>
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="font-medium text-sm">{world.name}</span>
-                      <Badge variant="secondary" className="font-mono text-xs">
-                        {totalObjectives} total
-                      </Badge>
-                    </div>
-                    <div className="grid grid-cols-4 gap-3">
-                      <div className="text-center">
-                        <Castle className="h-4 w-4 mx-auto mb-1 opacity-60" />
-                        <div className="text-xs text-muted-foreground mb-0.5">Castles</div>
-                        <div className="text-lg font-bold font-mono">{objectives.castles}</div>
-                      </div>
-                      <div className="text-center">
-                        <Flag className="h-4 w-4 mx-auto mb-1 opacity-60" />
-                        <div className="text-xs text-muted-foreground mb-0.5">Keeps</div>
-                        <div className="text-lg font-bold font-mono">{objectives.keeps}</div>
-                      </div>
-                      <div className="text-center">
-                        <Castle className="h-4 w-4 mx-auto mb-1 opacity-60" />
-                        <div className="text-xs text-muted-foreground mb-0.5">Towers</div>
-                        <div className="text-lg font-bold font-mono">{objectives.towers}</div>
-                      </div>
-                      <div className="text-center">
-                        <Tent className="h-4 w-4 mx-auto mb-1 opacity-60" />
-                        <div className="text-xs text-muted-foreground mb-0.5">Camps</div>
-                        <div className="text-lg font-bold font-mono">{objectives.camps}</div>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </Card>
+        <ObjectivesDisplay
+          matchId={matchId}
+          worlds={match.worlds.map(w => ({ name: w.name, color: w.color }))}
+        />
       </div>
 
       {/* Skirmish Performance */}

@@ -1,6 +1,5 @@
 import { MatchesHeader } from '@/components/matches-header'
 import { MatchDashboard } from '@/components/match-dashboard'
-import { ObjectivesDisplay } from '@/components/objectives-display'
 import { MatchHistoryChart } from '@/components/match-history-chart'
 import { notFound } from 'next/navigation'
 import { getMatches, getWorlds } from '@/server/queries'
@@ -102,14 +101,7 @@ export default async function MatchDetailPage({ params }: PageProps) {
       <main className="container mx-auto px-4 py-8 space-y-6">
         <MatchDashboard match={match} matchId={matchId} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <MatchHistoryChart matchId={matchId} />
-          </div>
-          <div>
-            <ObjectivesDisplay matchId={matchId} />
-          </div>
-        </div>
+        <MatchHistoryChart matchId={matchId} />
       </main>
     </div>
   )

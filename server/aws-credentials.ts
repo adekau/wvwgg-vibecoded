@@ -11,7 +11,6 @@ export function createCredentialsProvider(): AwsCredentialIdentityProvider | und
   const roleArn = process.env.AWS_ROLE_ARN;
 
   if (roleArn) {
-    console.log('Using Vercel OIDC credentials provider');
     return awsCredentialsProvider({ roleArn });
   }
 
@@ -20,7 +19,6 @@ export function createCredentialsProvider(): AwsCredentialIdentityProvider | und
   const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
 
   if (accessKeyId && secretAccessKey) {
-    console.log('Using legacy IAM user credentials');
     return async () => ({
       accessKeyId,
       secretAccessKey,
@@ -28,6 +26,5 @@ export function createCredentialsProvider(): AwsCredentialIdentityProvider | und
   }
 
   // Let AWS SDK use default credential chain
-  console.log('No credentials configured, using default AWS credential chain');
   return undefined;
 }

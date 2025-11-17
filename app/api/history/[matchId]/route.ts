@@ -30,19 +30,19 @@ export async function GET(
         return {
           timestamp: snapshot.timestamp,
           red: {
-            score: matchData.red?.skirmishScore || 0,
+            score: matchData.red?.totalScore || 0,
             kills: matchData.red?.kills || 0,
             deaths: matchData.red?.deaths || 0,
             victoryPoints: matchData.red?.victoryPoints || 0,
           },
           blue: {
-            score: matchData.blue?.skirmishScore || 0,
+            score: matchData.blue?.totalScore || 0,
             kills: matchData.blue?.kills || 0,
             deaths: matchData.blue?.deaths || 0,
             victoryPoints: matchData.blue?.victoryPoints || 0,
           },
           green: {
-            score: matchData.green?.skirmishScore || 0,
+            score: matchData.green?.totalScore || 0,
             kills: matchData.green?.kills || 0,
             deaths: matchData.green?.deaths || 0,
             victoryPoints: matchData.green?.victoryPoints || 0,

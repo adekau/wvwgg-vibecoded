@@ -84,8 +84,6 @@ export const getMatches = unstable_cache(
       );
 
       if (!response.Item?.data) {
-        console.log('No matches found in DynamoDB, falling back to GW2 API');
-
         // Fallback to GW2 API
         const apiResponse = await fetch(
           `${process.env.ANET_MATCHES_ENDPOINT}?ids=all`,
@@ -93,12 +91,11 @@ export const getMatches = unstable_cache(
         );
 
         if (!apiResponse.ok) {
-          console.error('Failed to fetch from GW2 API:', apiResponse.statusText);
+          console.error('Failed to fetch matches from GW2 API:', apiResponse.statusText);
           return null;
         }
 
-        const matches = await apiResponse.json();
-        return matches;
+        return await apiResponse.json();
       }
 
       return response.Item.data;
@@ -122,8 +119,6 @@ export const getWorlds = unstable_cache(
       );
 
       if (!response.Item?.data) {
-        console.log('No worlds found in DynamoDB, falling back to GW2 API');
-
         // Fallback to GW2 API
         const apiResponse = await fetch(
           `${process.env.ANET_WORLDS_ENDPOINT}?ids=all`,
@@ -131,12 +126,11 @@ export const getWorlds = unstable_cache(
         );
 
         if (!apiResponse.ok) {
-          console.error('Failed to fetch from GW2 API:', apiResponse.statusText);
+          console.error('Failed to fetch worlds from GW2 API:', apiResponse.statusText);
           return null;
         }
 
-        const worlds = await apiResponse.json();
-        return worlds;
+        return await apiResponse.json();
       }
 
       return response.Item.data;

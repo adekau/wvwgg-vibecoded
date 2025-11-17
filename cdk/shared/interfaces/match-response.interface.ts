@@ -1,9 +1,11 @@
 export interface IMatchResponse {
   id: string;
+  start_time: string;
+  end_time: string;
   worlds: {
-    red: number[];
-    blue: number[];
-    green: number[];
+    red: number;
+    blue: number;
+    green: number;
   };
   all_worlds: {
     red: number[];

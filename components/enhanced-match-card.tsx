@@ -3,7 +3,8 @@
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, TrendingUp, Activity, Users } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Trophy, TrendingUp, Activity, Swords, Skull } from 'lucide-react';
 
 interface WorldData {
   name: string;
@@ -24,11 +25,23 @@ interface EnhancedMatchCardProps {
 
 export function EnhancedMatchCard({ tier, worlds }: EnhancedMatchCardProps) {
   const router = useRouter();
-  // Sort worlds by score to determine rankings
+  // Sort worlds by score to determine rankings (for vertical order)
   const rankedWorlds = [...worlds].sort((a, b) => (b.score || 0) - (a.score || 0));
+
+  // Sort by victory points for medal icons
+  const rankedByVP = [...worlds].sort((a, b) => (b.victoryPoints || 0) - (a.victoryPoints || 0));
 
   // Calculate deltas from leader
   const leaderScore = rankedWorlds[0]?.score || 0;
+
+  // Get highest score for progress bar percentages
+  const highestScore = rankedWorlds[0]?.score || 1; // Prevent division by zero
+
+  // Find highest values for each stat
+  const highestKills = Math.max(...worlds.map(w => w.kills || 0));
+  const highestDeaths = Math.max(...worlds.map(w => w.deaths || 0));
+  const highestRatio = Math.max(...worlds.map(w => w.ratio || 0));
+  const highestActivity = Math.max(...worlds.map(w => w.activity || 0));
 
   const getRankIcon = (rank: number) => {
     if (rank === 0) return '🥇';
@@ -78,6 +91,9 @@ export function EnhancedMatchCard({ tier, worlds }: EnhancedMatchCardProps) {
             const rank = index;
             const scoreDelta = leaderScore - (world.score || 0);
 
+            // Get rank by victory points for medal
+            const vpRank = rankedByVP.findIndex(w => w.color === world.color);
+
             return (
               <div
                 key={world.color}
@@ -92,57 +108,48 @@ export function EnhancedMatchCard({ tier, worlds }: EnhancedMatchCardProps) {
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-lg">{getRankIcon(rank)}</span>
+                      <span className="text-lg">{getRankIcon(vpRank)}</span>
                       <h4 className="font-semibold">{world.name}</h4>
                     </div>
 
                     {/* Stats Row */}
                     <div className="flex flex-wrap gap-3 text-sm">
-                      {/* Score */}
-                      {world.score !== undefined && (
-                        <div className="flex items-center gap-1">
-                          <Trophy className="h-3 w-3 text-muted-foreground" />
-                          <span className="font-mono font-semibold">
-                            {world.score.toLocaleString()}
-                          </span>
-                          {scoreDelta > 0 && (
-                            <span className="text-muted-foreground text-xs">
-                              (-{scoreDelta.toLocaleString()})
-                            </span>
-                          )}
-                        </div>
-                      )}
+                      {/* Kills */}
+                      <div className="flex items-center gap-1" title="Total kills in this match">
+                        <Swords className="h-3 w-3 text-muted-foreground" />
+                        <span className={`font-mono font-semibold ${world.kills === highestKills ? 'bg-yellow-500/20 px-1.5 py-0.5 rounded' : ''}`}>
+                          {world.kills.toLocaleString()}
+                        </span>
+                      </div>
+
+                      {/* Deaths */}
+                      <div className="flex items-center gap-1" title="Total deaths in this match">
+                        <Skull className="h-3 w-3 text-muted-foreground" />
+                        <span className={`font-mono font-semibold ${world.deaths === highestDeaths ? 'bg-yellow-500/20 px-1.5 py-0.5 rounded' : ''}`}>
+                          {world.deaths.toLocaleString()}
+                        </span>
+                      </div>
 
                       {/* K/D Ratio */}
                       {world.ratio !== undefined && (
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1" title="Kill/Death ratio">
                           <TrendingUp className={`h-3 w-3 ${
                             world.ratio > 1 ? 'text-green-500' :
                             world.ratio > 0.8 ? 'text-yellow-500' :
                             'text-red-500'
                           }`} />
-                          <span className="font-mono">
-                            {world.ratio.toFixed(2)} K/D
+                          <span className={`font-mono ${world.ratio === highestRatio ? 'bg-yellow-500/20 px-1.5 py-0.5 rounded' : ''}`}>
+                            {world.ratio.toFixed(2)}
                           </span>
                         </div>
                       )}
 
                       {/* Activity */}
                       {world.activity !== undefined && (
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1" title={`Activity score: ${world.activity.toLocaleString()}`}>
                           <Activity className={`h-3 w-3 ${getActivityColor(world.activity)}`} />
-                          <span className={getActivityColor(world.activity)}>
-                            {getActivityLevel(world.activity)}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Population */}
-                      {world.population && (
-                        <div className="flex items-center gap-1">
-                          <Users className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-muted-foreground">
-                            {world.population}
+                          <span className={`font-mono ${world.activity === highestActivity ? 'bg-yellow-500/20 px-1.5 py-0.5 rounded' : ''}`}>
+                            {world.activity.toLocaleString()}
                           </span>
                         </div>
                       )}
@@ -160,29 +167,26 @@ export function EnhancedMatchCard({ tier, worlds }: EnhancedMatchCardProps) {
                   )}
                 </div>
 
-                {/* Kills/Deaths Bar */}
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="font-mono w-20">
-                    {world.kills.toLocaleString()} K
-                  </span>
-                  <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className={`h-full ${
-                        world.color === 'red'
-                          ? 'bg-red-500'
-                          : world.color === 'blue'
-                          ? 'bg-blue-500'
-                          : 'bg-green-500'
-                      }`}
-                      style={{
-                        width: `${Math.min(100, (world.ratio || 0) * 100)}%`,
-                      }}
+                {/* Skirmish Score Progress Bar */}
+                {world.score !== undefined && highestScore > 0 && (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-muted-foreground">Score</span>
+                        <span className="font-mono font-semibold" title={`Current skirmish score: ${world.score.toLocaleString()}`}>
+                          {world.score.toLocaleString()}
+                        </span>
+                      </div>
+                      <span className="font-mono text-muted-foreground" title="Percentage of leading team's score">
+                        {((world.score / highestScore) * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                    <Progress
+                      value={(world.score / highestScore) * 100}
+                      className={`h-2 progress-${world.color}`}
                     />
                   </div>
-                  <span className="font-mono w-20 text-right">
-                    {world.deaths.toLocaleString()} D
-                  </span>
-                </div>
+                )}
               </div>
             );
           })}

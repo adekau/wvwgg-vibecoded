@@ -2,14 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface AutoRefreshProps {
   interval?: number; // milliseconds
+  matchStart?: Date;
+  matchEnd?: Date;
 }
 
-export function AutoRefresh({ interval = 60000 }: AutoRefreshProps) {
+export function AutoRefresh({ interval = 60000, matchStart, matchEnd }: AutoRefreshProps) {
   const router = useRouter();
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [timeAgo, setTimeAgo] = useState<string>('just now');
@@ -57,23 +59,44 @@ export function AutoRefresh({ interval = 60000 }: AutoRefreshProps) {
     }, 500);
   };
 
-  return (
-    <div className="flex items-center gap-3 text-sm text-muted-foreground">
-      <div className="flex items-center gap-2">
-        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-        <span>Last updated: {timeAgo}</span>
-      </div>
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZoneName: 'short'
+    });
+  };
 
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleManualRefresh}
-        disabled={isRefreshing}
-        className="h-8"
-      >
-        <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-        Refresh
-      </Button>
+  return (
+    <div className="panel-border rounded-lg px-4 py-2.5">
+      <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+        {matchStart && matchEnd && (
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4" />
+            <span>
+              {formatDate(matchStart)} - {formatDate(matchEnd)}
+            </span>
+          </div>
+        )}
+
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+          <span>Last updated: {timeAgo}</span>
+        </div>
+
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={handleManualRefresh}
+          disabled={isRefreshing}
+          className="h-8 hover:bg-secondary/80"
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+      </div>
     </div>
   );
 }
