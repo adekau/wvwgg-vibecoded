@@ -8,6 +8,7 @@ import {
   calculatePrimeTimeStats,
   getDominantTeam,
   calculateScoreDistribution,
+  calculateActivityDistribution,
   type WindowStats,
 } from '@/lib/prime-time-stats'
 import {
@@ -69,16 +70,8 @@ export function PrimeTimePerformance({ matchId, worlds }: PrimeTimePerformancePr
         const responseData = await response.json()
         const data: HistoricalDataPoint[] = responseData.history || []
 
-        console.log('Prime Time Performance - Total history points:', data.length)
-        if (data.length > 0) {
-          console.log('First timestamp:', data[0].timestamp)
-          console.log('Last timestamp:', data[data.length - 1].timestamp)
-          console.log('Sample data point:', data[0])
-        }
-
         // Calculate stats for each time window
         const stats = calculatePrimeTimeStats(data)
-        console.log('Prime Time Performance - Window stats:', stats)
         setWindowStats(stats)
         setLoading(false)
       } catch (error) {
@@ -146,6 +139,13 @@ export function PrimeTimePerformance({ matchId, worlds }: PrimeTimePerformancePr
     green: calculateScoreDistribution(windowStats, 'green'),
   }
 
+  // Calculate activity distribution for each team
+  const activityDistributions = {
+    red: calculateActivityDistribution(windowStats, 'red'),
+    blue: calculateActivityDistribution(windowStats, 'blue'),
+    green: calculateActivityDistribution(windowStats, 'green'),
+  }
+
   return (
     <Card className="panel-border inset-card frosted-panel" style={{ background: 'transparent' }}>
       <div className="p-6">
@@ -182,6 +182,17 @@ export function PrimeTimePerformance({ matchId, worlds }: PrimeTimePerformancePr
               {windowStats.map((window) => {
                 const dominant = getDominantTeam(window)
                 const isActive = window.windowId === activeWindow
+
+                // Calculate highest values for this window
+                const windowHighestScore = Math.max(...worlds.map(w => window[w.color].score))
+                const windowHighestKills = Math.max(...worlds.map(w => window[w.color].kills))
+                const windowHighestDeaths = Math.max(...worlds.map(w => window[w.color].deaths))
+                const windowHighestActivity = Math.max(...worlds.map(w => window[w.color].kills + window[w.color].deaths))
+                const windowHighestVP = Math.max(...worlds.map(w => window[w.color].victoryPoints))
+                const windowHighestKD = Math.max(...worlds.map(w => {
+                  const deaths = window[w.color].deaths
+                  return deaths > 0 ? window[w.color].kills / deaths : window[w.color].kills
+                }))
 
                 return (
                   <tr
@@ -233,8 +244,10 @@ export function PrimeTimePerformance({ matchId, worlds }: PrimeTimePerformancePr
 
                     {worlds.map((world) => {
                       const stats = window[world.color]
-                      const distribution = scoreDistributions[world.color][window.windowId]
+                      const activityDistribution = activityDistributions[world.color][window.windowId]
                       const hasNoData = window.dataPoints === 0 && !isActive
+                      const activity = stats.kills + stats.deaths
+                      const kdValue = stats.deaths > 0 ? stats.kills / stats.deaths : stats.kills
 
                       return (
                         <td key={world.color} className="py-4 px-2">
@@ -247,32 +260,44 @@ export function PrimeTimePerformance({ matchId, worlds }: PrimeTimePerformancePr
                               <div className="space-y-1">
                                 <div className="flex justify-between items-center">
                                   <span className="text-xs text-muted-foreground">Score</span>
-                                  <span className="font-mono font-semibold">{stats.score.toLocaleString()}</span>
+                                  <span className={`font-mono font-semibold ${stats.score === windowHighestScore && windowHighestScore > 0 ? 'bg-yellow-500/20 px-1.5 py-0.5 rounded' : ''}`}>
+                                    {stats.score.toLocaleString()}
+                                  </span>
                                 </div>
                                 <div className="flex justify-between items-center">
                                   <span className="text-xs text-muted-foreground">Kills</span>
-                                  <span className="font-mono text-xs">{stats.kills.toLocaleString()}</span>
+                                  <span className={`font-mono text-xs ${stats.kills === windowHighestKills && windowHighestKills > 0 ? 'bg-yellow-500/20 px-1.5 py-0.5 rounded' : ''}`}>
+                                    {stats.kills.toLocaleString()}
+                                  </span>
                                 </div>
                                 <div className="flex justify-between items-center">
                                   <span className="text-xs text-muted-foreground">Deaths</span>
-                                  <span className="font-mono text-xs">{stats.deaths.toLocaleString()}</span>
+                                  <span className={`font-mono text-xs ${stats.deaths === windowHighestDeaths && windowHighestDeaths > 0 ? 'bg-yellow-500/20 px-1.5 py-0.5 rounded' : ''}`}>
+                                    {stats.deaths.toLocaleString()}
+                                  </span>
                                 </div>
                                 <div className="flex justify-between items-center">
                                   <span className="text-xs text-muted-foreground">Activity</span>
-                                  <span className="font-mono text-xs">{(stats.kills + stats.deaths).toLocaleString()}</span>
+                                  <span className={`font-mono text-xs ${activity === windowHighestActivity && windowHighestActivity > 0 ? 'bg-yellow-500/20 px-1.5 py-0.5 rounded' : ''}`}>
+                                    {activity.toLocaleString()}
+                                  </span>
                                 </div>
                                 <div className="flex justify-between items-center">
                                   <span className="text-xs text-muted-foreground">K/D</span>
-                                  <span className="font-mono text-xs">{stats.kdRatio}</span>
+                                  <span className={`font-mono text-xs ${kdValue === windowHighestKD && windowHighestKD > 0 ? 'bg-yellow-500/20 px-1.5 py-0.5 rounded' : ''}`}>
+                                    {stats.kdRatio}
+                                  </span>
                                 </div>
                                 <div className="flex justify-between items-center">
                                   <span className="text-xs text-muted-foreground">VP</span>
-                                  <span className="font-mono text-xs">{stats.victoryPoints}</span>
+                                  <span className={`font-mono text-xs ${stats.victoryPoints === windowHighestVP && windowHighestVP > 0 ? 'bg-yellow-500/20 px-1.5 py-0.5 rounded' : ''}`}>
+                                    {stats.victoryPoints}
+                                  </span>
                                 </div>
-                                {distribution > 0 && (
+                                {activityDistribution > 0 && (
                                   <div className="text-center pt-1 border-t border-border/30">
                                     <Badge variant="secondary" className="text-xs">
-                                      {distribution}% of total
+                                      {activityDistribution}% of total activity
                                     </Badge>
                                   </div>
                                 )}
@@ -310,7 +335,7 @@ export function PrimeTimePerformance({ matchId, worlds }: PrimeTimePerformancePr
           <h3 className="text-sm font-medium mb-3">Key Insights</h3>
           <div className="grid gap-3 md:grid-cols-3">
             {worlds.map((world) => {
-              const distribution = scoreDistributions[world.color]
+              const distribution = activityDistributions[world.color]
               const topWindow = Object.entries(distribution).sort(([, a], [, b]) => b - a)[0]
               const topWindowName = topWindow
                 ? getAllTimeWindows().find(w => w.id === topWindow[0])?.name
@@ -327,9 +352,9 @@ export function PrimeTimePerformance({ matchId, worlds }: PrimeTimePerformancePr
                   <div className="text-xs text-muted-foreground">
                     {topWindowName && topWindow[1] > 0 ? (
                       <>
-                        Strongest during <span className="font-semibold">{topWindowName}</span>
+                        Most active during <span className="font-semibold">{topWindowName}</span>
                         <br />
-                        ({topWindow[1]}% of total score)
+                        ({topWindow[1]}% of total activity)
                       </>
                     ) : (
                       'Insufficient data'

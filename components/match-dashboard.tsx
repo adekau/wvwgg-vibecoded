@@ -106,6 +106,7 @@ interface HistoryPoint {
   red: { score: number; kills: number; deaths: number; victoryPoints: number }
   blue: { score: number; kills: number; deaths: number; victoryPoints: number }
   green: { score: number; kills: number; deaths: number; victoryPoints: number }
+  maps?: HistoryMapData[]
 }
 
 interface HistoryMapData {
@@ -260,8 +261,8 @@ export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
     })
 
     // Get map data from history snapshots
-    const startMapData = (startPoint as any)?.maps?.find((m: HistoryMapData) => m.type === mapType)
-    const endMapData = (endPoint as any)?.maps?.find((m: HistoryMapData) => m.type === mapType)
+    const startMapData = startPoint?.maps?.find((m: HistoryMapData) => m.type === mapType)
+    const endMapData = endPoint?.maps?.find((m: HistoryMapData) => m.type === mapType)
 
     if (!startMapData || !endMapData) return null
 
@@ -348,6 +349,17 @@ export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
   }
 
   const displayData = getDisplayData()
+
+  // Calculate highest values for each stat category for highlighting
+  const highestDisplayScore = Math.max(...displayData.map(w => w.displayScore))
+  const highestDisplayVP = Math.max(...displayData.map(w => w.displayVP ?? 0))
+  const highestDisplayKills = Math.max(...displayData.map(w => w.displayKills ?? 0))
+  const highestDisplayDeaths = Math.max(...displayData.map(w => w.displayDeaths ?? 0))
+  const highestDisplayKD = Math.max(...displayData.map(w => {
+    const kills = w.displayKills ?? 0
+    const deaths = w.displayDeaths ?? 0
+    return deaths > 0 ? kills / deaths : kills
+  }))
 
   return (
     <div className="space-y-6">
@@ -491,6 +503,7 @@ export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
                     const kills = world.displayKills ?? 0
                     const deaths = world.displayDeaths ?? 0
                     const kdRatio = deaths > 0 ? (kills / deaths).toFixed(2) : kills.toFixed(2)
+                    const kdValue = deaths > 0 ? kills / deaths : kills
 
                     return (
                       <tr key={world.name} className={`border-b border-border/30 ${classes.bg}`}>
@@ -501,19 +514,37 @@ export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
                           </div>
                         </td>
                         <td className="text-right py-3 px-2 font-mono font-semibold">
-                          {world.displayScore.toLocaleString()}
+                          <span className={world.displayScore === highestDisplayScore && highestDisplayScore > 0 ? 'bg-yellow-500/20 px-1.5 py-0.5 rounded' : ''}>
+                            {world.displayScore.toLocaleString()}
+                          </span>
                         </td>
                         <td className="text-right py-3 px-2 font-mono">
-                          {world.displayVP !== undefined ? world.displayVP.toLocaleString() : '-'}
+                          {world.displayVP !== undefined ? (
+                            <span className={world.displayVP === highestDisplayVP && highestDisplayVP > 0 ? 'bg-yellow-500/20 px-1.5 py-0.5 rounded' : ''}>
+                              {world.displayVP.toLocaleString()}
+                            </span>
+                          ) : '-'}
                         </td>
                         <td className="text-right py-3 px-2 font-mono">
-                          {world.displayKills !== undefined ? world.displayKills.toLocaleString() : '-'}
+                          {world.displayKills !== undefined ? (
+                            <span className={world.displayKills === highestDisplayKills && highestDisplayKills > 0 ? 'bg-yellow-500/20 px-1.5 py-0.5 rounded' : ''}>
+                              {world.displayKills.toLocaleString()}
+                            </span>
+                          ) : '-'}
                         </td>
                         <td className="text-right py-3 px-2 font-mono">
-                          {world.displayDeaths !== undefined ? world.displayDeaths.toLocaleString() : '-'}
+                          {world.displayDeaths !== undefined ? (
+                            <span className={world.displayDeaths === highestDisplayDeaths && highestDisplayDeaths > 0 ? 'bg-yellow-500/20 px-1.5 py-0.5 rounded' : ''}>
+                              {world.displayDeaths.toLocaleString()}
+                            </span>
+                          ) : '-'}
                         </td>
                         <td className="text-right py-3 px-2 font-mono">
-                          {world.displayKills !== undefined && world.displayDeaths !== undefined ? kdRatio : '-'}
+                          {world.displayKills !== undefined && world.displayDeaths !== undefined ? (
+                            <span className={kdValue === highestDisplayKD && highestDisplayKD > 0 ? 'bg-yellow-500/20 px-1.5 py-0.5 rounded' : ''}>
+                              {kdRatio}
+                            </span>
+                          ) : '-'}
                         </td>
                         {selectedSkirmish === 'all' && (
                           <>
@@ -642,6 +673,15 @@ export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
                   mapName = greenWorld ? `${greenWorld.name} Borderlands` : mapName
                 }
 
+                // Calculate highest values for this map
+                const mapHighestKills = Math.max(...match.worlds.map(w => map.kills[w.color]))
+                const mapHighestDeaths = Math.max(...match.worlds.map(w => map.deaths[w.color]))
+                const mapHighestKD = Math.max(...match.worlds.map(w => {
+                  const k = map.kills[w.color]
+                  const d = map.deaths[w.color]
+                  return d > 0 ? k / d : k
+                }))
+
                 return (
                   <div key={map.type} className="rounded-md p-4 border border-border/50 bg-background/50">
                     <div className="font-medium text-sm mb-3">{mapName}</div>
@@ -651,6 +691,7 @@ export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
                         const kills = map.kills[world.color]
                         const deaths = map.deaths[world.color]
                         const kdRatio = deaths > 0 ? (kills / deaths).toFixed(2) : kills.toFixed(2)
+                        const kdValue = deaths > 0 ? kills / deaths : kills
 
                         return (
                           <div key={world.color} className={`rounded p-2 ${classes.bg} ${classes.border} border`}>
@@ -660,15 +701,21 @@ export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
                             <div className="space-y-1">
                               <div className="flex justify-between text-xs">
                                 <span className="text-muted-foreground">Kills</span>
-                                <span className="font-mono">{kills.toLocaleString()}</span>
+                                <span className={`font-mono ${kills === mapHighestKills && mapHighestKills > 0 ? 'bg-yellow-500/20 px-1.5 py-0.5 rounded' : ''}`}>
+                                  {kills.toLocaleString()}
+                                </span>
                               </div>
                               <div className="flex justify-between text-xs">
                                 <span className="text-muted-foreground">Deaths</span>
-                                <span className="font-mono">{deaths.toLocaleString()}</span>
+                                <span className={`font-mono ${deaths === mapHighestDeaths && mapHighestDeaths > 0 ? 'bg-yellow-500/20 px-1.5 py-0.5 rounded' : ''}`}>
+                                  {deaths.toLocaleString()}
+                                </span>
                               </div>
                               <div className="flex justify-between text-xs">
                                 <span className="text-muted-foreground">K/D</span>
-                                <span className="font-mono font-semibold">{kdRatio}</span>
+                                <span className={`font-mono font-semibold ${kdValue === mapHighestKD && mapHighestKD > 0 ? 'bg-yellow-500/20 px-1.5 py-0.5 rounded' : ''}`}>
+                                  {kdRatio}
+                                </span>
                               </div>
                             </div>
                           </div>

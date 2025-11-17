@@ -156,15 +156,6 @@ export function calculatePrimeTimeStats(
   // Group data by prime time window
   const grouped = groupByPrimeTimeWindow(historyData);
 
-  console.log('Prime Time Stats - Grouped data counts:')
-  for (const [windowId, data] of Object.entries(grouped)) {
-    console.log(`  ${windowId}: ${data.length} points`)
-    if (data.length > 0) {
-      console.log(`    First:`, data[0].timestamp)
-      console.log(`    Last:`, data[data.length - 1].timestamp)
-    }
-  }
-
   // Get all windows
   const windows = getAllTimeWindows();
 
@@ -172,15 +163,6 @@ export function calculatePrimeTimeStats(
   return windows.map(window => {
     const windowData = grouped[window.id];
     const stats = calculateWindowStats(windowData);
-
-    if (windowData.length > 0) {
-      console.log(`Stats for ${window.id}:`, {
-        dataPoints: stats.dataPoints,
-        redScore: stats.red.score,
-        blueScore: stats.blue.score,
-        greenScore: stats.green.score,
-      })
-    }
 
     return {
       windowId: window.id,
@@ -243,6 +225,42 @@ export function calculateScoreDistribution(
 
   for (const window of allWindowStats) {
     const percentage = (window[color].score / totalScore) * 100;
+    distribution[window.windowId] = Math.round(percentage * 10) / 10;
+  }
+
+  return distribution;
+}
+
+/**
+ * Calculate percentage of total activity (kills + deaths) in each window
+ * @param allWindowStats - Statistics for all time windows
+ * @param color - Team color
+ * @returns Map of window ID to percentage of total activity
+ */
+export function calculateActivityDistribution(
+  allWindowStats: WindowStats[],
+  color: 'red' | 'blue' | 'green'
+): Record<PrimeTimeWindow, number> {
+  const totalActivity = allWindowStats.reduce(
+    (sum, window) => sum + window[color].kills + window[color].deaths,
+    0
+  );
+
+  if (totalActivity === 0) {
+    return {
+      'na-prime': 0,
+      'eu-prime': 0,
+      'ocx': 0,
+      'sea': 0,
+      'off-hours': 0,
+    };
+  }
+
+  const distribution: Record<PrimeTimeWindow, number> = {} as any;
+
+  for (const window of allWindowStats) {
+    const windowActivity = window[color].kills + window[color].deaths;
+    const percentage = (windowActivity / totalActivity) * 100;
     distribution[window.windowId] = Math.round(percentage * 10) / 10;
   }
 

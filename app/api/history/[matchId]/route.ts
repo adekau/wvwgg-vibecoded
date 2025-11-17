@@ -47,6 +47,7 @@ export async function GET(
             deaths: matchData.green?.deaths || 0,
             victoryPoints: matchData.green?.victoryPoints || 0,
           },
+          maps: matchData.maps || [],
         };
       })
       .filter(Boolean);
