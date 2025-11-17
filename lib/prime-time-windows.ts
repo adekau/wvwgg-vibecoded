@@ -98,16 +98,6 @@ export function getPrimeTimeWindow(timestamp: string | Date | number): PrimeTime
 
   const utcHour = date.getUTCHours();
 
-  // Debug: Log first few timestamps to see what UTC hour they map to
-  if (typeof timestamp === 'number' && timestamp === 1763398826341) {
-    console.log('DEBUG: Last timestamp conversion:', {
-      timestamp,
-      dateString: date.toISOString(),
-      utcHour,
-      fullDate: date.toString(),
-    });
-  }
-
   for (const window of PRIME_TIME_WINDOWS) {
     if (utcHour >= window.utcHourStart && utcHour < window.utcHourEnd) {
       return window.id;
@@ -238,24 +228,8 @@ export function groupByPrimeTimeWindow<T extends { timestamp: string | number }>
     'off-hours': [],
   };
 
-  // Debug: Log sample timestamps and their UTC hours
-  const sampleIndexes = [0, Math.floor(historyData.length / 2), historyData.length - 1];
-  console.log('DEBUG: Sample timestamp conversions:');
-
   for (const point of historyData) {
-    const timestamp = typeof point.timestamp === 'number'
-      ? new Date(point.timestamp)
-      : new Date(point.timestamp);
-
-    const utcHour = timestamp.getUTCHours();
-    const window = getPrimeTimeWindow(timestamp);
-
-    // Log sample points
-    const index = historyData.indexOf(point);
-    if (sampleIndexes.includes(index)) {
-      console.log(`  [${index}] ${point.timestamp} → ${timestamp.toISOString()} → UTC hour ${utcHour} → ${window}`);
-    }
-
+    const window = getPrimeTimeWindow(point.timestamp);
     grouped[window].push(point);
   }
 

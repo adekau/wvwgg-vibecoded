@@ -203,7 +203,14 @@ export function PrimeTimePerformance({ matchId, worlds }: PrimeTimePerformancePr
                   >
                     <td className="py-4 px-2">
                       <div className="flex flex-col">
-                        <span className="font-medium">{window.windowName}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{window.windowName}</span>
+                          {isActive && (
+                            <Badge variant="outline" className="text-xs px-1.5 py-0 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/30">
+                              Active
+                            </Badge>
+                          )}
+                        </div>
                         {(() => {
                           const windowInfo = getAllTimeWindows().find(w => w.id === window.windowId)
                           if (window.windowId === 'off-hours') {
