@@ -10,7 +10,13 @@ import {
   calculateScoreDistribution,
   type WindowStats,
 } from '@/lib/prime-time-stats'
-import { getAllTimeWindows } from '@/lib/prime-time-windows'
+import {
+  getAllTimeWindows,
+  getLocalizedTimeRange,
+  getOffHoursDescription,
+  getCurrentActiveWindow,
+  type PrimeTimeWindow,
+} from '@/lib/prime-time-windows'
 
 interface HistoricalDataPoint {
   timestamp: string | number
@@ -48,6 +54,7 @@ const colorClasses = {
 export function PrimeTimePerformance({ matchId, worlds }: PrimeTimePerformanceProps) {
   const [windowStats, setWindowStats] = useState<WindowStats[]>([])
   const [loading, setLoading] = useState(true)
+  const [activeWindow, setActiveWindow] = useState<PrimeTimeWindow>(getCurrentActiveWindow())
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -62,8 +69,16 @@ export function PrimeTimePerformance({ matchId, worlds }: PrimeTimePerformancePr
         const responseData = await response.json()
         const data: HistoricalDataPoint[] = responseData.history || []
 
+        console.log('Prime Time Performance - Total history points:', data.length)
+        if (data.length > 0) {
+          console.log('First timestamp:', data[0].timestamp)
+          console.log('Last timestamp:', data[data.length - 1].timestamp)
+          console.log('Sample data point:', data[0])
+        }
+
         // Calculate stats for each time window
         const stats = calculatePrimeTimeStats(data)
+        console.log('Prime Time Performance - Window stats:', stats)
         setWindowStats(stats)
         setLoading(false)
       } catch (error) {
@@ -73,7 +88,23 @@ export function PrimeTimePerformance({ matchId, worlds }: PrimeTimePerformancePr
     }
 
     fetchHistory()
+
+    // Refresh data every 2 minutes to capture new snapshots during active windows
+    const refreshInterval = setInterval(() => {
+      fetchHistory()
+    }, 2 * 60 * 1000) // 2 minutes
+
+    return () => clearInterval(refreshInterval)
   }, [matchId])
+
+  // Update active window every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveWindow(getCurrentActiveWindow())
+    }, 60000) // Update every minute
+
+    return () => clearInterval(interval)
+  }, [])
 
   if (loading) {
     return (
@@ -150,15 +181,48 @@ export function PrimeTimePerformance({ matchId, worlds }: PrimeTimePerformancePr
             <tbody>
               {windowStats.map((window) => {
                 const dominant = getDominantTeam(window)
+                const isActive = window.windowId === activeWindow
 
                 return (
-                  <tr key={window.windowId} className="border-b border-border/50 hover:bg-muted/50">
+                  <tr
+                    key={window.windowId}
+                    className={`border-b border-border/50 hover:bg-muted/50 ${
+                      isActive ? 'bg-yellow-500/5' : ''
+                    }`}
+                  >
                     <td className="py-4 px-2">
                       <div className="flex flex-col">
                         <span className="font-medium">{window.windowName}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {getAllTimeWindows().find(w => w.id === window.windowId)?.description}
-                        </span>
+                        {(() => {
+                          const windowInfo = getAllTimeWindows().find(w => w.id === window.windowId)
+                          if (window.windowId === 'off-hours') {
+                            // Use special formatting for off-hours to show all periods with line breaks
+                            const offHoursDesc = getOffHoursDescription()
+                            const timeRanges = offHoursDesc.split(', ')
+                            return (
+                              <span
+                                className="text-xs text-muted-foreground cursor-help"
+                                title={windowInfo?.description}
+                              >
+                                {timeRanges.map((range, idx) => (
+                                  <span key={idx}>
+                                    {range}
+                                    {idx < timeRanges.length - 1 && <br />}
+                                  </span>
+                                ))}
+                              </span>
+                            )
+                          }
+                          const localizedTime = windowInfo ? getLocalizedTimeRange(windowInfo) : ''
+                          return (
+                            <span
+                              className="text-xs text-muted-foreground cursor-help"
+                              title={windowInfo?.description}
+                            >
+                              {localizedTime}
+                            </span>
+                          )
+                        })()}
                         {window.dataPoints > 0 && (
                           <span className="text-xs text-muted-foreground mt-1">
                             {window.duration}h of data
@@ -170,11 +234,12 @@ export function PrimeTimePerformance({ matchId, worlds }: PrimeTimePerformancePr
                     {worlds.map((world) => {
                       const stats = window[world.color]
                       const distribution = scoreDistributions[world.color][window.windowId]
+                      const hasNoData = window.dataPoints === 0 && !isActive
 
                       return (
                         <td key={world.color} className="py-4 px-2">
                           <div className={`rounded p-2 ${colorClasses[world.color].bg} ${colorClasses[world.color].border} border`}>
-                            {window.dataPoints === 0 ? (
+                            {hasNoData ? (
                               <div className="text-center text-muted-foreground text-xs">
                                 No data
                               </div>
@@ -183,6 +248,18 @@ export function PrimeTimePerformance({ matchId, worlds }: PrimeTimePerformancePr
                                 <div className="flex justify-between items-center">
                                   <span className="text-xs text-muted-foreground">Score</span>
                                   <span className="font-mono font-semibold">{stats.score.toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                  <span className="text-xs text-muted-foreground">Kills</span>
+                                  <span className="font-mono text-xs">{stats.kills.toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                  <span className="text-xs text-muted-foreground">Deaths</span>
+                                  <span className="font-mono text-xs">{stats.deaths.toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                  <span className="text-xs text-muted-foreground">Activity</span>
+                                  <span className="font-mono text-xs">{(stats.kills + stats.deaths).toLocaleString()}</span>
                                 </div>
                                 <div className="flex justify-between items-center">
                                   <span className="text-xs text-muted-foreground">K/D</span>
@@ -197,6 +274,13 @@ export function PrimeTimePerformance({ matchId, worlds }: PrimeTimePerformancePr
                                     <Badge variant="secondary" className="text-xs">
                                       {distribution}% of total
                                     </Badge>
+                                  </div>
+                                )}
+                                {isActive && window.dataPoints === 0 && (
+                                  <div className="text-center pt-1 border-t border-border/30">
+                                    <span className="text-xs text-muted-foreground italic">
+                                      (No data yet)
+                                    </span>
                                   </div>
                                 )}
                               </div>

@@ -180,25 +180,35 @@ export const getMatchHistory = async (hours: number = 24): Promise<HistoricalSna
     const intervalsToFetch = hours * 4; // 4 intervals per hour
     const startInterval = current15Min - intervalsToFetch;
 
-    const response = await docClient.send(
-      new ScanCommand({
-        TableName: process.env.TABLE_NAME,
-        FilterExpression: '#type = :type AND #interval >= :startInterval',
-        ExpressionAttributeNames: {
-          '#type': 'type',
-          '#interval': 'interval',
-        },
-        ExpressionAttributeValues: {
-          ':type': 'match-history',
-          ':startInterval': startInterval,
-        },
-      })
-    );
+    let allSnapshots: HistoricalSnapshot[] = [];
+    let lastEvaluatedKey: Record<string, any> | undefined;
 
-    const snapshots = (response.Items || []) as HistoricalSnapshot[];
+    // Handle pagination - keep scanning until we have all items
+    do {
+      const response = await docClient.send(
+        new ScanCommand({
+          TableName: process.env.TABLE_NAME,
+          FilterExpression: '#type = :type AND #interval >= :startInterval',
+          ExpressionAttributeNames: {
+            '#type': 'type',
+            '#interval': 'interval',
+          },
+          ExpressionAttributeValues: {
+            ':type': 'match-history',
+            ':startInterval': startInterval,
+          },
+          ExclusiveStartKey: lastEvaluatedKey,
+        })
+      );
+
+      allSnapshots = allSnapshots.concat((response.Items || []) as HistoricalSnapshot[]);
+      lastEvaluatedKey = response.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
+
+    console.log(`[HISTORY] Fetched ${allSnapshots.length} snapshots for last ${hours} hours (intervals >= ${startInterval})`);
 
     // Sort by timestamp ascending (oldest first)
-    return snapshots.sort((a, b) => a.timestamp - b.timestamp);
+    return allSnapshots.sort((a, b) => a.timestamp - b.timestamp);
   } catch (error) {
     console.error('Error fetching match history:', error);
     return [];

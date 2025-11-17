@@ -10,6 +10,7 @@ import { ObjectivesDisplay } from '@/components/objectives-display'
 import { SkirmishTimer } from '@/components/skirmish-timer'
 import { AutoRefresh } from '@/components/auto-refresh'
 import { PrimeTimePerformance } from '@/components/prime-time-performance'
+import { VPScenarioPlanner } from '@/components/vp-scenario-planner'
 import { useState, useEffect } from 'react'
 
 interface World {
@@ -689,6 +690,9 @@ export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
 
       {/* Prime Time Performance */}
       <PrimeTimePerformance matchId={matchId} worlds={match.worlds.map(w => ({ name: w.name, color: w.color }))} />
+
+      {/* VP Scenario Planner */}
+      <VPScenarioPlanner matchId={matchId} match={match} />
     </div>
   )
 }

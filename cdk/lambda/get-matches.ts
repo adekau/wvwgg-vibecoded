@@ -63,24 +63,37 @@ const saveMatchesToDynamo = async (matchesResponse: IMatchResponse[], worlds: IW
   const current15Min = Math.floor(now / (1000 * 60 * 15)); // 15-minute timestamp
   const snapshotId = `snapshot-${current15Min}`;
 
+  console.log(`[SNAPSHOT] Current interval: ${current15Min}, ID: ${snapshotId}`);
+
   // Only save snapshot once per 15 minutes
   const existingSnapshot = await dynamoDb.get({
     TableName: TABLE_NAME,
     Key: { type: "match-history", id: snapshotId }
   });
 
+  console.log(`[SNAPSHOT] Existing snapshot check:`, existingSnapshot.Item ? 'FOUND' : 'NOT FOUND');
+
   if (!existingSnapshot.Item) {
-    await dynamoDb.put({
-      TableName: TABLE_NAME,
-      Item: {
-        type: "match-history",
-        id: snapshotId,
-        timestamp: now,
-        interval: current15Min,
-        data: formattedMatches,
-        ttl: Math.floor(now / 1000) + (7 * 24 * 60 * 60) // 7 days TTL
-      }
-    });
+    console.log(`[SNAPSHOT] Creating new snapshot ${snapshotId}...`);
+    try {
+      await dynamoDb.put({
+        TableName: TABLE_NAME,
+        Item: {
+          type: "match-history",
+          id: snapshotId,
+          timestamp: now,
+          interval: current15Min,
+          data: formattedMatches,
+          ttl: Math.floor(now / 1000) + (7 * 24 * 60 * 60) // 7 days TTL
+        }
+      });
+      console.log(`[SNAPSHOT] Successfully created snapshot ${snapshotId}`);
+    } catch (err) {
+      console.error(`[SNAPSHOT] Failed to create snapshot ${snapshotId}:`, err);
+      throw err;
+    }
+  } else {
+    console.log(`[SNAPSHOT] Skipping - snapshot ${snapshotId} already exists`);
   }
 }
 

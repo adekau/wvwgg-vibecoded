@@ -156,6 +156,15 @@ export function calculatePrimeTimeStats(
   // Group data by prime time window
   const grouped = groupByPrimeTimeWindow(historyData);
 
+  console.log('Prime Time Stats - Grouped data counts:')
+  for (const [windowId, data] of Object.entries(grouped)) {
+    console.log(`  ${windowId}: ${data.length} points`)
+    if (data.length > 0) {
+      console.log(`    First:`, data[0].timestamp)
+      console.log(`    Last:`, data[data.length - 1].timestamp)
+    }
+  }
+
   // Get all windows
   const windows = getAllTimeWindows();
 
@@ -163,6 +172,15 @@ export function calculatePrimeTimeStats(
   return windows.map(window => {
     const windowData = grouped[window.id];
     const stats = calculateWindowStats(windowData);
+
+    if (windowData.length > 0) {
+      console.log(`Stats for ${window.id}:`, {
+        dataPoints: stats.dataPoints,
+        redScore: stats.red.score,
+        blueScore: stats.blue.score,
+        greenScore: stats.green.score,
+      })
+    }
 
     return {
       windowId: window.id,
@@ -215,7 +233,8 @@ export function calculateScoreDistribution(
     return {
       'na-prime': 0,
       'eu-prime': 0,
-      'ocx-sea': 0,
+      'ocx': 0,
+      'sea': 0,
       'off-hours': 0,
     };
   }

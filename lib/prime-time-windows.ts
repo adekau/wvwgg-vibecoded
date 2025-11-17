@@ -3,7 +3,7 @@
  * Defines coverage windows and provides functions to categorize timestamps
  */
 
-export type PrimeTimeWindow = 'na-prime' | 'eu-prime' | 'ocx-sea' | 'off-hours';
+export type PrimeTimeWindow = 'na-prime' | 'eu-prime' | 'ocx' | 'sea' | 'off-hours';
 
 export interface TimeWindow {
   id: PrimeTimeWindow;
@@ -12,6 +12,34 @@ export interface TimeWindow {
   utcHourStart: number; // Inclusive
   utcHourEnd: number;   // Exclusive
   color: string;
+}
+
+/**
+ * Convert UTC hours to local time string
+ * @param utcHour - Hour in UTC (0-23)
+ * @returns Local time string (e.g., "7:00 PM")
+ */
+function utcHourToLocalTime(utcHour: number): string {
+  const date = new Date();
+  date.setUTCHours(utcHour, 0, 0, 0);
+
+  return date.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
+
+/**
+ * Get localized time range string for a time window
+ * @param window - Time window
+ * @returns Localized time range (e.g., "7:00 PM - 12:00 AM")
+ */
+export function getLocalizedTimeRange(window: TimeWindow): string {
+  const startTime = utcHourToLocalTime(window.utcHourStart);
+  const endTime = utcHourToLocalTime(window.utcHourEnd);
+
+  return `${startTime} - ${endTime}`;
 }
 
 /**
@@ -36,23 +64,49 @@ export const PRIME_TIME_WINDOWS: TimeWindow[] = [
     color: 'hsl(var(--chart-2))',
   },
   {
-    id: 'ocx-sea',
-    name: 'OCX/SEA Coverage',
+    id: 'ocx',
+    name: 'OCX Prime Time',
     description: '7 PM - 12 AM AEDT',
     utcHourStart: 8,  // 7 PM AEDT = 08:00 UTC (summer time, AEDT = UTC+11)
     utcHourEnd: 13,   // 12 AM AEDT = 13:00 UTC
     color: 'hsl(var(--chart-3))',
   },
+  {
+    id: 'sea',
+    name: 'SEA Prime Time',
+    description: '7 PM - 12 AM SGT',
+    utcHourStart: 11, // 7 PM SGT = 11:00 UTC (SGT = UTC+8)
+    utcHourEnd: 16,   // 12 AM SGT = 16:00 UTC
+    color: 'hsl(var(--chart-4))',
+  },
 ];
 
 /**
  * Get the prime time window for a given timestamp
- * @param timestamp - ISO timestamp or Date object
+ * @param timestamp - ISO timestamp string, Date object, or numeric timestamp (ms since epoch)
  * @returns PrimeTimeWindow ID or 'off-hours'
  */
-export function getPrimeTimeWindow(timestamp: string | Date): PrimeTimeWindow {
-  const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
+export function getPrimeTimeWindow(timestamp: string | Date | number): PrimeTimeWindow {
+  let date: Date;
+  if (typeof timestamp === 'string') {
+    date = new Date(timestamp);
+  } else if (typeof timestamp === 'number') {
+    date = new Date(timestamp);
+  } else {
+    date = timestamp;
+  }
+
   const utcHour = date.getUTCHours();
+
+  // Debug: Log first few timestamps to see what UTC hour they map to
+  if (typeof timestamp === 'number' && timestamp === 1763398826341) {
+    console.log('DEBUG: Last timestamp conversion:', {
+      timestamp,
+      dateString: date.toISOString(),
+      utcHour,
+      fullDate: date.toString(),
+    });
+  }
 
   for (const window of PRIME_TIME_WINDOWS) {
     if (utcHour >= window.utcHourStart && utcHour < window.utcHourEnd) {
@@ -64,18 +118,87 @@ export function getPrimeTimeWindow(timestamp: string | Date): PrimeTimeWindow {
 }
 
 /**
+ * Get the currently active prime time window
+ * @returns PrimeTimeWindow ID for the current time
+ */
+export function getCurrentActiveWindow(): PrimeTimeWindow {
+  return getPrimeTimeWindow(new Date());
+}
+
+/**
+ * Calculate the actual off-hours periods (hours not covered by any prime time window)
+ * @returns Array of UTC hour ranges that constitute off-hours
+ */
+export function getOffHoursPeriods(): Array<{ start: number; end: number }> {
+  // Create a set of all hours covered by prime time windows
+  const coveredHours = new Set<number>();
+
+  for (const window of PRIME_TIME_WINDOWS) {
+    for (let hour = window.utcHourStart; hour < window.utcHourEnd; hour++) {
+      coveredHours.add(hour);
+    }
+  }
+
+  // Find continuous ranges of uncovered hours
+  const offHoursPeriods: Array<{ start: number; end: number }> = [];
+  let rangeStart: number | null = null;
+
+  for (let hour = 0; hour < 24; hour++) {
+    if (!coveredHours.has(hour)) {
+      if (rangeStart === null) {
+        rangeStart = hour;
+      }
+    } else {
+      if (rangeStart !== null) {
+        offHoursPeriods.push({ start: rangeStart, end: hour });
+        rangeStart = null;
+      }
+    }
+  }
+
+  // Handle case where off-hours extend to end of day
+  if (rangeStart !== null) {
+    offHoursPeriods.push({ start: rangeStart, end: 24 });
+  }
+
+  return offHoursPeriods;
+}
+
+/**
+ * Get a human-readable description of off-hours periods
+ * @returns Formatted string describing off-hours time ranges
+ */
+export function getOffHoursDescription(): string {
+  const periods = getOffHoursPeriods();
+
+  if (periods.length === 0) {
+    return 'No off-hours (all hours covered)';
+  }
+
+  const ranges = periods.map(period => {
+    const startTime = utcHourToLocalTime(period.start);
+    const endTime = utcHourToLocalTime(period.end);
+    return `${startTime}-${endTime}`;
+  });
+
+  return ranges.join(', ');
+}
+
+/**
  * Get time window metadata
  * @param windowId - Prime time window ID
  * @returns TimeWindow object or off-hours definition
  */
 export function getTimeWindowInfo(windowId: PrimeTimeWindow): TimeWindow {
   if (windowId === 'off-hours') {
+    const periods = getOffHoursPeriods();
     return {
       id: 'off-hours',
       name: 'Off Hours',
-      description: 'All other times',
-      utcHourStart: 0,
-      utcHourEnd: 24,
+      description: 'Hours not covered by other prime time windows',
+      // Use first period for start/end, or 0/0 if no periods
+      utcHourStart: periods.length > 0 ? periods[0].start : 0,
+      utcHourEnd: periods.length > 0 ? periods[0].end : 0,
       color: 'hsl(var(--muted))',
     };
   }
@@ -110,16 +233,29 @@ export function groupByPrimeTimeWindow<T extends { timestamp: string | number }>
   const grouped: Record<PrimeTimeWindow, T[]> = {
     'na-prime': [],
     'eu-prime': [],
-    'ocx-sea': [],
+    'ocx': [],
+    'sea': [],
     'off-hours': [],
   };
+
+  // Debug: Log sample timestamps and their UTC hours
+  const sampleIndexes = [0, Math.floor(historyData.length / 2), historyData.length - 1];
+  console.log('DEBUG: Sample timestamp conversions:');
 
   for (const point of historyData) {
     const timestamp = typeof point.timestamp === 'number'
       ? new Date(point.timestamp)
       : new Date(point.timestamp);
 
+    const utcHour = timestamp.getUTCHours();
     const window = getPrimeTimeWindow(timestamp);
+
+    // Log sample points
+    const index = historyData.indexOf(point);
+    if (sampleIndexes.includes(index)) {
+      console.log(`  [${index}] ${point.timestamp} → ${timestamp.toISOString()} → UTC hour ${utcHour} → ${window}`);
+    }
+
     grouped[window].push(point);
   }
 
@@ -140,7 +276,8 @@ export function calculateWindowCoverage<T extends { timestamp: string | number }
   return {
     'na-prime': total > 0 ? (grouped['na-prime'].length / total) * 100 : 0,
     'eu-prime': total > 0 ? (grouped['eu-prime'].length / total) * 100 : 0,
-    'ocx-sea': total > 0 ? (grouped['ocx-sea'].length / total) * 100 : 0,
+    'ocx': total > 0 ? (grouped['ocx'].length / total) * 100 : 0,
+    'sea': total > 0 ? (grouped['sea'].length / total) * 100 : 0,
     'off-hours': total > 0 ? (grouped['off-hours'].length / total) * 100 : 0,
   };
 }
