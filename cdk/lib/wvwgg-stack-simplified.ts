@@ -1,6 +1,5 @@
 import * as cdk from 'aws-cdk-lib';
-import { Effect, PolicyStatement, User, Policy, Role, FederatedPrincipal, PolicyDocument, OpenIdConnectProvider } from 'aws-cdk-lib/aws-iam';
-import { CfnTrustAnchor, CfnProfile } from 'aws-cdk-lib/aws-rolesanywhere';
+import { Effect, FederatedPrincipal, OpenIdConnectProvider, Policy, PolicyDocument, PolicyStatement, Role, User } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import path from 'node:path';
 import { AutomationStack } from './automation-stack';
@@ -135,50 +134,6 @@ export class WvWGGStack extends cdk.Stack {
         })
       }
     });
-
-    // Trust Anchor - requires a certificate (PEM format)
-    // You'll need to provide your own certificate via context or parameter
-    const trustAnchorCert = this.node.tryGetContext(`trustAnchorCert-${props.stage}`) ||
-      process.env[`TRUST_ANCHOR_CERT_${props.stage.toUpperCase()}`];
-
-    if (trustAnchorCert) {
-      const trustAnchor = new CfnTrustAnchor(this, `VercelTrustAnchor-${props.stage}`, {
-        name: `vercel-trust-anchor-${props.stage}`,
-        source: {
-          sourceType: 'CERTIFICATE_BUNDLE',
-          sourceData: {
-            x509CertificateData: trustAnchorCert
-          }
-        },
-        enabled: true
-      });
-
-      // Profile that links the Trust Anchor and Role
-      const rolesAnywhereProfile = new CfnProfile(this, `VercelRolesAnywhereProfile-${props.stage}`, {
-        name: `vercel-profile-${props.stage}`,
-        roleArns: [vercelRolesAnywhereRole.roleArn],
-        enabled: true
-      });
-
-      // Output the Profile ARN
-      new cdk.CfnOutput(this, `RolesAnywhereProfileArn-${props.stage}`, {
-        value: rolesAnywhereProfile.attrProfileArn,
-        description: `IAM Roles Anywhere Profile ARN for ${props.stage}`,
-        exportName: `RolesAnywhereProfileArn-${props.stage}`
-      });
-
-      new cdk.CfnOutput(this, `RolesAnywhereRoleArn-${props.stage}`, {
-        value: vercelRolesAnywhereRole.roleArn,
-        description: `IAM Roles Anywhere Role ARN for ${props.stage}`,
-        exportName: `RolesAnywhereRoleArn-${props.stage}`
-      });
-
-      new cdk.CfnOutput(this, `TrustAnchorArn-${props.stage}`, {
-        value: trustAnchor.attrTrustAnchorArn,
-        description: `Trust Anchor ARN for ${props.stage}`,
-        exportName: `TrustAnchorArn-${props.stage}`
-      });
-    }
 
     // ===== Vercel OIDC Setup (Recommended) =====
     // OIDC provider URL and audience
