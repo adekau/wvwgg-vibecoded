@@ -167,27 +167,30 @@ export const getGuilds = unstable_cache(
 
 export interface HistoricalSnapshot {
   timestamp: number;
-  hour: number;
+  interval: number; // 15-minute interval timestamp
   data: Record<string, IFormattedMatch>;
 }
 
 export const getMatchHistory = async (hours: number = 24): Promise<HistoricalSnapshot[]> => {
   try {
     const now = Date.now();
-    const currentHour = Math.floor(now / (1000 * 60 * 60));
-    const startHour = currentHour - hours;
+    // Calculate 15-minute intervals
+    const current15Min = Math.floor(now / (1000 * 60 * 15));
+    // Calculate how many 15-min intervals are in the requested hours
+    const intervalsToFetch = hours * 4; // 4 intervals per hour
+    const startInterval = current15Min - intervalsToFetch;
 
     const response = await docClient.send(
       new ScanCommand({
         TableName: process.env.TABLE_NAME,
-        FilterExpression: '#type = :type AND #hour >= :startHour',
+        FilterExpression: '#type = :type AND #interval >= :startInterval',
         ExpressionAttributeNames: {
           '#type': 'type',
-          '#hour': 'hour',
+          '#interval': 'interval',
         },
         ExpressionAttributeValues: {
           ':type': 'match-history',
-          ':startHour': startHour,
+          ':startInterval': startInterval,
         },
       })
     );

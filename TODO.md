@@ -61,19 +61,29 @@ Skirmishes provide different amounts of Victory Points (VP) based on when they o
 
 According to the [GW2 Wiki](https://wiki.guildwars2.com/wiki/World_versus_World):
 
-**Standard Skirmishes (Off-Peak):**
-- 1st Place: 5 VP
-- 2nd Place: 4 VP
-- 3rd Place: 3 VP
+**Current System (As of December 13, 2024):**
 
-**Prime Time Skirmishes:**
-- 1st Place: 6-7 VP (varies by specific skirmish)
-- 2nd Place: 5-6 VP
-- 3rd Place: 4-5 VP
+Victory Points now vary significantly by skirmish time slot and region to encourage participation during peak hours:
 
-**Key Skirmishes (Peak Hours):**
-- Weekend prime time skirmishes award the most VP
-- Designed to reward servers with strong coverage during high-population hours
+**Europe (EU):**
+- **1st Place:** 15-51 VP (varies by time slot)
+- **2nd Place:** 14-37 VP
+- **3rd Place:** 12-24 VP
+- **Peak Hours (18:00-22:00 UTC):** 51/37/24 VP (highest rewards)
+
+**North America (NA):**
+- **1st Place:** Varies by time slot (max: 43 VP)
+- **2nd Place:** Varies by time slot (max: 32 VP)
+- **3rd Place:** Varies by time slot (max: 21 VP)
+- **Peak Morning (0:00-4:00 UTC):** 43/32/21 VP (highest rewards)
+- **Afternoon (14:00-20:00 UTC):** 23/18/14 VP
+
+**Historical System (Prior to December 13, 2024):**
+- 1st Place: 5 VP (all skirmishes)
+- 2nd Place: 4 VP (all skirmishes)
+- 3rd Place: 3 VP (all skirmishes)
+
+The new system was implemented to reward engagement during peak activity periods and prevent off-hours farming, which was previously swaying match outcomes unfairly.
 
 ### Implementation Considerations
 

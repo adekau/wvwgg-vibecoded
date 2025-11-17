@@ -1,5 +1,6 @@
 import { IMatchResponse } from '../interfaces/match-response.interface';
 import { IWorld } from '../interfaces/world.interface';
+import { getVPTierForSkirmish, getRegionFromMatchId } from './vp-tiers';
 
 export interface IFormattedMatch {
   id: string;
@@ -75,6 +76,12 @@ export interface IFormattedMatch {
       red: number;
       blue: number;
       green: number;
+    };
+    vpTier?: {
+      first: number;
+      second: number;
+      third: number;
+      tier: 'low' | 'medium' | 'high' | 'peak';
     };
   }>;
 }
@@ -155,10 +162,15 @@ export function formatMatches(
         kills: m.kills,
         deaths: m.deaths,
       })) || [],
-      skirmishes: match.skirmishes?.map(s => ({
-        id: s.id,
-        scores: s.scores
-      })) || [],
+      skirmishes: match.skirmishes?.map(s => {
+        const region = getRegionFromMatchId(match.id);
+        const vpTier = getVPTierForSkirmish(s.id, match.start_time, region);
+        return {
+          id: s.id,
+          scores: s.scores,
+          vpTier,
+        };
+      }) || [],
     };
   }
 

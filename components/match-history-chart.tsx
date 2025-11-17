@@ -154,7 +154,7 @@ export function MatchHistoryChart({ matchId }: MatchHistoryChartProps) {
           <h3 className="text-xl font-bold">Match History</h3>
         </div>
         <p className="text-muted-foreground text-sm">
-          Historical data will be available soon. Snapshots are captured hourly.
+          Historical data will be available soon. Snapshots are captured every 15 minutes.
         </p>
       </Card>
     );
@@ -305,7 +305,7 @@ export function MatchHistoryChart({ matchId }: MatchHistoryChartProps) {
         </div>
 
         <p className="text-xs text-muted-foreground text-center">
-          Data points captured hourly • Last {history.length} snapshots shown
+          Data points captured every 15 minutes • Last {history.length} snapshots shown
         </p>
       </div>
     </Card>

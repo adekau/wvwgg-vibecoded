@@ -9,6 +9,7 @@ import { Progress } from '@/components/ui/progress'
 import { ObjectivesDisplay } from '@/components/objectives-display'
 import { SkirmishTimer } from '@/components/skirmish-timer'
 import { AutoRefresh } from '@/components/auto-refresh'
+import { PrimeTimePerformance } from '@/components/prime-time-performance'
 import { useState, useEffect } from 'react'
 
 interface World {
@@ -27,6 +28,12 @@ interface Skirmish {
     red: number
     blue: number
     green: number
+  }
+  vpTier?: {
+    first: number
+    second: number
+    third: number
+    tier: 'low' | 'medium' | 'high' | 'peak'
   }
 }
 
@@ -77,6 +84,20 @@ const colorClasses = {
     border: 'border-chart-3/25',
     primary: 'bg-chart-3'
   },
+}
+
+const vpTierColors = {
+  low: 'text-gray-500 dark:text-gray-400',
+  medium: 'text-blue-600 dark:text-blue-400',
+  high: 'text-orange-600 dark:text-orange-400',
+  peak: 'text-purple-600 dark:text-purple-400',
+}
+
+const vpTierLabels = {
+  low: 'Low Activity',
+  medium: 'Medium Activity',
+  high: 'High Activity',
+  peak: 'Peak Hours',
 }
 
 interface HistoryPoint {
@@ -150,15 +171,30 @@ export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
     })
   }
 
+  const getTierIndicator = (tier?: 'low' | 'medium' | 'high' | 'peak') => {
+    switch (tier) {
+      case 'low': return '○';
+      case 'medium': return '◐';
+      case 'high': return '◉';
+      case 'peak': return '⦿';
+      default: return '';
+    }
+  }
+
   const skirmishOptions = [
-    { value: 'all', label: 'All Skirmishes (Total)' },
+    { value: 'all', label: 'All Skirmishes (Total)', tier: undefined },
     ...skirmishes
       .slice()
       .reverse()
-      .map((s) => ({
-        value: s.id,
-        label: `#${s.id} ${formatSkirmishTime(s.id)}`
-      }))
+      .map((s) => {
+        const vpInfo = s.vpTier ? ` (${s.vpTier.first}/${s.vpTier.second}/${s.vpTier.third} VP)` : '';
+        const tierIndicator = getTierIndicator(s.vpTier?.tier);
+        return {
+          value: s.id,
+          label: `${tierIndicator} #${s.id} ${formatSkirmishTime(s.id)}${vpInfo}`,
+          tier: s.vpTier?.tier
+        };
+      })
   ]
 
   // Calculate per-skirmish stats from history data
@@ -394,76 +430,6 @@ export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
         })}
       </div>
 
-      {/* Map Performance & Map Objectives */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card className="panel-border inset-card frosted-panel" style={{ background: 'transparent' }}>
-          <div className="p-6">
-            <div className="flex items-center gap-2 mb-6">
-              <Swords className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-bold">Map Performance</h2>
-            </div>
-
-            <div className="space-y-4">
-              {maps.map((map) => {
-                // Get the world name for this borderland
-                let mapName = mapTypeNames[map.type] || map.type
-                if (map.type === 'RedHome') {
-                  const redWorld = match.worlds.find(w => w.color === 'red')
-                  mapName = redWorld ? `${redWorld.name} Borderlands` : mapName
-                } else if (map.type === 'BlueHome') {
-                  const blueWorld = match.worlds.find(w => w.color === 'blue')
-                  mapName = blueWorld ? `${blueWorld.name} Borderlands` : mapName
-                } else if (map.type === 'GreenHome') {
-                  const greenWorld = match.worlds.find(w => w.color === 'green')
-                  mapName = greenWorld ? `${greenWorld.name} Borderlands` : mapName
-                }
-
-                return (
-                  <div key={map.type} className="rounded-md p-4 border border-border/50 bg-background/50">
-                    <div className="font-medium text-sm mb-3">{mapName}</div>
-                    <div className="grid grid-cols-3 gap-2">
-                      {match.worlds.map((world) => {
-                        const classes = colorClasses[world.color]
-                        const kills = map.kills[world.color]
-                        const deaths = map.deaths[world.color]
-                        const kdRatio = deaths > 0 ? (kills / deaths).toFixed(2) : kills.toFixed(2)
-
-                        return (
-                          <div key={world.color} className={`rounded p-2 ${classes.bg} ${classes.border} border`}>
-                            <div className="text-xs text-muted-foreground mb-1 truncate" title={world.name}>
-                              {world.name}
-                            </div>
-                            <div className="space-y-1">
-                              <div className="flex justify-between text-xs">
-                                <span className="text-muted-foreground">Kills</span>
-                                <span className="font-mono">{kills.toLocaleString()}</span>
-                              </div>
-                              <div className="flex justify-between text-xs">
-                                <span className="text-muted-foreground">Deaths</span>
-                                <span className="font-mono">{deaths.toLocaleString()}</span>
-                              </div>
-                              <div className="flex justify-between text-xs">
-                                <span className="text-muted-foreground">K/D</span>
-                                <span className="font-mono font-semibold">{kdRatio}</span>
-                              </div>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </Card>
-
-        <ObjectivesDisplay
-          matchId={matchId}
-          worlds={match.worlds.map(w => ({ name: w.name, color: w.color }))}
-        />
-      </div>
-
       {/* Match Statistics & Skirmish Performance */}
       <div className="grid gap-6 md:grid-cols-2">
         <Card className="panel-border inset-card frosted-panel" style={{ background: 'transparent' }}>
@@ -572,9 +538,35 @@ export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
 
         <Card className="panel-border inset-card frosted-panel" style={{ background: 'transparent' }}>
           <div className="p-6">
-            <div className="flex items-center gap-2 mb-6">
-              <Trophy className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-bold">Skirmish Performance</h2>
+            <div className="space-y-3 mb-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Trophy className="h-5 w-5 text-primary" />
+                  <h2 className="text-xl font-bold">Skirmish Performance</h2>
+                </div>
+                {(() => {
+                  const currentSkirmish = skirmishes[skirmishes.length - 1];
+                  if (currentSkirmish?.vpTier) {
+                    return (
+                      <div className="flex flex-col items-end gap-1">
+                        <Badge variant="outline" className={`text-xs font-mono ${vpTierColors[currentSkirmish.vpTier.tier]}`}>
+                          {vpTierLabels[currentSkirmish.vpTier.tier]}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {currentSkirmish.vpTier.first}/{currentSkirmish.vpTier.second}/{currentSkirmish.vpTier.third} VP
+                        </span>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
+              <div className="text-xs text-muted-foreground flex gap-4">
+                <span>○ Low</span>
+                <span>◐ Medium</span>
+                <span>◉ High</span>
+                <span className={vpTierColors.peak}>⦿ Peak</span>
+              </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">
@@ -624,6 +616,79 @@ export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
           </div>
         </Card>
       </div>
+
+      {/* Map Performance & Map Objectives */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card className="panel-border inset-card frosted-panel" style={{ background: 'transparent' }}>
+          <div className="p-6">
+            <div className="flex items-center gap-2 mb-6">
+              <Swords className="h-5 w-5 text-primary" />
+              <h2 className="text-xl font-bold">Map Performance</h2>
+            </div>
+
+            <div className="space-y-4">
+              {maps.map((map) => {
+                // Get the world name for this borderland
+                let mapName = mapTypeNames[map.type] || map.type
+                if (map.type === 'RedHome') {
+                  const redWorld = match.worlds.find(w => w.color === 'red')
+                  mapName = redWorld ? `${redWorld.name} Borderlands` : mapName
+                } else if (map.type === 'BlueHome') {
+                  const blueWorld = match.worlds.find(w => w.color === 'blue')
+                  mapName = blueWorld ? `${blueWorld.name} Borderlands` : mapName
+                } else if (map.type === 'GreenHome') {
+                  const greenWorld = match.worlds.find(w => w.color === 'green')
+                  mapName = greenWorld ? `${greenWorld.name} Borderlands` : mapName
+                }
+
+                return (
+                  <div key={map.type} className="rounded-md p-4 border border-border/50 bg-background/50">
+                    <div className="font-medium text-sm mb-3">{mapName}</div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {match.worlds.map((world) => {
+                        const classes = colorClasses[world.color]
+                        const kills = map.kills[world.color]
+                        const deaths = map.deaths[world.color]
+                        const kdRatio = deaths > 0 ? (kills / deaths).toFixed(2) : kills.toFixed(2)
+
+                        return (
+                          <div key={world.color} className={`rounded p-2 ${classes.bg} ${classes.border} border`}>
+                            <div className="text-xs text-muted-foreground mb-1 truncate" title={world.name}>
+                              {world.name}
+                            </div>
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-xs">
+                                <span className="text-muted-foreground">Kills</span>
+                                <span className="font-mono">{kills.toLocaleString()}</span>
+                              </div>
+                              <div className="flex justify-between text-xs">
+                                <span className="text-muted-foreground">Deaths</span>
+                                <span className="font-mono">{deaths.toLocaleString()}</span>
+                              </div>
+                              <div className="flex justify-between text-xs">
+                                <span className="text-muted-foreground">K/D</span>
+                                <span className="font-mono font-semibold">{kdRatio}</span>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </Card>
+
+        <ObjectivesDisplay
+          matchId={matchId}
+          worlds={match.worlds.map(w => ({ name: w.name, color: w.color }))}
+        />
+      </div>
+
+      {/* Prime Time Performance */}
+      <PrimeTimePerformance matchId={matchId} worlds={match.worlds.map(w => ({ name: w.name, color: w.color }))} />
     </div>
   )
 }
