@@ -17,6 +17,7 @@ if (process.env.WVWGG_STAGE === 'dev') {
   new WvWGGStack(app, 'WvWGG-Dev-DataLayer', {
     stage: 'dev',
     automationStack,
+    vercelTeamSlug: 'adekaus-projects',
     env: {
       region: 'us-east-1'
     }
@@ -29,6 +30,7 @@ if (process.env.WVWGG_STAGE === 'prod') {
   new WvWGGStack(app, 'WvWGG-Prod-DataLayer', {
     stage: 'prod',
     automationStack,
+    vercelTeamSlug: 'adekaus-projects',
     env: {
       region: 'us-east-1'
     }
