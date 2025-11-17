@@ -1018,6 +1018,333 @@ Projection:
 
 ---
 
+## 6. Match Quick Navigation Dropdown
+
+### Overview
+Add a dropdown selector at the top of the match dashboard that displays the current match ID (e.g., "1-1") and allows users to quickly switch between different matches without returning to the matches list page.
+
+### Current Behavior
+- User is viewing match "1-1"
+- To view a different match (e.g., "2-3"), user must:
+  1. Click back/navigate to `/matches`
+  2. Find and click the desired match
+  3. Wait for page load
+
+### Proposed Behavior
+- User is viewing match "1-1"
+- Dropdown at top shows "1-1" with all available matches
+- User clicks dropdown and selects "2-3"
+- Page navigates to `/matches/2-3` instantly
+
+### UI Design
+
+#### Location
+Place the dropdown in the match dashboard header, near the match tier/region display.
+
+**Current Header** (approximately):
+```
+┌─────────────────────────────────────────────┐
+│ Match 1-1 - North America                  │
+│ Skirmish #42 | 1h 23m 15s remaining        │
+└─────────────────────────────────────────────┘
+```
+
+**Enhanced Header**:
+```
+┌─────────────────────────────────────────────┐
+│ Match [1-1 ▼] - North America              │
+│ Skirmish #42 | 1h 23m 15s remaining        │
+└─────────────────────────────────────────────┘
+```
+
+#### Dropdown Options
+
+Group matches by region for better organization:
+
+```
+Match Selector:
+┌──────────────────────────┐
+│ NORTH AMERICA            │
+├──────────────────────────┤
+│ ✓ 1-1 (Tier 1)          │ ← Currently selected
+│   1-2 (Tier 2)          │
+│   1-3 (Tier 3)          │
+│   1-4 (Tier 4)          │
+│   1-5 (Tier 5)          │
+├──────────────────────────┤
+│ EUROPE                   │
+├──────────────────────────┤
+│   2-1 (Tier 1)          │
+│   2-2 (Tier 2)          │
+│   2-3 (Tier 3)          │
+│   2-4 (Tier 4)          │
+│   2-5 (Tier 5)          │
+└──────────────────────────┘
+```
+
+**Alternative**: Show world names instead of tier numbers for more context:
+
+```
+Match Selector:
+┌────────────────────────────────────┐
+│ NORTH AMERICA                      │
+├────────────────────────────────────┤
+│ ✓ 1-1: YB vs MAG vs FA            │ ← Currently selected
+│   1-2: BG vs SoS vs TC            │
+│   1-3: ...                         │
+└────────────────────────────────────┘
+```
+
+### Implementation Details
+
+#### Component Structure
+
+```tsx
+'use client';
+
+import { useRouter } from 'next/navigation';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+interface MatchSelectorProps {
+  currentMatchId: string;
+  matches: Array<{
+    id: string;
+    tier: string;
+    region: string;
+    worlds: {
+      red: string;
+      blue: string;
+      green: string;
+    };
+  }>;
+}
+
+export function MatchSelector({ currentMatchId, matches }: MatchSelectorProps) {
+  const router = useRouter();
+
+  // Group matches by region
+  const matchesByRegion = matches.reduce((acc, match) => {
+    if (!acc[match.region]) {
+      acc[match.region] = [];
+    }
+    acc[match.region].push(match);
+    return acc;
+  }, {} as Record<string, typeof matches>);
+
+  const handleMatchChange = (matchId: string) => {
+    router.push(`/matches/${matchId}`);
+  };
+
+  return (
+    <Select value={currentMatchId} onValueChange={handleMatchChange}>
+      <SelectTrigger className="w-[180px]">
+        <SelectValue placeholder="Select match" />
+      </SelectTrigger>
+      <SelectContent>
+        {Object.entries(matchesByRegion).map(([region, regionMatches]) => (
+          <SelectGroup key={region}>
+            <SelectLabel>{region}</SelectLabel>
+            {regionMatches.map((match) => (
+              <SelectItem key={match.id} value={match.id}>
+                {match.id} - Tier {match.tier}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+```
+
+#### Integration in Match Dashboard
+
+Update `/app/matches/[matchId]/page.tsx`:
+
+```typescript
+export default async function MatchDetailPage({ params }: PageProps) {
+  const { matchId } = await params;
+
+  // Fetch all matches for the selector
+  const [matchesData, worldsData] = await Promise.all([
+    getMatches(),
+    getWorlds(),
+  ]);
+
+  if (!matchesData || !worldsData) {
+    notFound();
+  }
+
+  // Format matches for selector
+  const allMatches = Object.entries(matchesData).map(([id, data]: [string, any]) => {
+    const [regionCode] = id.split('-');
+    return {
+      id,
+      tier: id.split('-')[1],
+      region: regionCode === '1' ? 'North America' : 'Europe',
+      worlds: {
+        red: data.red?.world?.name || 'Unknown',
+        blue: data.blue?.world?.name || 'Unknown',
+        green: data.green?.world?.name || 'Unknown',
+      },
+    };
+  });
+
+  // ... existing match data setup
+
+  return (
+    <div className="min-h-screen">
+      <MatchesHeader />
+
+      <main className="container mx-auto px-4 py-8 space-y-6">
+        {/* Add match selector */}
+        <div className="flex items-center justify-between">
+          <MatchSelector currentMatchId={matchId} matches={allMatches} />
+          {/* Could add other header controls here */}
+        </div>
+
+        <MatchDashboard match={match} matchId={matchId} />
+        <MatchHistoryChart matchId={matchId} />
+      </main>
+    </div>
+  );
+}
+```
+
+### Enhanced Features (Optional)
+
+#### 1. Show Match Status in Dropdown
+Indicate which matches are currently active vs upcoming:
+
+```tsx
+<SelectItem key={match.id} value={match.id}>
+  <div className="flex items-center gap-2">
+    <span>{match.id} - Tier {match.tier}</span>
+    {match.status === 'active' && (
+      <Badge variant="success" className="text-xs">Live</Badge>
+    )}
+    {match.status === 'upcoming' && (
+      <Badge variant="secondary" className="text-xs">Soon</Badge>
+    )}
+  </div>
+</SelectItem>
+```
+
+#### 2. Keyboard Navigation
+Add keyboard shortcuts for quick match switching:
+- `Alt + ←`: Previous match (1-1 → 1-0 or previous tier)
+- `Alt + →`: Next match (1-1 → 1-2)
+- `Alt + 1-9`: Jump to specific tier
+
+```typescript
+useEffect(() => {
+  const handleKeyPress = (e: KeyboardEvent) => {
+    if (e.altKey) {
+      if (e.key === 'ArrowLeft') {
+        // Navigate to previous match
+        const currentIndex = matches.findIndex(m => m.id === currentMatchId);
+        if (currentIndex > 0) {
+          router.push(`/matches/${matches[currentIndex - 1].id}`);
+        }
+      } else if (e.key === 'ArrowRight') {
+        // Navigate to next match
+        const currentIndex = matches.findIndex(m => m.id === currentMatchId);
+        if (currentIndex < matches.length - 1) {
+          router.push(`/matches/${matches[currentIndex + 1].id}`);
+        }
+      }
+    }
+  };
+
+  window.addEventListener('keydown', handleKeyPress);
+  return () => window.removeEventListener('keydown', handleKeyPress);
+}, [currentMatchId, matches, router]);
+```
+
+#### 3. Quick Stats Preview on Hover
+Show mini preview of match standings when hovering over dropdown options:
+
+```tsx
+<SelectItem key={match.id} value={match.id}>
+  <div className="flex items-center justify-between w-full">
+    <span>{match.id} - Tier {match.tier}</span>
+    <div className="flex gap-1 text-xs ml-2">
+      <span className="text-chart-1">{match.scores.red}</span>
+      <span className="text-chart-2">{match.scores.blue}</span>
+      <span className="text-chart-3">{match.scores.green}</span>
+    </div>
+  </div>
+</SelectItem>
+```
+
+#### 4. Favorite/Pin Matches
+Allow users to pin specific matches to the top of the dropdown:
+
+```typescript
+// Store in localStorage
+const [pinnedMatches, setPinnedMatches] = useState<string[]>([]);
+
+const togglePin = (matchId: string) => {
+  const newPinned = pinnedMatches.includes(matchId)
+    ? pinnedMatches.filter(id => id !== matchId)
+    : [...pinnedMatches, matchId];
+
+  setPinnedMatches(newPinned);
+  localStorage.setItem('pinnedMatches', JSON.stringify(newPinned));
+};
+```
+
+### Mobile Considerations
+
+On mobile devices, the dropdown should:
+- Take full width on small screens
+- Use native select UI for better mobile UX
+- Provide clear touch targets (minimum 44px)
+
+```tsx
+<Select value={currentMatchId} onValueChange={handleMatchChange}>
+  <SelectTrigger className="w-full md:w-[180px]">
+    <SelectValue placeholder="Select match" />
+  </SelectTrigger>
+  {/* ... */}
+</Select>
+```
+
+### Testing Checklist
+
+- [ ] Dropdown displays current match correctly
+- [ ] All available matches appear in dropdown
+- [ ] Matches grouped by region correctly
+- [ ] Clicking a match navigates to correct URL
+- [ ] Navigation preserves scroll position
+- [ ] Dropdown closes after selection
+- [ ] Keyboard navigation works (optional)
+- [ ] Mobile layout responsive
+- [ ] Works with browser back/forward buttons
+
+### Performance Considerations
+
+- **Data Fetching**: Matches list should be cached at page level (already fetched for current match)
+- **Client-Side Routing**: Use Next.js router for instant navigation without full page reload
+- **Prefetching**: Consider prefetching adjacent match data on hover for instant load times
+
+```typescript
+// Prefetch on hover
+const handleMouseEnter = (matchId: string) => {
+  router.prefetch(`/matches/${matchId}`);
+};
+```
+
+---
+
 ## Technical Notes
 
 ### Data Sources
