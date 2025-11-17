@@ -1,6 +1,6 @@
 # WvW Match Tracker - Planned Features
 
-## 1. Prime Time Analysis
+## ✅ 1. Prime Time Analysis (COMPLETED)
 
 ### Overview
 Break down match performance by timezone windows to identify which teams dominate during specific coverage periods. This helps players understand when their server is strongest/weakest and plan accordingly.
@@ -52,7 +52,7 @@ Break down match performance by timezone windows to identify which teams dominat
 
 ---
 
-## 2. Victory Point Time-Based Variation
+## ✅ 2. Victory Point Time-Based Variation (COMPLETED)
 
 ### Background
 Skirmishes provide different amounts of Victory Points (VP) based on when they occur during the match week. This system was implemented by ArenaNet to prevent servers from farming VP during off-hours when competition is minimal, as that strategy was previously swaying match outcomes unfairly.
@@ -1372,3 +1372,10 @@ const handleMouseEnter = (matchId: string) => {
 - Push notifications for high-value skirmishes
 - Team comparison across multiple matches
 - Historical trend analysis (performance over multiple weeks)
+
+
+---
+
+## Implementation Priority
+
+**Next to implement:** Feature #5 (Points Per Tick Analysis & Projection) - Show PPT values next to scores and calculate ticks behind based on current PPT differential.
