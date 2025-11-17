@@ -59,11 +59,11 @@ const saveMatchesToDynamo = async (matchesResponse: IMatchResponse[], worlds: IW
     }
   });
 
-  // Save historical snapshot (every hour)
-  const currentHour = Math.floor(now / (1000 * 60 * 60)); // Hour timestamp
-  const snapshotId = `snapshot-${currentHour}`;
+  // Save historical snapshot (every 15 minutes)
+  const current15Min = Math.floor(now / (1000 * 60 * 15)); // 15-minute timestamp
+  const snapshotId = `snapshot-${current15Min}`;
 
-  // Only save snapshot once per hour
+  // Only save snapshot once per 15 minutes
   const existingSnapshot = await dynamoDb.get({
     TableName: TABLE_NAME,
     Key: { type: "match-history", id: snapshotId }
@@ -76,7 +76,7 @@ const saveMatchesToDynamo = async (matchesResponse: IMatchResponse[], worlds: IW
         type: "match-history",
         id: snapshotId,
         timestamp: now,
-        hour: currentHour,
+        interval: current15Min,
         data: formattedMatches,
         ttl: Math.floor(now / 1000) + (7 * 24 * 60 * 60) // 7 days TTL
       }

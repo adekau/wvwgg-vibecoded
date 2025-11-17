@@ -27,6 +27,25 @@ export interface IMatchResponse {
     blue: number;
     green: number;
   };
+  maps: Array<{
+    id: number;
+    type: string;
+    scores: {
+      red: number;
+      blue: number;
+      green: number;
+    };
+    kills: {
+      red: number;
+      blue: number;
+      green: number;
+    };
+    deaths: {
+      red: number;
+      blue: number;
+      green: number;
+    };
+  }>;
   skirmishes: Array<{
     id: number;
     scores: {

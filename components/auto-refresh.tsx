@@ -35,10 +35,10 @@ export function AutoRefresh({ interval = 60000, matchStart, matchEnd }: AutoRefr
       if (seconds < 5) {
         setTimeAgo('just now');
       } else if (seconds < 60) {
-        setTimeAgo(`${seconds}s ago`);
+        setTimeAgo(`${seconds.toString().padStart(2, '0')}s ago`);
       } else {
         const minutes = Math.floor(seconds / 60);
-        setTimeAgo(`${minutes}m ago`);
+        setTimeAgo(`${minutes.toString().padStart(2, '0')}m ago`);
       }
     };
 
@@ -83,7 +83,7 @@ export function AutoRefresh({ interval = 60000, matchStart, matchEnd }: AutoRefr
 
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          <span>Last updated: {timeAgo}</span>
+          <span className="tabular-nums">Last updated: {timeAgo}</span>
         </div>
 
         <Button

@@ -33,30 +33,66 @@ export default async function MatchDetailPage({ params }: PageProps) {
 
   // Calculate skirmish stats
   const calculateSkirmishStats = (color: 'red' | 'blue' | 'green') => {
-    const scores = {
-      red: matchData.red?.skirmishScore || 0,
-      blue: matchData.blue?.skirmishScore || 0,
-      green: matchData.green?.skirmishScore || 0,
-    };
+    const skirmishes = matchData.skirmishes || [];
 
-    const currentRank =
-      scores.red > scores.blue && scores.red > scores.green ? 'red' :
-      scores.blue > scores.green ? 'blue' : 'green';
+    if (skirmishes.length === 0) {
+      return { first: 0, second: 0, third: 0, current: 0 };
+    }
+
+    let first = 0;
+    let second = 0;
+    let third = 0;
+
+    // Count 1st, 2nd, 3rd place finishes for each completed skirmish
+    for (const skirmish of skirmishes) {
+      const scores = skirmish.scores;
+
+      // Sort colors by score to determine placement
+      const rankings = [
+        { color: 'red', score: scores.red },
+        { color: 'blue', score: scores.blue },
+        { color: 'green', score: scores.green }
+      ].sort((a, b) => b.score - a.score);
+
+      const placement = rankings.findIndex(r => r.color === color) + 1;
+
+      if (placement === 1) {
+        first++;
+      } else if (placement === 2) {
+        second++;
+      } else if (placement === 3) {
+        third++;
+      }
+    }
+
+    // Calculate current placement based on the most recent skirmish
+    const currentSkirmish = skirmishes[skirmishes.length - 1];
+    const currentScores = currentSkirmish.scores;
+
+    // Sort colors by score to determine placement
+    const rankings = [
+      { color: 'red', score: currentScores.red },
+      { color: 'blue', score: currentScores.blue },
+      { color: 'green', score: currentScores.green }
+    ].sort((a, b) => b.score - a.score);
+
+    const currentPlacement = rankings.findIndex(r => r.color === color) + 1;
 
     return {
-      won: 0, // Would need skirmish history
-      lost: 0, // Would need skirmish history
-      current: currentRank === color ? 1 : (
-        currentRank === (color === 'red' ? 'blue' : color === 'blue' ? 'green' : 'red') ? 2 : 3
-      ),
+      first,
+      second,
+      third,
+      current: currentPlacement,
     };
   };
 
   const match = {
     tier: matchId,
     region: regionName,
-    startDate: new Date().toISOString(), // Placeholder - not in current data
-    endDate: new Date().toISOString(), // Placeholder - not in current data
+    startDate: matchData.start_time || new Date().toISOString(),
+    endDate: matchData.end_time || new Date().toISOString(),
+    maps: matchData.maps || [],
+    skirmishes: matchData.skirmishes || [],
     worlds: [
       {
         name: matchData.red?.world?.name || 'Unknown',

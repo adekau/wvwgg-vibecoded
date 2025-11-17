@@ -14,7 +14,7 @@ export default async function MatchesPage() {
   ]);
 
   // Helper to format match info with time until reset and skirmishes remaining
-  const formatMatchInfo = (match: any, timezone: string) => {
+  const formatMatchInfo = (match: any) => {
     if (!match) return null;
 
     const now = new Date();
@@ -32,21 +32,19 @@ export default async function MatchesPage() {
     const elapsedSkirmishes = Math.floor(elapsedTime / (1000 * 60 * 60 * 2));
     const skirmishesRemaining = Math.max(0, totalSkirmishes - elapsedSkirmishes);
 
-    // Format for tooltip
-    const startStr = startTime.toLocaleString('en-US', {
+    // Format for tooltip using user's locale
+    const startStr = startTime.toLocaleString(undefined, {
       month: 'short',
       day: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
-      timeZone: timezone,
       timeZoneName: 'short'
     });
-    const endStr = endTime.toLocaleString('en-US', {
+    const endStr = endTime.toLocaleString(undefined, {
       month: 'short',
       day: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
-      timeZone: timezone,
       timeZoneName: 'short'
     });
 
@@ -122,8 +120,8 @@ export default async function MatchesPage() {
   const naMatch = matchesData && naMatches.length > 0 ? matchesData[naMatches[0].tier] : null;
   const euMatch = matchesData && euMatches.length > 0 ? matchesData[euMatches[0].tier] : null;
 
-  const naMatchInfo = formatMatchInfo(naMatch, 'America/Los_Angeles');
-  const euMatchInfo = formatMatchInfo(euMatch, 'Europe/Berlin');
+  const naMatchInfo = formatMatchInfo(naMatch);
+  const euMatchInfo = formatMatchInfo(euMatch);
 
   return (
     <div className="min-h-screen">

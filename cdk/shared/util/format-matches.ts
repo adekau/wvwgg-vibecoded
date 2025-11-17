@@ -50,6 +50,33 @@ export interface IFormattedMatch {
       population: string;
     };
   };
+  maps: Array<{
+    id: number;
+    type: string;
+    scores: {
+      red: number;
+      blue: number;
+      green: number;
+    };
+    kills: {
+      red: number;
+      blue: number;
+      green: number;
+    };
+    deaths: {
+      red: number;
+      blue: number;
+      green: number;
+    };
+  }>;
+  skirmishes: Array<{
+    id: number;
+    scores: {
+      red: number;
+      blue: number;
+      green: number;
+    };
+  }>;
 }
 
 export function formatMatches(
@@ -121,6 +148,17 @@ export function formatMatches(
       red: formatTeam('red'),
       blue: formatTeam('blue'),
       green: formatTeam('green'),
+      maps: match.maps?.map(m => ({
+        id: m.id,
+        type: m.type,
+        scores: m.scores,
+        kills: m.kills,
+        deaths: m.deaths,
+      })) || [],
+      skirmishes: match.skirmishes?.map(s => ({
+        id: s.id,
+        scores: s.scores
+      })) || [],
     };
   }
 

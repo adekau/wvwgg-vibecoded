@@ -134,7 +134,7 @@ export function ObjectivesDisplay({ matchId, worlds }: ObjectivesDisplayProps) {
                       key={objType}
                       className="flex flex-col items-center text-center"
                     >
-                      <Icon className="h-4 w-4 mb-1 text-white" />
+                      <Icon className="h-4 w-4 mb-1 text-foreground" />
                       <div className="text-xs text-muted-foreground">
                         {objectiveLabels[objType]}
                       </div>
