@@ -32,44 +32,6 @@ export interface ScenarioResult {
 }
 
 /**
- * Calculate maximum possible VP for each team
- */
-function calculateMaxVP(
-  currentVP: { red: number; blue: number; green: number },
-  remainingSkirmishes: Array<{ vpAwards: { first: number; second: number; third: number } }>
-): { red: number; blue: number; green: number } {
-  const maxVPGain = remainingSkirmishes.reduce(
-    (sum, skirmish) => sum + skirmish.vpAwards.first,
-    0
-  );
-
-  return {
-    red: currentVP.red + maxVPGain,
-    blue: currentVP.blue + maxVPGain,
-    green: currentVP.green + maxVPGain,
-  };
-}
-
-/**
- * Calculate minimum possible VP for each team
- */
-function calculateMinVP(
-  currentVP: { red: number; blue: number; green: number },
-  remainingSkirmishes: Array<{ vpAwards: { first: number; second: number; third: number } }>
-): { red: number; blue: number; green: number } {
-  const minVPGain = remainingSkirmishes.reduce(
-    (sum, skirmish) => sum + skirmish.vpAwards.third,
-    0
-  );
-
-  return {
-    red: currentVP.red + minVPGain,
-    blue: currentVP.blue + minVPGain,
-    green: currentVP.green + minVPGain,
-  };
-}
-
-/**
  * Calculate VP if a team gets all of a specific placement
  */
 function calculateVPWithPlacement(
@@ -87,8 +49,9 @@ function calculateVPWithPlacement(
 
 /**
  * Check if a desired outcome is theoretically possible
- * Key insight: When desired 1st gets all firsts, desired 2nd gets all thirds,
- * and desired 3rd gets all seconds. We need to check if this maintains the desired order.
+ * Considers multiple distribution scenarios:
+ * 1. If maintaining current standings: balanced distribution
+ * 2. If overtaking: extreme case (1st gets all firsts)
  */
 function checkFeasibility(
   input: ScenarioInput
@@ -96,28 +59,56 @@ function checkFeasibility(
   const { currentVP, remainingSkirmishes, desiredOutcome } = input;
   const { first, second, third } = desiredOutcome;
 
+  // Check if this is maintaining current standings
+  const currentStandings = getCurrentStandings(currentVP);
+  const isMaintaining =
+    currentStandings.first === first &&
+    currentStandings.second === second &&
+    currentStandings.third === third;
+
+  if (isMaintaining) {
+    // For maintaining: check if balanced distribution preserves order
+    // Each team gets roughly 1/3 of each placement
+    const avgFirstVP = remainingSkirmishes.reduce((sum, s) => sum + s.vpAwards.first, 0) / 3;
+    const avgSecondVP = remainingSkirmishes.reduce((sum, s) => sum + s.vpAwards.second, 0) / 3;
+    const avgThirdVP = remainingSkirmishes.reduce((sum, s) => sum + s.vpAwards.third, 0) / 3;
+    const avgVPGain = (avgFirstVP + avgSecondVP + avgThirdVP);
+
+    const balancedVP = {
+      [first]: currentVP[first] + avgVPGain,
+      [second]: currentVP[second] + avgVPGain,
+      [third]: currentVP[third] + avgVPGain,
+    };
+
+    // If balanced distribution maintains order, it's achievable
+    if (balancedVP[first] > balancedVP[second] && balancedVP[second] > balancedVP[third]) {
+      return { possible: true };
+    }
+  }
+
+  // For overtaking or if balanced doesn't work: check extreme case
   // Best case scenario for achieving desired outcome:
   // - Desired 1st gets all first places
   // - Desired 2nd gets all third places (minimize their VP)
   // - Desired 3rd gets all second places
-  const bestCaseVP = {
+  const extremeCaseVP = {
     [first]: calculateVPWithPlacement(currentVP, remainingSkirmishes, first, 'first'),
     [second]: calculateVPWithPlacement(currentVP, remainingSkirmishes, second, 'third'),
     [third]: calculateVPWithPlacement(currentVP, remainingSkirmishes, third, 'second'),
   };
 
   // Check if this achieves the desired order
-  if (bestCaseVP[first] <= bestCaseVP[second]) {
+  if (extremeCaseVP[first] <= extremeCaseVP[second]) {
     return {
       possible: false,
-      reason: `Even if ${first} wins all remaining skirmishes (${bestCaseVP[first]} VP), they cannot beat ${second} with all 3rd places (${bestCaseVP[second]} VP).`,
+      reason: `Even if ${first} wins all remaining skirmishes (${extremeCaseVP[first]} VP), they cannot beat ${second} with all 3rd places (${extremeCaseVP[second]} VP).`,
     };
   }
 
-  if (bestCaseVP[second] <= bestCaseVP[third]) {
+  if (extremeCaseVP[second] <= extremeCaseVP[third]) {
     return {
       possible: false,
-      reason: `Even in best case, ${second} with all 3rd places (${bestCaseVP[second]} VP) cannot stay ahead of ${third} with all 2nd places (${bestCaseVP[third]} VP).`,
+      reason: `Even in best case, ${second} with all 3rd places (${extremeCaseVP[second]} VP) cannot stay ahead of ${third} with all 2nd places (${extremeCaseVP[third]} VP).`,
     };
   }
 
@@ -222,7 +213,6 @@ function findMinimumEffortPath(input: ScenarioInput): ScenarioResult {
   let high = firstIsAhead ? Math.floor(remainingSkirmishes.length * 0.5) : remainingSkirmishes.length;
 
   let bestPlacements: Array<{ red: 1 | 2 | 3; blue: 1 | 2 | 3; green: 1 | 2 | 3 }> | null = null;
-  let minFirstPlaces = remainingSkirmishes.length + 1;
 
   while (low <= high) {
     const mid = Math.floor((low + high) / 2);
