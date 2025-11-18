@@ -140,17 +140,8 @@ export function calculateScenario(input: ScenarioInput): ScenarioResult {
         } as Placement;
         firstPlacesGiven++;
       } else {
-        // Distribute to minimize 2nd place team's VP
-        placements[index] = {
-          [desiredOutcome.first]: 3,
-          [desiredOutcome.second]: 3,
-          [desiredOutcome.third]: 1,
-        } as Placement;
-
-        // Fix constraint: can't have two 3rds, adjust based on current standings
-        const finalVP = calculateFinalVP(currentVP, remainingSkirmishes.slice(0, index + 1), placements.slice(0, index + 1));
-
-        // Choose placement that helps achieve outcome
+        // Choose best placement where desired first doesn't get 1st
+        // Score based on how well it achieves desired outcome
         let bestPlacement: Placement | null = null;
         let bestScore = -Infinity;
 
@@ -172,8 +163,15 @@ export function calculateScenario(input: ScenarioInput): ScenarioResult {
           }
         }
 
+        // Fallback: if no placement found, use one that minimizes 2nd place VP
         if (bestPlacement) {
           placements[index] = bestPlacement;
+        } else {
+          placements[index] = {
+            [desiredOutcome.first]: 2,
+            [desiredOutcome.second]: 3,
+            [desiredOutcome.third]: 1,
+          } as Placement;
         }
       }
     }
