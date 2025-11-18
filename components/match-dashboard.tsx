@@ -11,7 +11,9 @@ import { SkirmishTimer } from '@/components/skirmish-timer'
 import { AutoRefresh } from '@/components/auto-refresh'
 import { PrimeTimePerformance } from '@/components/prime-time-performance'
 import { VPScenarioPlanner } from '@/components/vp-scenario-planner'
+import { PPTBreakdown } from '@/components/ppt-breakdown'
 import { useState, useEffect } from 'react'
+import { calculateMatchPPT, getPPTTrend, calculateTicksBehind, ticksToTimeString, getTeamStatus, calculateRequiredPPTToOvertake, getMaximumPossiblePPT } from '@/lib/ppt-calculator'
 
 interface World {
   name: string
@@ -56,6 +58,11 @@ interface Match {
     red: { keeps: number; towers: number; camps: number; castles: number }
     blue: { keeps: number; towers: number; camps: number; castles: number }
     green: { keeps: number; towers: number; camps: number; castles: number }
+  }
+  actualPPT?: {
+    red: number
+    blue: number
+    green: number
   }
   maps?: MapData[]
   skirmishes?: Skirmish[]
@@ -119,6 +126,16 @@ interface HistoryMapData {
 export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
   const sortedWorlds = [...match.worlds].sort((a, b) => b.score - a.score)
   const highestScore = sortedWorlds[0]?.score || 1 // Prevent division by zero
+
+  // Use actual PPT from API if available, otherwise calculate from objectives
+  const matchPPT = match.actualPPT
+    ? {
+        red: { total: match.actualPPT.red, breakdown: { camps: 0, towers: 0, keeps: 0, castles: 0 } },
+        blue: { total: match.actualPPT.blue, breakdown: { camps: 0, towers: 0, keeps: 0, castles: 0 } },
+        green: { total: match.actualPPT.green, breakdown: { camps: 0, towers: 0, keeps: 0, castles: 0 } },
+      }
+    : calculateMatchPPT(match.objectives)
+  const highestPPT = Math.max(matchPPT.red.total, matchPPT.blue.total, matchPPT.green.total)
 
   const [selectedSkirmish, setSelectedSkirmish] = useState<number | 'all'>('all')
   const [selectedMap, setSelectedMap] = useState<string>('all')
@@ -394,6 +411,37 @@ export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
           const frostedClass = world.color === 'red' ? 'frosted-card-red' : world.color === 'blue' ? 'frosted-card-blue' : 'frosted-card-green'
           const pointsBehind = idx > 0 ? highestScore - world.score : 0
 
+          // Get PPT data for this team
+          const teamPPT = matchPPT[world.color]
+          const pptTrend = getPPTTrend(teamPPT.total, highestPPT)
+          const pptDifferential = teamPPT.total - highestPPT
+
+          // Calculate ticks behind and team status
+          const ticksBehind = pointsBehind > 0 ? calculateTicksBehind(pointsBehind, pptDifferential) : null
+          const ticksTimeString = ticksBehind !== null ? ticksToTimeString(ticksBehind) : null
+          const teamStatus = getTeamStatus(pointsBehind, pptDifferential)
+
+          // Calculate required PPT to win skirmish (if not catching up)
+          let requiredPPT: number | null = null
+          if ((teamStatus.status === 'falling-behind' || teamStatus.status === 'maintaining-gap') && pointsBehind > 0) {
+            // Calculate time remaining in current skirmish
+            const matchStart = new Date(match.startDate)
+            const now = new Date()
+            const elapsedMinutes = Math.floor((now.getTime() - matchStart.getTime()) / (1000 * 60))
+            const skirmishNumber = Math.floor(elapsedMinutes / 120) // Each skirmish is 120 minutes
+            const skirmishStartTime = new Date(matchStart.getTime() + (skirmishNumber * 120 * 60 * 1000))
+            const skirmishElapsed = Math.floor((now.getTime() - skirmishStartTime.getTime()) / (1000 * 60))
+            const minutesRemaining = Math.max(0, 120 - skirmishElapsed)
+
+            requiredPPT = calculateRequiredPPTToOvertake(
+              pointsBehind,
+              teamPPT.total,
+              highestPPT,
+              minutesRemaining
+            )
+          }
+          const maxPossiblePPT = getMaximumPossiblePPT()
+
           return (
             <Card key={world.name} className={`panel-border relative overflow-hidden ${frostedClass}`} style={{ background: 'transparent' }}>
               {idx === 0 && (
@@ -425,6 +473,43 @@ export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
                     <span className={`text-sm font-medium ${classes.text}`}>{scorePercentage.toFixed(1)}%</span>
                   </div>
                   <Progress value={scorePercentage} className={`h-2 progress-${world.color}`} />
+
+                  {/* PPT Display */}
+                  <div className="mt-2 space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant="outline" className={`font-mono text-xs ${classes.text} ${classes.border}`}>
+                          {teamPPT.total} PPT
+                        </Badge>
+                        {pptTrend === 'up' && <span className="text-green-600 dark:text-green-400" title="Highest PPT - gaining ground">↑</span>}
+                        {pptTrend === 'down' && <span className="text-red-600 dark:text-red-400" title="Lower PPT - losing ground">↓</span>}
+                      </div>
+                      {ticksBehind !== null && ticksTimeString && (
+                        <span className="text-muted-foreground font-mono" title={`${ticksBehind} ticks behind at current PPT rate`}>
+                          {ticksBehind} ticks ({ticksTimeString})
+                        </span>
+                      )}
+                    </div>
+                    {pointsBehind > 0 && teamStatus.status !== 'leading' && (
+                      <div className="text-xs space-y-0.5">
+                        <div className="text-muted-foreground italic">
+                          {teamStatus.status === 'catching-up' && '🔼 Catching up'}
+                          {teamStatus.status === 'maintaining-gap' && 'Gap maintained'}
+                          {teamStatus.status === 'falling-behind' && '🔻 Falling behind'}
+                        </div>
+                        {(teamStatus.status === 'falling-behind' || teamStatus.status === 'maintaining-gap') && requiredPPT !== null && requiredPPT <= maxPossiblePPT && (
+                          <div className="text-muted-foreground">
+                            Need <span className="font-mono font-semibold text-orange-600 dark:text-orange-400">{requiredPPT} PPT</span> to win skirmish
+                          </div>
+                        )}
+                        {(teamStatus.status === 'falling-behind' || teamStatus.status === 'maintaining-gap') && requiredPPT !== null && requiredPPT > maxPossiblePPT && (
+                          <div className="text-muted-foreground">
+                            Cannot win this skirmish (need {requiredPPT} PPT)
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border/50">
@@ -729,9 +814,13 @@ export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
           </div>
         </Card>
 
-        <ObjectivesDisplay
+        <PPTBreakdown
           matchId={matchId}
-          worlds={match.worlds.map(w => ({ name: w.name, color: w.color }))}
+          ppt={{
+            red: matchPPT.red.total,
+            blue: matchPPT.blue.total,
+            green: matchPPT.green.total,
+          }}
         />
       </div>
 

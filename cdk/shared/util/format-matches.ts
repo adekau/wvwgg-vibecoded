@@ -14,6 +14,7 @@ export interface IFormattedMatch {
     totalScore: number;
     ratio: number;
     activity: number;
+    ppt: number;
     world: {
       id: number;
       name: string;
@@ -29,6 +30,7 @@ export interface IFormattedMatch {
     totalScore: number;
     ratio: number;
     activity: number;
+    ppt: number;
     world: {
       id: number;
       name: string;
@@ -44,6 +46,7 @@ export interface IFormattedMatch {
     totalScore: number;
     ratio: number;
     activity: number;
+    ppt: number;
     world: {
       id: number;
       name: string;
@@ -93,6 +96,24 @@ export function formatMatches(
   const formattedMatches: Record<string, IFormattedMatch> = {};
 
   for (const match of matches) {
+    // Calculate PPT from objectives across all maps
+    const ppt = { red: 0, blue: 0, green: 0 };
+    if (match.maps && Array.isArray(match.maps)) {
+      for (const map of match.maps) {
+        if (map.objectives && Array.isArray(map.objectives)) {
+          for (const obj of map.objectives) {
+            const owner = obj.owner?.toLowerCase() as 'red' | 'blue' | 'green' | undefined;
+            if (owner && ['red', 'blue', 'green'].includes(owner)) {
+              // Sum up points_tick from API (includes tier upgrades)
+              if (typeof obj.points_tick === 'number') {
+                ppt[owner] += obj.points_tick;
+              }
+            }
+          }
+        }
+      }
+    }
+
     // Get current skirmish scores (last skirmish)
     const currentSkirmish = match.skirmishes?.[match.skirmishes.length - 1];
     const skirmishScores = currentSkirmish?.scores || { red: 0, blue: 0, green: 0 };
@@ -139,6 +160,7 @@ export function formatMatches(
         totalScore: totalScores[color] || 0,
         ratio,
         activity,
+        ppt: ppt[color],
         world: {
           id: world.id,
           name: world.name,

@@ -175,24 +175,24 @@ export function calculatePrimeTimeStats(
 /**
  * Find the dominant team for a window
  * @param windowStats - Statistics for a time window
- * @returns Color of the dominant team based on score
+ * @returns Color of the dominant team based on activity (kills + deaths)
  */
 export function getDominantTeam(
   windowStats: WindowStats
 ): 'red' | 'blue' | 'green' | null {
-  const scores = {
-    red: windowStats.red.score,
-    blue: windowStats.blue.score,
-    green: windowStats.green.score,
+  const activity = {
+    red: windowStats.red.kills + windowStats.red.deaths,
+    blue: windowStats.blue.kills + windowStats.blue.deaths,
+    green: windowStats.green.kills + windowStats.green.deaths,
   };
 
-  if (scores.red === 0 && scores.blue === 0 && scores.green === 0) {
+  if (activity.red === 0 && activity.blue === 0 && activity.green === 0) {
     return null;
   }
 
-  if (scores.red >= scores.blue && scores.red >= scores.green) {
+  if (activity.red >= activity.blue && activity.red >= activity.green) {
     return 'red';
-  } else if (scores.blue >= scores.red && scores.blue >= scores.green) {
+  } else if (activity.blue >= activity.red && activity.blue >= activity.green) {
     return 'blue';
   } else {
     return 'green';

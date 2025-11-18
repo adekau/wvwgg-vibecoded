@@ -1,7 +1,7 @@
 import { MatchesHeader } from '@/components/matches-header'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { BookOpen, Trophy, Clock, Swords, Skull, TrendingUp, Activity } from 'lucide-react'
+import { BookOpen, Trophy, Clock, Swords, Skull, TrendingUp, Activity, Zap, ArrowUp, ArrowDown } from 'lucide-react'
 
 export default function LegendPage() {
   return (
@@ -157,6 +157,103 @@ export default function LegendPage() {
             </div>
           </Card>
 
+          {/* PPT (Points Per Tick) */}
+          <Card className="panel-border inset-card frosted-panel p-6">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <Zap className="h-5 w-5 text-primary" />
+              PPT (Points Per Tick)
+            </h2>
+            <div className="text-sm text-muted-foreground mb-4">
+              Points Per Tick (PPT) shows how many points a team gains every 5 minutes based on the objectives they control and their upgrade tiers. Higher PPT means a team is gaining ground faster. PPT values are calculated directly from the GW2 API and reflect actual upgrade tiers.
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <div className="font-semibold mb-2">PPT Calculation</div>
+                <div className="text-sm text-muted-foreground space-y-1">
+                  <div>PPT is calculated from the Guild Wars 2 API based on actual objective upgrade tiers. Base tier values are:</div>
+                  <ul className="list-disc list-inside ml-2 space-y-0.5">
+                    <li><strong>Camps:</strong> 2-5 PPT (Tier 0-3)</li>
+                    <li><strong>Towers:</strong> 4-10 PPT (Tier 0-3)</li>
+                    <li><strong>Keeps:</strong> 8-20 PPT (Tier 0-3)</li>
+                    <li><strong>Castles:</strong> 12-30 PPT (Tier 0-3, Stonemist only)</li>
+                  </ul>
+                  <div className="mt-2 text-xs">
+                    <strong>Upgrade Tiers:</strong>
+                    <ul className="list-disc list-inside ml-2 mt-1">
+                      <li>Tier 1 (Fortified): Unlocked after 30 minutes</li>
+                      <li>Tier 2 (Reinforced): Unlocked after 90 minutes</li>
+                      <li>Tier 3 (Secured): Unlocked after 180 minutes</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div className="font-semibold mb-2">PPT Trend Indicators</div>
+                <div className="space-y-2">
+                  <div className="flex items-start gap-3">
+                    <span className="text-green-600 dark:text-green-400 text-lg">↑</span>
+                    <div className="text-sm">
+                      <div className="font-medium">Green Up Arrow</div>
+                      <div className="text-muted-foreground">Team has the highest PPT - gaining ground on opponents</div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="text-red-600 dark:text-red-400 text-lg">↓</span>
+                    <div className="text-sm">
+                      <div className="font-medium">Red Down Arrow</div>
+                      <div className="text-muted-foreground">Team has lower PPT - losing ground to opponents</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div className="font-semibold mb-2">Ticks Behind</div>
+                <div className="text-sm text-muted-foreground">
+                  Shows how many 5-minute "ticks" it would take for a trailing team to catch up at the current PPT rate. Example: "25 ticks (2h 5m)" means it would take 25 ticks (2 hours 5 minutes) to close the gap if PPT rates stay the same.
+                </div>
+              </div>
+
+              <div>
+                <div className="font-semibold mb-2">Team Status Indicators</div>
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2">
+                    <span className="text-sm">🔼</span>
+                    <div className="text-sm">
+                      <div className="font-medium">Catching Up</div>
+                      <div className="text-muted-foreground">Team is behind but has higher PPT - will eventually overtake if maintained</div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-sm">➡️</span>
+                    <div className="text-sm">
+                      <div className="font-medium">Gap Maintained</div>
+                      <div className="text-muted-foreground">Team has equal PPT to leader - gap stays the same</div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-sm">🔻</span>
+                    <div className="text-sm">
+                      <div className="font-medium">Falling Behind</div>
+                      <div className="text-muted-foreground">Team has lower PPT than leader - gap is increasing</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-muted/30 rounded-lg p-3 text-sm">
+                <div className="font-semibold mb-1">Example:</div>
+                <div className="text-muted-foreground">
+                  If Red holds 5 camps, 3 towers, 2 keeps, and 1 castle:<br/>
+                  PPT = (5 × 2) + (3 × 4) + (2 × 8) + (1 × 12) = <strong>50 PPT</strong><br/>
+                  Red gains 50 points every 5 minutes, or 600 points per hour.
+                </div>
+              </div>
+            </div>
+          </Card>
+
           {/* Icons Guide */}
           <Card className="panel-border inset-card frosted-panel p-6">
             <h2 className="text-xl font-bold mb-4">Stat Icons</h2>
@@ -225,9 +322,23 @@ export default function LegendPage() {
               </div>
 
               <div>
+                <div className="font-semibold">PPT (Points Per Tick)</div>
+                <div className="text-sm text-muted-foreground">
+                  The number of points a team gains every 5 minutes based on the objectives they control and their upgrade tiers. Higher PPT means faster score growth. Values range from 2-5 PPT (camps), 4-10 PPT (towers), 8-20 PPT (keeps), to 12-30 PPT (castles) depending on tier.
+                </div>
+              </div>
+
+              <div>
                 <div className="font-semibold">Skirmish</div>
                 <div className="text-sm text-muted-foreground">
                   A 2-hour competitive period within a match. There are 84 skirmishes per week-long match. Placement in each skirmish awards Victory Points.
+                </div>
+              </div>
+
+              <div>
+                <div className="font-semibold">Tick</div>
+                <div className="text-sm text-muted-foreground">
+                  A 5-minute interval when points are awarded based on controlled objectives. Teams earn their PPT value every tick. There are 12 ticks per hour.
                 </div>
               </div>
 

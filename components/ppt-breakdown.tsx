@@ -1,0 +1,528 @@
+"use client"
+
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Zap } from 'lucide-react'
+import { useEffect, useState } from 'react'
+
+interface PPTBreakdownProps {
+  matchId: string
+  ppt: {
+    red: number
+    blue: number
+    green: number
+  }
+}
+
+interface TierBreakdown {
+  tier0: { count: number; ppt: number }
+  tier1: { count: number; ppt: number }
+  tier2: { count: number; ppt: number }
+  tier3: { count: number; ppt: number }
+  total: number
+}
+
+interface ObjectiveTypeBreakdown {
+  camps: TierBreakdown
+  towers: TierBreakdown
+  keeps: TierBreakdown
+  castles: TierBreakdown
+}
+
+interface DetailedPPT {
+  red: ObjectiveTypeBreakdown
+  blue: ObjectiveTypeBreakdown
+  green: ObjectiveTypeBreakdown
+}
+
+const colorClasses = {
+  red: {
+    bg: 'bg-chart-1/10',
+    text: 'text-chart-1',
+    border: 'border-chart-1/30',
+  },
+  blue: {
+    bg: 'bg-chart-2/10',
+    text: 'text-chart-2',
+    border: 'border-chart-2/30',
+  },
+  green: {
+    bg: 'bg-chart-3/10',
+    text: 'text-chart-3',
+    border: 'border-chart-3/30',
+  },
+}
+
+export function PPTBreakdown({ matchId, ppt }: PPTBreakdownProps) {
+  const [detailedPPT, setDetailedPPT] = useState<DetailedPPT | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchDetailedPPT = async () => {
+      try {
+        // Fetch actual objectives from GW2 API
+        const response = await fetch(`https://api.guildwars2.com/v2/wvw/matches?id=${matchId}`)
+        if (!response.ok) throw new Error('Failed to fetch match data')
+
+        const matchData = await response.json()
+
+        // Helper to infer tier from points_tick
+        const inferTier = (type: string, pointsTick: number): number => {
+          const tierMaps: { [key: string]: { [key: number]: number } } = {
+            Camp: { 2: 0, 3: 1, 4: 2, 5: 3 },
+            Tower: { 4: 0, 6: 1, 8: 2, 10: 3 },
+            Keep: { 8: 0, 12: 1, 16: 2, 20: 3 },
+            Castle: { 12: 0, 18: 1, 24: 2, 30: 3 },
+          }
+          return tierMaps[type]?.[pointsTick] ?? 0
+        }
+
+        // Initialize breakdown structure
+        const createEmptyBreakdown = (): ObjectiveTypeBreakdown => ({
+          camps: { tier0: { count: 0, ppt: 0 }, tier1: { count: 0, ppt: 0 }, tier2: { count: 0, ppt: 0 }, tier3: { count: 0, ppt: 0 }, total: 0 },
+          towers: { tier0: { count: 0, ppt: 0 }, tier1: { count: 0, ppt: 0 }, tier2: { count: 0, ppt: 0 }, tier3: { count: 0, ppt: 0 }, total: 0 },
+          keeps: { tier0: { count: 0, ppt: 0 }, tier1: { count: 0, ppt: 0 }, tier2: { count: 0, ppt: 0 }, tier3: { count: 0, ppt: 0 }, total: 0 },
+          castles: { tier0: { count: 0, ppt: 0 }, tier1: { count: 0, ppt: 0 }, tier2: { count: 0, ppt: 0 }, tier3: { count: 0, ppt: 0 }, total: 0 },
+        })
+
+        const breakdown: DetailedPPT = {
+          red: createEmptyBreakdown(),
+          blue: createEmptyBreakdown(),
+          green: createEmptyBreakdown(),
+        }
+
+        if (matchData.maps && Array.isArray(matchData.maps)) {
+          for (const map of matchData.maps) {
+            if (map.objectives && Array.isArray(map.objectives)) {
+              for (const obj of map.objectives) {
+                const owner = obj.owner?.toLowerCase() as 'red' | 'blue' | 'green' | undefined
+                if (!owner || !['red', 'blue', 'green'].includes(owner)) continue
+
+                const pointsTick = obj.points_tick || 0
+                const tier = inferTier(obj.type, pointsTick)
+                const tierKey = `tier${tier}` as 'tier0' | 'tier1' | 'tier2' | 'tier3'
+
+                switch (obj.type) {
+                  case 'Camp':
+                    breakdown[owner].camps[tierKey].count++
+                    breakdown[owner].camps[tierKey].ppt += pointsTick
+                    breakdown[owner].camps.total += pointsTick
+                    break
+                  case 'Tower':
+                    breakdown[owner].towers[tierKey].count++
+                    breakdown[owner].towers[tierKey].ppt += pointsTick
+                    breakdown[owner].towers.total += pointsTick
+                    break
+                  case 'Keep':
+                    breakdown[owner].keeps[tierKey].count++
+                    breakdown[owner].keeps[tierKey].ppt += pointsTick
+                    breakdown[owner].keeps.total += pointsTick
+                    break
+                  case 'Castle':
+                    breakdown[owner].castles[tierKey].count++
+                    breakdown[owner].castles[tierKey].ppt += pointsTick
+                    breakdown[owner].castles.total += pointsTick
+                    break
+                }
+              }
+            }
+          }
+        }
+
+        setDetailedPPT(breakdown)
+      } catch (error) {
+        console.error('Failed to fetch detailed PPT:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchDetailedPPT()
+  }, [matchId])
+
+  const highestPPT = Math.max(ppt.red, ppt.blue, ppt.green)
+
+  if (loading || !detailedPPT) {
+    return (
+      <Card className="panel-border inset-card frosted-panel">
+        <div className="p-6">
+          <div className="flex items-center gap-2 mb-6">
+            <Zap className="h-5 w-5 text-primary" />
+            <h2 className="text-xl font-bold">Points Per Tick Breakdown</h2>
+          </div>
+          <div className="text-center text-muted-foreground py-8">Loading PPT breakdown...</div>
+        </div>
+      </Card>
+    )
+  }
+
+  // Helper to render tier details
+  const renderTierDetails = (tierData: TierBreakdown) => {
+    const tiers = [
+      { key: 'tier0', label: 'T0', data: tierData.tier0 },
+      { key: 'tier1', label: 'T1', data: tierData.tier1 },
+      { key: 'tier2', label: 'T2', data: tierData.tier2 },
+      { key: 'tier3', label: 'T3', data: tierData.tier3 },
+    ]
+
+    const nonZeroTiers = tiers.filter(t => t.data.count > 0)
+
+    if (nonZeroTiers.length === 0) return <div className="text-muted-foreground text-xs h-[20px] flex items-center">—</div>
+
+    return (
+      <div className="flex flex-col justify-start min-h-[20px] gap-0.5">
+        {nonZeroTiers.map(tier => (
+          <div key={tier.key} className="text-xs leading-5 grid grid-cols-[auto_1fr_auto] gap-1 items-baseline">
+            <span className="text-muted-foreground">{tier.label}: {tier.data.count}×</span>
+            <span className="text-right">=</span>
+            <span className="font-mono font-semibold">{tier.data.ppt}</span>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <Card className="panel-border inset-card frosted-panel">
+      <div className="p-6">
+        <div className="flex items-center gap-2 mb-6">
+          <Zap className="h-5 w-5 text-primary" />
+          <h2 className="text-xl font-bold">Points Per Tick Breakdown</h2>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border/50">
+                <th className="text-left py-2 px-2 font-medium text-muted-foreground w-32">Type</th>
+                <th className="text-left py-2 px-2 font-medium text-chart-1">Red</th>
+                <th className="text-left py-2 px-2 font-medium text-chart-2">Blue</th>
+                <th className="text-left py-2 px-2 font-medium text-chart-3">Green</th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* Castles */}
+              <tr className="border-b border-border/30">
+                <td className="py-3 px-2">
+                  <div className="font-medium">Castles</div>
+                  <div className="text-xs text-muted-foreground">12/18/24/30</div>
+                </td>
+                <td className="py-3 px-2">
+                  <div className="flex flex-col h-full min-h-[60px]">
+                    {detailedPPT.red.castles.total > 0 ? (
+                      <>
+                        <div className="flex-grow">{renderTierDetails(detailedPPT.red.castles)}</div>
+                        <div className="mt-auto pt-2 border-t border-border/30 font-semibold text-chart-1 text-xs">
+                          = {detailedPPT.red.castles.total} PPT
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex-grow flex items-start">
+                          <span className="text-muted-foreground text-xs">—</span>
+                        </div>
+                        <div className="mt-auto pt-2 border-t border-border/30 text-muted-foreground text-xs">
+                          —
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </td>
+                <td className="py-3 px-2">
+                  <div className="flex flex-col h-full min-h-[60px]">
+                    {detailedPPT.blue.castles.total > 0 ? (
+                      <>
+                        <div className="flex-grow">{renderTierDetails(detailedPPT.blue.castles)}</div>
+                        <div className="mt-auto pt-2 border-t border-border/30 font-semibold text-chart-2 text-xs">
+                          = {detailedPPT.blue.castles.total} PPT
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex-grow flex items-start">
+                          <span className="text-muted-foreground text-xs">—</span>
+                        </div>
+                        <div className="mt-auto pt-2 border-t border-border/30 text-muted-foreground text-xs">
+                          —
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </td>
+                <td className="py-3 px-2">
+                  <div className="flex flex-col h-full min-h-[60px]">
+                    {detailedPPT.green.castles.total > 0 ? (
+                      <>
+                        <div className="flex-grow">{renderTierDetails(detailedPPT.green.castles)}</div>
+                        <div className="mt-auto pt-2 border-t border-border/30 font-semibold text-chart-3 text-xs">
+                          = {detailedPPT.green.castles.total} PPT
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex-grow flex items-start">
+                          <span className="text-muted-foreground text-xs">—</span>
+                        </div>
+                        <div className="mt-auto pt-2 border-t border-border/30 text-muted-foreground text-xs">
+                          —
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </td>
+              </tr>
+
+              {/* Keeps */}
+              <tr className="border-b border-border/30">
+                <td className="py-3 px-2">
+                  <div className="font-medium">Keeps</div>
+                  <div className="text-xs text-muted-foreground">8/12/16/20</div>
+                </td>
+                <td className="py-3 px-2">
+                  <div className="flex flex-col h-full min-h-[60px]">
+                    {detailedPPT.red.keeps.total > 0 ? (
+                      <>
+                        <div className="flex-grow">{renderTierDetails(detailedPPT.red.keeps)}</div>
+                        <div className="mt-auto pt-2 border-t border-border/30 font-semibold text-chart-1 text-xs">
+                          = {detailedPPT.red.keeps.total} PPT
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex-grow flex items-start">
+                          <span className="text-muted-foreground text-xs">—</span>
+                        </div>
+                        <div className="mt-auto pt-2 border-t border-border/30 text-muted-foreground text-xs">
+                          —
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </td>
+                <td className="py-3 px-2">
+                  <div className="flex flex-col h-full min-h-[60px]">
+                    {detailedPPT.blue.keeps.total > 0 ? (
+                      <>
+                        <div className="flex-grow">{renderTierDetails(detailedPPT.blue.keeps)}</div>
+                        <div className="mt-auto pt-2 border-t border-border/30 font-semibold text-chart-2 text-xs">
+                          = {detailedPPT.blue.keeps.total} PPT
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex-grow flex items-start">
+                          <span className="text-muted-foreground text-xs">—</span>
+                        </div>
+                        <div className="mt-auto pt-2 border-t border-border/30 text-muted-foreground text-xs">
+                          —
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </td>
+                <td className="py-3 px-2">
+                  <div className="flex flex-col h-full min-h-[60px]">
+                    {detailedPPT.green.keeps.total > 0 ? (
+                      <>
+                        <div className="flex-grow">{renderTierDetails(detailedPPT.green.keeps)}</div>
+                        <div className="mt-auto pt-2 border-t border-border/30 font-semibold text-chart-3 text-xs">
+                          = {detailedPPT.green.keeps.total} PPT
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex-grow flex items-start">
+                          <span className="text-muted-foreground text-xs">—</span>
+                        </div>
+                        <div className="mt-auto pt-2 border-t border-border/30 text-muted-foreground text-xs">
+                          —
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </td>
+              </tr>
+
+              {/* Towers */}
+              <tr className="border-b border-border/30">
+                <td className="py-3 px-2">
+                  <div className="font-medium">Towers</div>
+                  <div className="text-xs text-muted-foreground">4/6/8/10</div>
+                </td>
+                <td className="py-3 px-2">
+                  <div className="flex flex-col h-full min-h-[60px]">
+                    {detailedPPT.red.towers.total > 0 ? (
+                      <>
+                        <div className="flex-grow">{renderTierDetails(detailedPPT.red.towers)}</div>
+                        <div className="mt-auto pt-2 border-t border-border/30 font-semibold text-chart-1 text-xs">
+                          = {detailedPPT.red.towers.total} PPT
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex-grow flex items-start">
+                          <span className="text-muted-foreground text-xs">—</span>
+                        </div>
+                        <div className="mt-auto pt-2 border-t border-border/30 text-muted-foreground text-xs">
+                          —
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </td>
+                <td className="py-3 px-2">
+                  <div className="flex flex-col h-full min-h-[60px]">
+                    {detailedPPT.blue.towers.total > 0 ? (
+                      <>
+                        <div className="flex-grow">{renderTierDetails(detailedPPT.blue.towers)}</div>
+                        <div className="mt-auto pt-2 border-t border-border/30 font-semibold text-chart-2 text-xs">
+                          = {detailedPPT.blue.towers.total} PPT
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex-grow flex items-start">
+                          <span className="text-muted-foreground text-xs">—</span>
+                        </div>
+                        <div className="mt-auto pt-2 border-t border-border/30 text-muted-foreground text-xs">
+                          —
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </td>
+                <td className="py-3 px-2">
+                  <div className="flex flex-col h-full min-h-[60px]">
+                    {detailedPPT.green.towers.total > 0 ? (
+                      <>
+                        <div className="flex-grow">{renderTierDetails(detailedPPT.green.towers)}</div>
+                        <div className="mt-auto pt-2 border-t border-border/30 font-semibold text-chart-3 text-xs">
+                          = {detailedPPT.green.towers.total} PPT
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex-grow flex items-start">
+                          <span className="text-muted-foreground text-xs">—</span>
+                        </div>
+                        <div className="mt-auto pt-2 border-t border-border/30 text-muted-foreground text-xs">
+                          —
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </td>
+              </tr>
+
+              {/* Camps */}
+              <tr className="border-b border-border/30">
+                <td className="py-3 px-2">
+                  <div className="font-medium">Camps</div>
+                  <div className="text-xs text-muted-foreground">2/3/4/5</div>
+                </td>
+                <td className="py-3 px-2">
+                  <div className="flex flex-col h-full min-h-[60px]">
+                    {detailedPPT.red.camps.total > 0 ? (
+                      <>
+                        <div className="flex-grow">{renderTierDetails(detailedPPT.red.camps)}</div>
+                        <div className="mt-auto pt-2 border-t border-border/30 font-semibold text-chart-1 text-xs">
+                          = {detailedPPT.red.camps.total} PPT
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex-grow flex items-start">
+                          <span className="text-muted-foreground text-xs">—</span>
+                        </div>
+                        <div className="mt-auto pt-2 border-t border-border/30 text-muted-foreground text-xs">
+                          —
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </td>
+                <td className="py-3 px-2">
+                  <div className="flex flex-col h-full min-h-[60px]">
+                    {detailedPPT.blue.camps.total > 0 ? (
+                      <>
+                        <div className="flex-grow">{renderTierDetails(detailedPPT.blue.camps)}</div>
+                        <div className="mt-auto pt-2 border-t border-border/30 font-semibold text-chart-2 text-xs">
+                          = {detailedPPT.blue.camps.total} PPT
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex-grow flex items-start">
+                          <span className="text-muted-foreground text-xs">—</span>
+                        </div>
+                        <div className="mt-auto pt-2 border-t border-border/30 text-muted-foreground text-xs">
+                          —
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </td>
+                <td className="py-3 px-2">
+                  <div className="flex flex-col h-full min-h-[60px]">
+                    {detailedPPT.green.camps.total > 0 ? (
+                      <>
+                        <div className="flex-grow">{renderTierDetails(detailedPPT.green.camps)}</div>
+                        <div className="mt-auto pt-2 border-t border-border/30 font-semibold text-chart-3 text-xs">
+                          = {detailedPPT.green.camps.total} PPT
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex-grow flex items-start">
+                          <span className="text-muted-foreground text-xs">—</span>
+                        </div>
+                        <div className="mt-auto pt-2 border-t border-border/30 text-muted-foreground text-xs">
+                          —
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </td>
+              </tr>
+
+              <tr className="bg-muted/20 font-bold">
+                <td className="py-3 px-2">
+                  Total PPT
+                </td>
+                <td className="text-center py-3 px-2">
+                  <Badge
+                    variant="outline"
+                    className={`font-mono ${colorClasses.red.text} ${colorClasses.red.border} ${ppt.red === highestPPT && highestPPT > 0 ? 'ring-2 ring-green-500/50' : ''}`}
+                  >
+                    {ppt.red} PPT
+                  </Badge>
+                </td>
+                <td className="text-center py-3 px-2">
+                  <Badge
+                    variant="outline"
+                    className={`font-mono ${colorClasses.blue.text} ${colorClasses.blue.border} ${ppt.blue === highestPPT && highestPPT > 0 ? 'ring-2 ring-green-500/50' : ''}`}
+                  >
+                    {ppt.blue} PPT
+                  </Badge>
+                </td>
+                <td className="text-center py-3 px-2">
+                  <Badge
+                    variant="outline"
+                    className={`font-mono ${colorClasses.green.text} ${colorClasses.green.border} ${ppt.green === highestPPT && highestPPT > 0 ? 'ring-2 ring-green-500/50' : ''}`}
+                  >
+                    {ppt.green} PPT
+                  </Badge>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-4 text-xs text-muted-foreground">
+          <p>• All values calculated from real-time objective data (includes upgrade tiers)</p>
+          <p>• Green ring indicates team with highest PPT (gaining ground fastest)</p>
+        </div>
+      </div>
+    </Card>
+  )
+}

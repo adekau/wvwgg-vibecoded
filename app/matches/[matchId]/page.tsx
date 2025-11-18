@@ -27,6 +27,65 @@ export default async function MatchDetailPage({ params }: PageProps) {
     notFound()
   }
 
+  // PPT is now calculated in the Lambda and stored in DynamoDB
+  // Extract it from the match data
+  const actualPPT = {
+    red: matchData.red?.ppt || 0,
+    blue: matchData.blue?.ppt || 0,
+    green: matchData.green?.ppt || 0,
+  };
+
+  // For objectives display, we still need to fetch from API
+  // (Lambda doesn't store objective counts by type)
+  let objectives = {
+    red: { keeps: 0, towers: 0, camps: 0, castles: 0 },
+    blue: { keeps: 0, towers: 0, camps: 0, castles: 0 },
+    green: { keeps: 0, towers: 0, camps: 0, castles: 0 },
+  };
+
+  try {
+    const objectivesResponse = await fetch(
+      `https://api.guildwars2.com/v2/wvw/matches?id=${matchId}`,
+      { next: { revalidate: 30 } }
+    );
+
+    if (objectivesResponse.ok) {
+      const matchDataFromAPI = await objectivesResponse.json();
+
+      // Count objectives by type for display
+      if (matchDataFromAPI.maps && Array.isArray(matchDataFromAPI.maps)) {
+        for (const map of matchDataFromAPI.maps) {
+          if (map.objectives && Array.isArray(map.objectives)) {
+            for (const obj of map.objectives) {
+              const owner = obj.owner?.toLowerCase();
+              if (!owner || !['red', 'blue', 'green'].includes(owner)) continue;
+
+              const color = owner as 'red' | 'blue' | 'green';
+
+              // Count objectives by type
+              switch (obj.type) {
+                case 'Keep':
+                  objectives[color].keeps++;
+                  break;
+                case 'Tower':
+                  objectives[color].towers++;
+                  break;
+                case 'Camp':
+                  objectives[color].camps++;
+                  break;
+                case 'Castle':
+                  objectives[color].castles++;
+                  break;
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Failed to fetch objectives:', error);
+  }
+
   // Extract region from match ID (e.g., "1-1" = NA, "2-1" = EU)
   const [regionCode] = matchId.split('-')
   const regionName = regionCode === '1' ? 'North America' : 'Europe'
@@ -122,12 +181,8 @@ export default async function MatchDetailPage({ params }: PageProps) {
         skirmishes: calculateSkirmishStats('green'),
       },
     ],
-    // Note: Objectives data not available in current data structure
-    objectives: {
-      red: { keeps: 0, towers: 0, camps: 0, castles: 0 },
-      blue: { keeps: 0, towers: 0, camps: 0, castles: 0 },
-      green: { keeps: 0, towers: 0, camps: 0, castles: 0 },
-    },
+    objectives,
+    actualPPT, // PPT from API with tier upgrades included
   };
 
   return (

@@ -45,6 +45,18 @@ export interface IMatchResponse {
       blue: number;
       green: number;
     };
+    objectives?: Array<{
+      id: string;
+      type: string;
+      owner?: string;
+      points_tick?: number;
+      points_capture?: number;
+      last_flipped?: string;
+      claimed_by?: string;
+      claimed_at?: string;
+      guild_upgrades?: number[];
+      yaks_delivered?: number;
+    }>;
   }>;
   skirmishes: Array<{
     id: number;
