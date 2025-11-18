@@ -41,6 +41,7 @@
     "@radix-ui/react-tooltip": "1.1.6",
     "@vercel/analytics": "latest",
     "@vercel/functions": "^3.3.2",
+    "amazon-cognito-identity-js": "^6.3.16",
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

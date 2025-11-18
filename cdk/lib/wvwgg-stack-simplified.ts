@@ -3,6 +3,7 @@ import { Effect, FederatedPrincipal, OpenIdConnectProvider, Policy, PolicyDocume
 import { Construct } from 'constructs';
 import path from 'node:path';
 import { AutomationStack } from './automation-stack';
+import { AuthConstruct } from './constructs/auth';
 import lambda = cdk.aws_lambda;
 import lambdaNodejs = cdk.aws_lambda_nodejs;
 import events = cdk.aws_events;
@@ -17,9 +18,15 @@ interface WvWGGStackProps extends cdk.StackProps {
 export class WvWGGStack extends cdk.Stack {
   public readonly dynamoDbTable: cdk.aws_dynamodb.TableV2;
   public readonly vercelDeploymentUser: User;
+  public readonly auth: AuthConstruct;
 
   constructor(scope: Construct, id: string, props: WvWGGStackProps) {
     super(scope, id, props);
+
+    // Cognito User Pool for Admin Authentication
+    this.auth = new AuthConstruct(this, 'Auth', {
+      stage: props.stage,
+    });
 
     // DynamoDB Table - Shared between AWS and Vercel
     this.dynamoDbTable = new cdk.aws_dynamodb.TableV2(this, `WvWGGTable-${props.stage}`, {

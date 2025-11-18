@@ -142,6 +142,16 @@ export function PPTBreakdown({ matchId, ppt }: PPTBreakdownProps) {
 
   const highestPPT = Math.max(ppt.red, ppt.blue, ppt.green)
 
+  // Helper to get highest PPT for each objective type
+  const getHighestForObjectiveType = (objectiveType: 'castles' | 'towers' | 'keeps' | 'camps') => {
+    if (!detailedPPT) return 0
+    return Math.max(
+      detailedPPT.red[objectiveType].total,
+      detailedPPT.blue[objectiveType].total,
+      detailedPPT.green[objectiveType].total
+    )
+  }
+
   if (loading || !detailedPPT) {
     return (
       <Card className="panel-border inset-card frosted-panel">
@@ -208,7 +218,7 @@ export function PPTBreakdown({ matchId, ppt }: PPTBreakdownProps) {
                   <div className="text-xs text-muted-foreground">12/18/24/30</div>
                 </td>
                 <td className="py-3 px-2">
-                  <div className="flex flex-col h-full min-h-[60px]">
+                  <div className={`flex flex-col h-full min-h-[60px] rounded ${detailedPPT.red.castles.total > 0 && detailedPPT.red.castles.total === getHighestForObjectiveType('castles') && getHighestForObjectiveType('castles') > 0 ? 'bg-amber-400/10 px-2 -mx-2' : ''}`}>
                     {detailedPPT.red.castles.total > 0 ? (
                       <>
                         <div className="flex-grow">{renderTierDetails(detailedPPT.red.castles)}</div>
@@ -229,7 +239,7 @@ export function PPTBreakdown({ matchId, ppt }: PPTBreakdownProps) {
                   </div>
                 </td>
                 <td className="py-3 px-2">
-                  <div className="flex flex-col h-full min-h-[60px]">
+                  <div className={`flex flex-col h-full min-h-[60px] rounded ${detailedPPT.blue.castles.total > 0 && detailedPPT.blue.castles.total === getHighestForObjectiveType('castles') && getHighestForObjectiveType('castles') > 0 ? 'bg-amber-400/10 px-2 -mx-2' : ''}`}>
                     {detailedPPT.blue.castles.total > 0 ? (
                       <>
                         <div className="flex-grow">{renderTierDetails(detailedPPT.blue.castles)}</div>
@@ -250,7 +260,7 @@ export function PPTBreakdown({ matchId, ppt }: PPTBreakdownProps) {
                   </div>
                 </td>
                 <td className="py-3 px-2">
-                  <div className="flex flex-col h-full min-h-[60px]">
+                  <div className={`flex flex-col h-full min-h-[60px] rounded ${detailedPPT.green.castles.total > 0 && detailedPPT.green.castles.total === getHighestForObjectiveType('castles') && getHighestForObjectiveType('castles') > 0 ? 'bg-amber-400/10 px-2 -mx-2' : ''}`}>
                     {detailedPPT.green.castles.total > 0 ? (
                       <>
                         <div className="flex-grow">{renderTierDetails(detailedPPT.green.castles)}</div>
@@ -279,7 +289,7 @@ export function PPTBreakdown({ matchId, ppt }: PPTBreakdownProps) {
                   <div className="text-xs text-muted-foreground">8/12/16/20</div>
                 </td>
                 <td className="py-3 px-2">
-                  <div className="flex flex-col h-full min-h-[60px]">
+                  <div className={`flex flex-col h-full min-h-[60px] rounded ${detailedPPT.red.keeps.total > 0 && detailedPPT.red.keeps.total === getHighestForObjectiveType('keeps') && getHighestForObjectiveType('keeps') > 0 ? 'bg-amber-400/10 px-2 -mx-2' : ''}`}>
                     {detailedPPT.red.keeps.total > 0 ? (
                       <>
                         <div className="flex-grow">{renderTierDetails(detailedPPT.red.keeps)}</div>
@@ -300,7 +310,7 @@ export function PPTBreakdown({ matchId, ppt }: PPTBreakdownProps) {
                   </div>
                 </td>
                 <td className="py-3 px-2">
-                  <div className="flex flex-col h-full min-h-[60px]">
+                  <div className={`flex flex-col h-full min-h-[60px] rounded ${detailedPPT.blue.keeps.total > 0 && detailedPPT.blue.keeps.total === getHighestForObjectiveType('keeps') && getHighestForObjectiveType('keeps') > 0 ? 'bg-amber-400/10 px-2 -mx-2' : ''}`}>
                     {detailedPPT.blue.keeps.total > 0 ? (
                       <>
                         <div className="flex-grow">{renderTierDetails(detailedPPT.blue.keeps)}</div>
@@ -321,7 +331,7 @@ export function PPTBreakdown({ matchId, ppt }: PPTBreakdownProps) {
                   </div>
                 </td>
                 <td className="py-3 px-2">
-                  <div className="flex flex-col h-full min-h-[60px]">
+                  <div className={`flex flex-col h-full min-h-[60px] rounded ${detailedPPT.green.keeps.total > 0 && detailedPPT.green.keeps.total === getHighestForObjectiveType('keeps') && getHighestForObjectiveType('keeps') > 0 ? 'bg-amber-400/10 px-2 -mx-2' : ''}`}>
                     {detailedPPT.green.keeps.total > 0 ? (
                       <>
                         <div className="flex-grow">{renderTierDetails(detailedPPT.green.keeps)}</div>
@@ -350,7 +360,7 @@ export function PPTBreakdown({ matchId, ppt }: PPTBreakdownProps) {
                   <div className="text-xs text-muted-foreground">4/6/8/10</div>
                 </td>
                 <td className="py-3 px-2">
-                  <div className="flex flex-col h-full min-h-[60px]">
+                  <div className={`flex flex-col h-full min-h-[60px] rounded ${detailedPPT.red.towers.total > 0 && detailedPPT.red.towers.total === getHighestForObjectiveType('towers') && getHighestForObjectiveType('towers') > 0 ? 'bg-amber-400/10 px-2 -mx-2' : ''}`}>
                     {detailedPPT.red.towers.total > 0 ? (
                       <>
                         <div className="flex-grow">{renderTierDetails(detailedPPT.red.towers)}</div>
@@ -371,7 +381,7 @@ export function PPTBreakdown({ matchId, ppt }: PPTBreakdownProps) {
                   </div>
                 </td>
                 <td className="py-3 px-2">
-                  <div className="flex flex-col h-full min-h-[60px]">
+                  <div className={`flex flex-col h-full min-h-[60px] rounded ${detailedPPT.blue.towers.total > 0 && detailedPPT.blue.towers.total === getHighestForObjectiveType('towers') && getHighestForObjectiveType('towers') > 0 ? 'bg-amber-400/10 px-2 -mx-2' : ''}`}>
                     {detailedPPT.blue.towers.total > 0 ? (
                       <>
                         <div className="flex-grow">{renderTierDetails(detailedPPT.blue.towers)}</div>
@@ -392,7 +402,7 @@ export function PPTBreakdown({ matchId, ppt }: PPTBreakdownProps) {
                   </div>
                 </td>
                 <td className="py-3 px-2">
-                  <div className="flex flex-col h-full min-h-[60px]">
+                  <div className={`flex flex-col h-full min-h-[60px] rounded ${detailedPPT.green.towers.total > 0 && detailedPPT.green.towers.total === getHighestForObjectiveType('towers') && getHighestForObjectiveType('towers') > 0 ? 'bg-amber-400/10 px-2 -mx-2' : ''}`}>
                     {detailedPPT.green.towers.total > 0 ? (
                       <>
                         <div className="flex-grow">{renderTierDetails(detailedPPT.green.towers)}</div>
@@ -421,7 +431,7 @@ export function PPTBreakdown({ matchId, ppt }: PPTBreakdownProps) {
                   <div className="text-xs text-muted-foreground">2/3/4/5</div>
                 </td>
                 <td className="py-3 px-2">
-                  <div className="flex flex-col h-full min-h-[60px]">
+                  <div className={`flex flex-col h-full min-h-[60px] rounded ${detailedPPT.red.camps.total > 0 && detailedPPT.red.camps.total === getHighestForObjectiveType('camps') && getHighestForObjectiveType('camps') > 0 ? 'bg-amber-400/10 px-2 -mx-2' : ''}`}>
                     {detailedPPT.red.camps.total > 0 ? (
                       <>
                         <div className="flex-grow">{renderTierDetails(detailedPPT.red.camps)}</div>
@@ -442,7 +452,7 @@ export function PPTBreakdown({ matchId, ppt }: PPTBreakdownProps) {
                   </div>
                 </td>
                 <td className="py-3 px-2">
-                  <div className="flex flex-col h-full min-h-[60px]">
+                  <div className={`flex flex-col h-full min-h-[60px] rounded ${detailedPPT.blue.camps.total > 0 && detailedPPT.blue.camps.total === getHighestForObjectiveType('camps') && getHighestForObjectiveType('camps') > 0 ? 'bg-amber-400/10 px-2 -mx-2' : ''}`}>
                     {detailedPPT.blue.camps.total > 0 ? (
                       <>
                         <div className="flex-grow">{renderTierDetails(detailedPPT.blue.camps)}</div>
@@ -463,7 +473,7 @@ export function PPTBreakdown({ matchId, ppt }: PPTBreakdownProps) {
                   </div>
                 </td>
                 <td className="py-3 px-2">
-                  <div className="flex flex-col h-full min-h-[60px]">
+                  <div className={`flex flex-col h-full min-h-[60px] rounded ${detailedPPT.green.camps.total > 0 && detailedPPT.green.camps.total === getHighestForObjectiveType('camps') && getHighestForObjectiveType('camps') > 0 ? 'bg-amber-400/10 px-2 -mx-2' : ''}`}>
                     {detailedPPT.green.camps.total > 0 ? (
                       <>
                         <div className="flex-grow">{renderTierDetails(detailedPPT.green.camps)}</div>
@@ -492,7 +502,7 @@ export function PPTBreakdown({ matchId, ppt }: PPTBreakdownProps) {
                 <td className="text-center py-3 px-2">
                   <Badge
                     variant="outline"
-                    className={`font-mono ${colorClasses.red.text} ${colorClasses.red.border} ${ppt.red === highestPPT && highestPPT > 0 ? 'ring-2 ring-green-500/50' : ''}`}
+                    className={`font-mono ${colorClasses.red.text} ${colorClasses.red.border} ${ppt.red === highestPPT && highestPPT > 0 ? 'bg-amber-400/20 border-amber-400' : ''}`}
                   >
                     {ppt.red} PPT
                   </Badge>
@@ -500,7 +510,7 @@ export function PPTBreakdown({ matchId, ppt }: PPTBreakdownProps) {
                 <td className="text-center py-3 px-2">
                   <Badge
                     variant="outline"
-                    className={`font-mono ${colorClasses.blue.text} ${colorClasses.blue.border} ${ppt.blue === highestPPT && highestPPT > 0 ? 'ring-2 ring-green-500/50' : ''}`}
+                    className={`font-mono ${colorClasses.blue.text} ${colorClasses.blue.border} ${ppt.blue === highestPPT && highestPPT > 0 ? 'bg-amber-400/20 border-amber-400' : ''}`}
                   >
                     {ppt.blue} PPT
                   </Badge>
@@ -508,7 +518,7 @@ export function PPTBreakdown({ matchId, ppt }: PPTBreakdownProps) {
                 <td className="text-center py-3 px-2">
                   <Badge
                     variant="outline"
-                    className={`font-mono ${colorClasses.green.text} ${colorClasses.green.border} ${ppt.green === highestPPT && highestPPT > 0 ? 'ring-2 ring-green-500/50' : ''}`}
+                    className={`font-mono ${colorClasses.green.text} ${colorClasses.green.border} ${ppt.green === highestPPT && highestPPT > 0 ? 'bg-amber-400/20 border-amber-400' : ''}`}
                   >
                     {ppt.green} PPT
                   </Badge>
@@ -520,7 +530,7 @@ export function PPTBreakdown({ matchId, ppt }: PPTBreakdownProps) {
 
         <div className="mt-4 text-xs text-muted-foreground">
           <p>• All values calculated from real-time objective data (includes upgrade tiers)</p>
-          <p>• Green ring indicates team with highest PPT (gaining ground fastest)</p>
+          <p>• Gold highlight indicates highest PPT (gaining ground fastest)</p>
         </div>
       </div>
     </Card>

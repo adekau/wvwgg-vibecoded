@@ -585,7 +585,7 @@ function getValidSnapshotsForSkirmish(skirmishId: number): Snapshot[] {
 
 ---
 
-## 5. Points Per Tick (PPT) Analysis & Projection
+## ✅ 5. Points Per Tick (PPT) Analysis & Projection (COMPLETED)
 
 ### Overview
 Calculate real-time Points Per Tick (PPT) for each team based on objectives held and their upgrade tiers. Use this to show how many "ticks behind" trailing teams are and project future score trajectories if current objective holdings remain unchanged.
@@ -1376,6 +1376,776 @@ const handleMouseEnter = (matchId: string) => {
 
 ---
 
+## 7. Guilds Page & Admin Panel
+
+### Overview
+Create a public guilds listing page with search and filtering capabilities, plus an invite-only admin panel for managing guild metadata and relationships.
+
+### Public Guilds Page Features
+
+#### Search & Filtering
+- **Search by guild name** (fuzzy search)
+- **Filter by world/server**
+- **Filter by guild type** (Alliance Guild, Member Guild, Independent)
+- **Sort options**:
+  - Alphabetically
+  - By member count (if available)
+  - By activity level
+  - Recently added/updated
+
+#### Guild Display Card
+```
+┌─────────────────────────────────────────┐
+│ [Guild Tag] Guild Name                  │
+├─────────────────────────────────────────┤
+│ World: Yak's Bend                       │
+│ Type: Alliance Guild                    │
+│ Member Guilds: 3                        │
+│ Last Seen: 2 hours ago                  │
+└─────────────────────────────────────────┘
+```
+
+#### Guild Detail View
+- Full guild information
+- List of linked guilds (if Alliance Guild)
+- Parent alliance (if Member Guild)
+- Historical activity data
+- Link to GW2 official guild page (if available)
+
+### Admin Panel Features
+
+#### Authentication Requirements
+- **Invite-only access** - No public signup
+- All invited users have full admin access
+- Users invited directly through AWS Cognito console
+
+#### Guild Management Interface
+- **Bulk guild review queue**: List of guilds needing classification
+- **Quick-edit interface** for each guild:
+  ```
+  Guild: [Best Damn Guild] [BD]
+  World: [Yak's Bend ▼]
+
+  Classification:
+  [ ] Alliance Guild
+  [ ] Member Guild
+  [ ] Independent Guild
+
+  If Member Guild, link to Alliance:
+  [Select Alliance Guild ▼]
+
+  If Alliance Guild, linked member guilds:
+  [+ Add Member Guild]
+  - [Guild 1] [Remove]
+  - [Guild 2] [Remove]
+
+  Notes: [Optional notes about this guild]
+
+  [Save Changes] [Mark as Reviewed]
+  ```
+
+- **Audit log**: Track who made what changes when
+- **Bulk operations**:
+  - Mark multiple guilds as reviewed
+  - Bulk world assignment
+  - Bulk delete/archive
+
+#### Admin Dashboard
+- **Stats Overview**:
+  - Total guilds tracked
+  - Guilds needing review
+  - Alliance guilds count
+  - Member guilds count
+  - Last sync time
+- **Recent Activity**: Recent admin actions
+
+### Authentication Implementation Options
+
+#### Option 1: AWS Cognito (Recommended)
+**Pros:**
+- Already in AWS ecosystem (CDK, DynamoDB, Lambda)
+- Native integration with Next.js middleware
+- Built-in invite-only features via AdminCreateUser API
+- Can disable self-signup completely
+- Supports user groups for role-based access
+- Cost-effective for small user base (free tier: 50,000 MAUs)
+- MFA support out of the box
+- Managed service (no maintenance)
+
+**Cons:**
+- AWS-specific (vendor lock-in)
+- UI is dated (but you're building custom UI anyway)
+- Some complexity in setup
+
+**Implementation:**
+```typescript
+// CDK setup
+import * as cognito from 'aws-cdk-lib/aws-cognito';
+
+const userPool = new cognito.UserPool(this, 'GuildsAdminUserPool', {
+  userPoolName: 'wvwgg-guilds-admins',
+  selfSignUpEnabled: false, // Disable public signup
+  signInAliases: {
+    email: true,
+  },
+  autoVerify: {
+    email: true,
+  },
+  passwordPolicy: {
+    minLength: 12,
+    requireLowercase: true,
+    requireUppercase: true,
+    requireDigits: true,
+    requireSymbols: true,
+  },
+  mfa: cognito.Mfa.OPTIONAL,
+  mfaSecondFactor: {
+    sms: false,
+    otp: true,
+  },
+  accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
+});
+
+// App client for Next.js
+const userPoolClient = userPool.addClient('WebClient', {
+  authFlows: {
+    userPassword: true,
+    userSrp: true,
+  },
+  generateSecret: false,
+  preventUserExistenceErrors: true,
+});
+
+// Output the User Pool ID for environment variables
+new cdk.CfnOutput(this, 'UserPoolId', {
+  value: userPool.userPoolId,
+});
+
+new cdk.CfnOutput(this, 'UserPoolClientId', {
+  value: userPoolClient.userPoolClientId,
+});
+```
+
+```typescript
+// Next.js middleware for auth
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+export function middleware(request: NextRequest) {
+  const token = request.cookies.get('auth-token');
+
+  if (!token && request.nextUrl.pathname.startsWith('/admin')) {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: '/admin/:path*',
+};
+```
+
+#### Option 2: Clerk
+**Pros:**
+- Modern, excellent developer experience
+- Beautiful pre-built UI components
+- Easy invite-only setup
+- Built-in user management dashboard
+- Great Next.js integration
+- Webhooks for user events
+
+**Cons:**
+- Third-party service (additional vendor)
+- Costs money after free tier (10,000 MAUs free, then $25/month)
+- Overkill for simple use case
+- Another service to manage
+
+#### Option 3: Auth.js (NextAuth.js)
+**Pros:**
+- Free and open source
+- Popular with Next.js community
+- Flexible, can use any database
+- Can implement custom invite logic
+- Own your data completely
+
+**Cons:**
+- More setup and maintenance required
+- Need to implement invite system yourself
+- Need to manage sessions, tokens, etc.
+- Security is your responsibility
+
+#### Option 4: Simple Token-Based (Not Recommended)
+**Pros:**
+- Very simple
+- No external dependencies
+- Full control
+
+**Cons:**
+- Not secure enough for production
+- No MFA, no password reset, etc.
+- Need to build everything yourself
+- Not scalable
+
+### Recommended Implementation: AWS Cognito
+
+**Setup Steps:**
+
+1. **CDK Infrastructure** (`cdk/lib/constructs/auth.ts`)
+   - Create Cognito User Pool with self-signup disabled
+   - Create app client for Next.js
+   - Output User Pool ID and Client ID as environment variables
+
+2. **Invite Users**
+   - Go to AWS Cognito console
+   - Select your user pool
+   - Click "Create user"
+   - Enter email, send temporary password via email
+   - User will be prompted to change password on first login
+
+3. **Next.js Auth Setup**
+   - Install `aws-amplify` or use `@aws-sdk/client-cognito-identity-provider`
+   - Create auth context provider
+   - Implement login/logout components
+   - Protect admin routes with middleware
+
+4. **DynamoDB Schema for Guild Data**
+   ```typescript
+   interface Guild {
+     type: 'guild';
+     id: string; // guild-{guildId}
+     name: string;
+     tag: string;
+     worldId: number;
+     worldName: string;
+
+     // Admin-managed fields
+     classification?: 'alliance' | 'member' | 'independent';
+     allianceGuildId?: string; // If member guild, link to alliance
+     memberGuildIds?: string[]; // If alliance guild, list of members
+     isReviewed: boolean;
+     reviewedBy?: string; // Admin email
+     reviewedAt?: number;
+     notes?: string;
+
+     // Auto-tracked fields
+     lastSeenAt: number;
+     firstSeenAt: number;
+     activityCount: number;
+
+     createdAt: number;
+     updatedAt: number;
+   }
+
+   interface AdminAuditLog {
+     type: 'admin-audit';
+     id: string; // audit-{timestamp}
+     adminEmail: string;
+     action: 'edit_guild' | 'link_guilds' | 'bulk_update';
+     targetId?: string; // Guild ID
+     changes?: Record<string, any>;
+     timestamp: number;
+   }
+   ```
+
+5. **Admin UI Pages**
+   - `/admin/login` - Cognito-hosted UI or custom login
+   - `/admin/dashboard` - Overview stats
+   - `/admin/guilds` - Guild management interface
+   - `/admin/guilds/[id]` - Individual guild editor
+   - `/admin/audit` - Audit log viewer
+
+### Implementation Phases
+
+**Phase 1: Public Guilds Page**
+- Basic guild listing with search
+- Simple filtering by world
+- Guild detail pages
+- Mobile-responsive design
+
+**Phase 2: Auth Infrastructure**
+- Set up Cognito in CDK
+- Implement login/logout flow
+- Create protected admin routes
+- Invite initial users via AWS console
+
+**Phase 3: Admin Panel Core**
+- Dashboard with stats
+- Guild review queue
+- Basic edit interface
+- Audit logging
+
+**Phase 4: Advanced Features**
+- Bulk operations
+- Alliance/member guild linking
+- Advanced search and filters
+- Export functionality
+
+---
+
+## 8. Historical Match Archive & Comparison
+
+### Overview
+Browse and analyze past matches beyond the current week. Compare performance across weeks to identify trends and patterns.
+
+### Features
+- **Match History Browser**: Paginated list of all historical matches
+- **Week-over-Week Comparison**: Compare current match to same tier from previous weeks
+- **Performance Trends**:
+  - "Red has won 8 of the last 10 matches in Tier 1"
+  - Average victory margin by tier
+  - Longest winning streaks
+- **Server Historical Performance**: Track individual server performance over time
+- **Search & Filter**: Find specific matches by date, tier, server, or outcome
+
+### Technical Considerations
+- Requires longer DynamoDB TTL or separate archive table
+- May need data compression for cost efficiency
+- Consider S3 for long-term storage with DynamoDB index
+
+---
+
+## 9. Score Velocity & Momentum Analysis
+
+### Overview
+Track the rate of scoring change over time to detect momentum shifts and scoring trends.
+
+### Features
+- **Score Velocity Calculation**: Points per hour trending for each team
+- **Momentum Detection**: Identify when teams accelerate/decelerate scoring
+- **Visual Indicators**:
+  - 🔥 "Heating up" - scoring rate increasing
+  - ❄️ "Going cold" - scoring rate decreasing
+  - ➡️ "Steady" - consistent scoring rate
+- **Momentum Shift Timeline**: Mark significant momentum changes on match timeline
+- **Alerts**: Notify when momentum shifts significantly
+
+### Implementation
+```typescript
+interface VelocitySnapshot {
+  timestamp: number;
+  red: { score: number; velocity: number; acceleration: number };
+  blue: { score: number; velocity: number; acceleration: number };
+  green: { score: number; velocity: number; acceleration: number };
+}
+
+function calculateVelocity(
+  currentScore: number,
+  previousScore: number,
+  timeDelta: number // in minutes
+): number {
+  return ((currentScore - previousScore) / timeDelta) * 60; // points per hour
+}
+
+function detectMomentumShift(
+  currentVelocity: number,
+  previousVelocity: number
+): 'heating' | 'cooling' | 'steady' {
+  const change = ((currentVelocity - previousVelocity) / previousVelocity) * 100;
+  if (change > 20) return 'heating';
+  if (change < -20) return 'cooling';
+  return 'steady';
+}
+```
+
+---
+
+## 10. Critical Moments Detection
+
+### Overview
+Automatically identify and highlight significant events and turning points in matches.
+
+### Detected Events
+- **Lead Changes**: When a team takes or loses the lead
+- **Comebacks**: Overcoming significant score deficits
+- **Blowouts**: When score differential reaches certain thresholds
+- **Close Finishes**: Matches decided by <500 VP
+- **Perfect Skirmishes**: Team wins every skirmish in a match
+- **Skirmish Streaks**: Consecutive skirmish wins/losses
+
+### UI Features
+- **Match Timeline with Events**: Visual timeline showing critical moments
+- **Event Notifications**: Real-time alerts for significant events
+- **Event Summary**: "Match Highlights" section on match page
+- **Historical Event Search**: Find all comebacks, blowouts, etc.
+
+### Example Output
+```
+Critical Moments - Match 1-1 (Week of Jan 6, 2025)
+
+⚡ Skirmish #23 (Day 2, 14:23 UTC)
+   GREEN TAKES THE LEAD
+   Green: 12,450 → Blue: 12,389 → Red: 12,201
+
+⚡ Skirmish #45 (Day 4, 06:00 UTC)
+   BLUE COMEBACK
+   Blue overcame 2,300 point deficit from Skirmish #30
+
+⚡ Skirmish #67 (Day 6, 18:00 UTC)
+   RED HOT STREAK
+   Red has won 12 consecutive skirmishes
+```
+
+---
+
+## 11. Skirmish Streak Tracking
+
+### Overview
+Track and display winning/losing streaks for each team, with statistical analysis.
+
+### Features
+- **Current Streak Display**: "Blue: 7-game winning streak 🔥"
+- **Longest Streaks**: All-time records per server/tier
+- **Streak Probability**: "Based on historical data, Red has 65% chance to extend streak"
+- **Streak Breaker Alerts**: Notify when long streaks end
+- **Psychological Insights**: "Teams with 10+ skirmish streaks win the match 89% of the time"
+
+### Data Points
+- Current streak (wins/losses)
+- Longest streak this match
+- Longest streak all-time (by server)
+- Streak start time
+- Streak momentum (scoring margin during streak)
+
+---
+
+## 12. Social Features & Sharing
+
+### Discord Bot Integration
+
+#### Bot Commands
+- `/match [id]` - Get current match status
+- `/subscribe [match-id]` - Subscribe to match updates
+- `/standings` - Show current standings for all tiers
+- `/alerts [match-id] [conditions]` - Set custom alerts
+
+#### Auto-Posted Updates
+- Skirmish end results
+- Lead changes
+- Critical moments
+- Match end summary
+
+### Shareable Match Cards
+
+Generate beautiful graphics for social media:
+- **Current Standings Card**: Clean visualization of scores and rankings
+- **Prime Time Breakdown**: Visual showing performance by coverage window
+- **PPT Analysis Card**: Current PPT with projections
+- **Match Result Summary**: Final standings with key stats
+
+### Embed Widgets
+
+```html
+<iframe src="https://wvwgg.com/embed/match/1-1" width="400" height="300"></iframe>
+```
+
+Embeddable widgets for guild websites:
+- Live score widget
+- Mini match dashboard
+- Upcoming skirmish timer
+
+---
+
+## 13. Notifications & Alerts
+
+### Alert Types
+
+#### Match Alerts
+- Match gets close (score differential < threshold)
+- Your server takes/loses the lead
+- Comeback in progress
+- Blowout detected
+- Match ends
+
+#### Skirmish Alerts
+- High-value skirmish starting soon
+- Skirmish end (5 minutes warning)
+- Perfect skirmish opportunity
+- Streak milestones
+
+#### Strategic Alerts
+- Comeback probability crosses threshold
+- Optimal time to play (based on prime time analysis)
+- Tier movement implications
+
+### Delivery Methods
+- **Email**: Daily/weekly digests
+- **Push Notifications**: Real-time via PWA
+- **Discord Webhook**: Post to Discord channels
+- **SMS**: Critical alerts only (optional, costs money)
+- **In-App**: Browser notifications
+
+### User Preferences
+```typescript
+interface AlertPreferences {
+  userId: string;
+  subscribedMatches: string[]; // Match IDs
+  subscribedServers: number[]; // World IDs
+
+  alertTypes: {
+    matchClose: { enabled: boolean; threshold: number };
+    leadChange: { enabled: boolean };
+    skirmishEnd: { enabled: boolean; minutesWarning: number };
+    comeback: { enabled: boolean };
+    highValueSkirmish: { enabled: boolean };
+  };
+
+  deliveryMethods: {
+    email: boolean;
+    push: boolean;
+    discord: { enabled: boolean; webhookUrl?: string };
+  };
+
+  quietHours: {
+    enabled: boolean;
+    startHour: number; // 0-23
+    endHour: number;
+    timezone: string;
+  };
+}
+```
+
+---
+
+## 14. Tier Movement & Rankings
+
+### Glicko Rating System
+
+Implement chess-style ratings for servers:
+- Track server strength over time
+- Account for opponent strength
+- Confidence intervals (rating deviation)
+- Decay over time for inactive servers
+
+```typescript
+interface ServerRating {
+  worldId: number;
+  rating: number; // Glicko rating
+  ratingDeviation: number; // Confidence
+  volatility: number;
+  lastUpdated: number;
+  matchHistory: Array<{
+    matchId: string;
+    opponent: number;
+    result: 'win' | 'loss' | 'draw';
+    ratingChange: number;
+  }>;
+}
+```
+
+### Tier Movement Predictions
+
+Based on current match standings:
+- "If Red wins this match, 85% chance they move to Tier 1 next week"
+- "Blue needs to finish 1st to avoid dropping to Tier 3"
+- Show required placement for desired tier movement
+
+### Power Rankings
+
+Cross-tier server comparison:
+- Rank all servers regardless of tier
+- "True strength" ratings
+- Head-to-head records
+- Performance against common opponents
+
+### Link Partner Analysis
+
+Track performance of different server linking combinations:
+- "YB + FA linked: 12-3 record"
+- "Best link partners for [Server X]"
+- Link stability (how long servers stay linked)
+- Synergy scores
+
+---
+
+## 15. Map-Specific Performance Breakdown
+
+### Overview
+Analyze performance separately for each map (EBG and each Borderland).
+
+### Data Requirements
+- Need to track objectives per map (from `/v2/wvw/matches/overview/:id`)
+- Map ownership percentage
+- PPT contribution per map
+
+### Features
+- **Per-Map Scoreboard**: Show performance on each of 4 maps
+- **Map Dominance Heatmap**: Visual showing which team controls each map when
+- **Map Preferences**: "Red dominates EBG but struggles in Blue BL"
+- **Tactical Insights**: "Green earns 60% of their PPT from their home Borderland"
+
+### UI Display
+```
+Map Performance Breakdown:
+
+Eternal Battleground
+┌────────────────────────────────┐
+│ Red: 45% control | 80 PPT      │
+│ Blue: 35% control | 60 PPT     │
+│ Green: 20% control | 40 PPT    │
+└────────────────────────────────┘
+
+Red Borderland
+┌────────────────────────────────┐
+│ Red: 70% control | 120 PPT     │
+│ Blue: 20% control | 40 PPT     │
+│ Green: 10% control | 20 PPT    │
+└────────────────────────────────┘
+
+Blue Borderland
+┌────────────────────────────────┐
+│ Blue: 60% control | 100 PPT    │
+│ Red: 25% control | 50 PPT      │
+│ Green: 15% control | 30 PPT    │
+└────────────────────────────────┘
+
+Green Borderland
+┌────────────────────────────────┐
+│ Green: 55% control | 90 PPT    │
+│ Blue: 30% control | 55 PPT     │
+│ Red: 15% control | 30 PPT      │
+└────────────────────────────────┘
+```
+
+---
+
+## 16. Data Export & API
+
+### Export Formats
+
+Allow users to download match data:
+- **CSV**: For spreadsheet analysis
+- **JSON**: For programmatic access
+- **PDF**: Match summary report
+
+### Public API
+
+Provide REST API for third-party integrations:
+
+```
+GET /api/matches - List all current matches
+GET /api/matches/{id} - Get match details
+GET /api/matches/{id}/history - Get historical snapshots
+GET /api/worlds - List all worlds
+GET /api/guilds - List all tracked guilds
+```
+
+Rate limiting: 100 requests/minute per IP
+
+### Webhooks
+
+Allow users to register webhooks for events:
+```typescript
+interface Webhook {
+  url: string;
+  events: string[]; // ['match.end', 'skirmish.end', 'lead.change']
+  secret: string; // For signature verification
+}
+```
+
+---
+
+## 17. Mobile Progressive Web App (PWA)
+
+### Features
+- **Offline Mode**: Cache recent match data
+- **Push Notifications**: Native-feeling alerts
+- **Add to Home Screen**: Install as app
+- **Simplified Mobile UI**: Touch-optimized interface
+- **Fast Loading**: Service worker caching
+
+### Technical Implementation
+- Next.js PWA plugin
+- Service worker for caching
+- Web Push API for notifications
+- Responsive design patterns
+- Mobile-first CSS
+
+---
+
+## 18. Commander Tools & Real-Time Tactical Recommendations
+
+### Features
+
+#### Objective Priority Calculator
+"Based on current PPT and match state, these are the best objectives to capture right now:"
+1. Stonemist Castle (+18 PPT if captured)
+2. Red Keep (+12 PPT if captured)
+3. ...
+
+#### Countdown Timers Dashboard
+- Next skirmish end: 1h 23m 15s
+- Garrison upgrades to T2: 45m
+- SM upgrades to T3: 2h 15m
+
+#### Raid Planner
+- "If we capture these 3 objectives, our PPT becomes X"
+- "To win this skirmish, we need Y more points in Z time"
+- Resource allocation recommendations
+
+#### Defensive Priority
+- "These objectives are close to upgrading - defend them"
+- "You're losing the skirmish - focus on these high-value targets"
+
+---
+
+## 19. Performance Metrics Deep Dive
+
+### Kill/Death Analysis
+- K/D ratio trends over time
+- Kills per tick
+- Deaths per tick
+- K/D by prime time window
+- K/D by map
+
+### Efficiency Metrics
+- **Score Efficiency**: Actual score vs theoretical max (if held all objectives)
+- **PPT Utilization**: How well teams convert PPT into actual points
+- **Objective Hold Duration**: Average time objectives are held
+- **Flip Frequency**: How often objectives change hands
+
+### Comparative Metrics
+- Performance vs previous weeks
+- Performance vs tier average
+- Outlier detection (unusually high/low performance)
+
+---
+
+## 20. Advanced What-If Scenario Simulator
+
+Building on Phase 1 prediction tool:
+
+### Interactive Map
+- Click objectives to simulate captures
+- Real-time PPT recalculation
+- Score projection updates
+
+### ROI Calculator
+"Is it worth fighting for Garrison right now?"
+- VP gain from holding rest of skirmish
+- Risk/reward analysis
+- Opportunity cost
+
+### Multi-Variable Scenarios
+- "What if Red captures SM AND Blue loses all their keeps?"
+- "Best case / worst case / most likely case" projections
+- Monte Carlo simulation with thousands of scenarios
+
+---
+
 ## Implementation Priority
 
-**Next to implement:** Feature #5 (Points Per Tick Analysis & Projection) - Show PPT values next to scores and calculate ticks behind based on current PPT differential.
+**Immediate Priority:**
+- Feature #7 (Guilds Page & Admin Panel)
+
+**Next Recommended:**
+- Feature #4 (Snapshot Boundary Safeguards) - Important for data quality
+- Feature #6 (Match Quick Navigation Dropdown) - Quick win for UX
+- Feature #11 (Skirmish Streak Tracking) - Easy to implement with existing data
+- Feature #13 (Notifications & Alerts) - High user value
+
+**Future Considerations:**
+- Feature #12 (Social Features) - Drives growth
+- Feature #14 (Tier Movement & Rankings) - Strategic depth
+- Feature #8 (Historical Archive) - Requires infrastructure decisions
+- Feature #17 (Mobile PWA) - Broader audience reach

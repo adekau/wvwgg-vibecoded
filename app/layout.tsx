@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { ThemeProvider } from '@/components/theme-provider'
+import { AuthProvider } from '@/lib/auth-context'
 
 const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
@@ -56,8 +57,10 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <div className="fixed top-0 left-0 right-0 h-[12px] z-40 top-page-glow" />
-          {children}
+          <AuthProvider>
+            <div className="fixed top-0 left-0 right-0 h-[12px] z-40 top-page-glow" />
+            {children}
+          </AuthProvider>
         </ThemeProvider>
         <Analytics />
       </body>
