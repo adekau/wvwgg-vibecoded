@@ -222,7 +222,6 @@ function findMinimumEffortPath(input: ScenarioInput): ScenarioResult {
     if (checkOutcome(finalVP)) {
       // This works! Try with fewer 1st places
       bestPlacements = placements;
-      minFirstPlaces = mid;
       high = mid - 1;
     } else {
       // Doesn't work, need more 1st places
