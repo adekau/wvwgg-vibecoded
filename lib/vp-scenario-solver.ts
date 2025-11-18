@@ -112,7 +112,6 @@ export function calculateScenario(input: ScenarioInput): ScenarioResult {
   }
 
   const numSkirmishes = remainingSkirmishes.length;
-  const validPlacements = getValidPlacements();
 
   // Try iterative deepening: start with minimum effort, increase until solution found
   // For efficiency, use greedy heuristic first
