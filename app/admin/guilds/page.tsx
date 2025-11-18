@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -50,6 +50,8 @@ export default function AdminGuildsPage() {
   const [classificationFilter, setClassificationFilter] = useState<string>('all')
   const [reviewedFilter, setReviewedFilter] = useState<string>('all')
   const [selectedGuild, setSelectedGuild] = useState<AdminGuild | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 50
 
   useEffect(() => {
     fetchData()
@@ -86,7 +88,7 @@ export default function AdminGuildsPage() {
   }, [worlds])
 
   const filteredGuilds = useMemo(() => {
-    return guilds.filter(guild => {
+    const filtered = guilds.filter(guild => {
       // Search filter
       const searchLower = searchTerm.toLowerCase()
       const matchesSearch = !searchTerm ||
@@ -108,7 +110,23 @@ export default function AdminGuildsPage() {
 
       return matchesSearch && matchesWorld && matchesClassification && matchesReviewed
     })
+
+    // Reset to page 1 when filters change
+    setCurrentPage(1)
+    return filtered
   }, [guilds, searchTerm, worldFilter, classificationFilter, reviewedFilter])
+
+  const paginatedGuilds = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    return filteredGuilds.slice(startIndex, endIndex)
+  }, [filteredGuilds, currentPage, itemsPerPage])
+
+  const totalPages = Math.ceil(filteredGuilds.length / itemsPerPage)
+
+  const handleEditGuild = useCallback((guild: AdminGuild) => {
+    setSelectedGuild(guild)
+  }, [])
 
   const stats = useMemo(() => {
     return {
@@ -282,14 +300,14 @@ export default function AdminGuildsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredGuilds.length === 0 ? (
+                {paginatedGuilds.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                       No guilds found
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredGuilds.map((guild) => (
+                  paginatedGuilds.map((guild) => (
                     <TableRow key={guild.id} className="cursor-pointer hover:bg-accent/50">
                       <TableCell className="font-medium">{guild.name}</TableCell>
                       <TableCell>[{guild.tag}]</TableCell>
@@ -308,7 +326,7 @@ export default function AdminGuildsPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => setSelectedGuild(guild)}
+                          onClick={() => handleEditGuild(guild)}
                         >
                           <Edit className="h-4 w-4 mr-2" />
                           Edit
@@ -320,6 +338,36 @@ export default function AdminGuildsPage() {
               </TableBody>
             </Table>
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-4 border-t">
+              <div className="text-sm text-muted-foreground">
+                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredGuilds.length)} of {filteredGuilds.length} guilds
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <div className="text-sm">
+                  Page {currentPage} of {totalPages}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
