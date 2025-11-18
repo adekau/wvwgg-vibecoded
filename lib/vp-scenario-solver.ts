@@ -149,9 +149,17 @@ export function calculateScenario(input: ScenarioInput): ScenarioResult {
           // Skip if desired first gets 1st (we already allocated those)
           if (candidate[desiredOutcome.first] === 1) continue;
 
-          const tempPlacements = [...placements];
-          tempPlacements[index] = candidate;
-          const tempVP = calculateFinalVP(currentVP, remainingSkirmishes.slice(0, index + 1), tempPlacements.slice(0, index + 1));
+          // Build temp placements array with only filled indices so far
+          const filledIndices = sortedSkirmishes
+            .slice(0, sortedSkirmishes.findIndex(s => s.index === index) + 1)
+            .map(s => s.index);
+
+          const tempPlacements = filledIndices.map(i =>
+            i === index ? candidate : placements[i]
+          );
+          const relevantSkirmishes = filledIndices.map(i => remainingSkirmishes[i]);
+
+          const tempVP = calculateFinalVP(currentVP, relevantSkirmishes, tempPlacements);
 
           // Score: how well does this help achieve desired outcome?
           const score = (tempVP[desiredOutcome.first] - tempVP[desiredOutcome.second]) +
