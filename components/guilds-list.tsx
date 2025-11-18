@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/table'
 import { Search } from 'lucide-react'
 import { IGuild } from '@/server/queries'
+import Link from 'next/link'
 
 interface GuildsListProps {
   guilds: IGuild[]
@@ -145,19 +146,29 @@ export function GuildsList({ guilds, worldMap }: GuildsListProps) {
                   </TableRow>
                 ) : (
                   paginatedGuilds.map((guild) => (
-                    <TableRow key={guild.id} className="hover:bg-accent/50">
+                    <TableRow key={guild.id} className="hover:bg-accent/50 cursor-pointer">
                       <TableCell>
-                        <Badge variant="outline" className="font-mono">
-                          {guild.tag}
-                        </Badge>
+                        <Link href={`/guilds/${guild.id}`} className="block">
+                          <Badge variant="outline" className="font-mono">
+                            {guild.tag}
+                          </Badge>
+                        </Link>
                       </TableCell>
-                      <TableCell className="font-medium">{guild.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <Link href={`/guilds/${guild.id}`} className="block">
+                          {guild.name}
+                        </Link>
+                      </TableCell>
                       <TableCell>
-                        {worldMap.get(guild.worldId) || `Unknown (${guild.worldId})`}
+                        <Link href={`/guilds/${guild.id}`} className="block">
+                          {worldMap.get(guild.worldId) || `Unknown (${guild.worldId})`}
+                        </Link>
                       </TableCell>
                       {guild.member_count !== undefined && (
                         <TableCell className="text-right">
-                          {guild.member_count}
+                          <Link href={`/guilds/${guild.id}`} className="block">
+                            {guild.member_count}
+                          </Link>
                         </TableCell>
                       )}
                     </TableRow>
