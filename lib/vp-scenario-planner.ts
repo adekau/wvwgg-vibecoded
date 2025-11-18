@@ -70,37 +70,54 @@ function calculateMinVP(
 }
 
 /**
+ * Calculate VP if a team gets all of a specific placement
+ */
+function calculateVPWithPlacement(
+  currentVP: { red: number; blue: number; green: number },
+  remainingSkirmishes: Array<{ vpAwards: { first: number; second: number; third: number } }>,
+  team: 'red' | 'blue' | 'green',
+  placement: 'first' | 'second' | 'third'
+): number {
+  const vpGain = remainingSkirmishes.reduce(
+    (sum, skirmish) => sum + skirmish.vpAwards[placement],
+    0
+  );
+  return currentVP[team] + vpGain;
+}
+
+/**
  * Check if a desired outcome is theoretically possible
+ * Key insight: When desired 1st gets all firsts, desired 2nd gets all thirds,
+ * and desired 3rd gets all seconds. We need to check if this maintains the desired order.
  */
 function checkFeasibility(
   input: ScenarioInput
 ): { possible: boolean; reason?: string } {
-  const maxVP = calculateMaxVP(input.currentVP, input.remainingSkirmishes);
-  const minVP = calculateMinVP(input.currentVP, input.remainingSkirmishes);
+  const { currentVP, remainingSkirmishes, desiredOutcome } = input;
+  const { first, second, third } = desiredOutcome;
 
-  const { first, second, third } = input.desiredOutcome;
+  // Best case scenario for achieving desired outcome:
+  // - Desired 1st gets all first places
+  // - Desired 2nd gets all third places (minimize their VP)
+  // - Desired 3rd gets all second places
+  const bestCaseVP = {
+    [first]: calculateVPWithPlacement(currentVP, remainingSkirmishes, first, 'first'),
+    [second]: calculateVPWithPlacement(currentVP, remainingSkirmishes, second, 'third'),
+    [third]: calculateVPWithPlacement(currentVP, remainingSkirmishes, third, 'second'),
+  };
 
-  // Check if first place team can beat second place team's minimum
-  if (maxVP[first] < minVP[second]) {
+  // Check if this achieves the desired order
+  if (bestCaseVP[first] <= bestCaseVP[second]) {
     return {
       possible: false,
-      reason: `Even if ${first} wins all remaining skirmishes (max ${maxVP[first]} VP), they cannot beat ${second}'s minimum ${minVP[second]} VP.`,
+      reason: `Even if ${first} wins all remaining skirmishes (${bestCaseVP[first]} VP), they cannot beat ${second} with all 3rd places (${bestCaseVP[second]} VP).`,
     };
   }
 
-  // Check if second place team can beat third place team's minimum
-  if (maxVP[second] < minVP[third]) {
+  if (bestCaseVP[second] <= bestCaseVP[third]) {
     return {
       possible: false,
-      reason: `Even if ${second} wins all remaining skirmishes (max ${maxVP[second]} VP), they cannot beat ${third}'s minimum ${minVP[third]} VP.`,
-    };
-  }
-
-  // Check if third place team can be kept below second place
-  if (minVP[third] > maxVP[second]) {
-    return {
-      possible: false,
-      reason: `${third}'s minimum VP (${minVP[third]}) is already higher than ${second}'s maximum possible VP (${maxVP[second]}).`,
+      reason: `Even in best case, ${second} with all 3rd places (${bestCaseVP[second]} VP) cannot stay ahead of ${third} with all 2nd places (${bestCaseVP[third]} VP).`,
     };
   }
 
