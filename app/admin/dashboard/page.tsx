@@ -203,18 +203,21 @@ export default function AdminDashboard() {
               </CardContent>
             </Card>
 
-            <Card className="panel-border hover:shadow-lg transition-shadow cursor-pointer group">
+            <Card className="panel-border hover:shadow-lg transition-shadow cursor-pointer group" onClick={() => router.push('/admin/audit-logs')}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 group-hover:text-accent transition-colors">
                   <Shield className="h-5 w-5" />
                   Audit Log
                 </CardTitle>
                 <CardDescription>
-                  View recent administrative actions
+                  View all administrative actions and changes
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button variant="outline" className="w-full">
+                <Button variant="outline" className="w-full" onClick={(e) => {
+                  e.stopPropagation()
+                  router.push('/admin/audit-logs')
+                }}>
                   View Logs
                 </Button>
               </CardContent>
