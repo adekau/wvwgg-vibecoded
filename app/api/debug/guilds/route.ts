@@ -19,6 +19,8 @@ export async function GET() {
     console.log('AWS_ROLE_ARN:', process.env.AWS_ROLE_ARN)
     console.log('Has credentials provider:', !!credentials)
 
+    console.log('Sending scan command...')
+
     const response = await docClient.send(
       new ScanCommand({
         TableName: process.env.TABLE_NAME,
@@ -28,8 +30,17 @@ export async function GET() {
       })
     )
 
+    console.log('Scan complete')
+    console.log('Response:', {
+      Count: response.Count,
+      ScannedCount: response.ScannedCount,
+      ItemsLength: response.Items?.length || 0,
+      LastEvaluatedKey: response.LastEvaluatedKey
+    })
     console.log('Response count:', response.Items?.length || 0)
     console.log('First item:', JSON.stringify(response.Items?.[0], null, 2))
+    console.log('First item type:', response.Items?.[0]?.type)
+    console.log('First item data:', JSON.stringify(response.Items?.[0]?.data, null, 2))
 
     const mappedGuilds = response.Items?.map(item => {
       console.log('Mapping item:', JSON.stringify(item, null, 2))
