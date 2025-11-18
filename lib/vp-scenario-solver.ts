@@ -79,20 +79,6 @@ function countFirstPlaces(placements: Placement[]): { red: number; blue: number;
   return counts;
 }
 
-/**
- * Generate all valid placement permutations for a single skirmish
- * Returns 6 possible orderings: each team can be 1st, 2nd, or 3rd
- */
-function getValidPlacements(): Placement[] {
-  return [
-    { red: 1, blue: 2, green: 3 },
-    { red: 1, blue: 3, green: 2 },
-    { red: 2, blue: 1, green: 3 },
-    { red: 2, blue: 3, green: 1 },
-    { red: 3, blue: 1, green: 2 },
-    { red: 3, blue: 2, green: 1 },
-  ];
-}
 
 /**
  * Solve using iterative deepening with constraint-based pruning
