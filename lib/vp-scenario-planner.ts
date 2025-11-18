@@ -109,7 +109,9 @@ function checkFeasibility(
 
 /**
  * Find minimum effort path to achieve the desired outcome
- * Uses optimization to find the fewest wins needed
+ * Uses a simplified constraint satisfaction approach:
+ * - Minimize wins needed for desired 1st place team
+ * - Ensure each skirmish has exactly one 1st, 2nd, and 3rd place
  */
 function findMinimumEffortPath(input: ScenarioInput): ScenarioResult {
   const { currentVP, remainingSkirmishes, desiredOutcome, minMargin = 1 } = input;
@@ -150,66 +152,51 @@ function findMinimumEffortPath(input: ScenarioInput): ScenarioResult {
     return vp[first] >= vp[second] + minMargin && vp[second] >= vp[third] + minMargin;
   };
 
-  // Start with a baseline: give everyone equal placements and adjust
-  // Try to find minimum number of 1st places needed for desired winner
-  let bestPlacements: Array<{ red: 1 | 2 | 3; blue: 1 | 2 | 3; green: 1 | 2 | 3 }> | null = null;
-  let minFirstPlaces = remainingSkirmishes.length + 1;
+  /**
+   * Try to construct a valid scenario with X first-place finishes for desired winner
+   * Optimal strategy:
+   * - Skirmishes where desired 1st wins: 1st=first, 2nd=second, 3rd=third
+   * - Skirmishes where desired 1st doesn't win: 1st=third, 2nd=first, 3rd=second
+   * This minimizes desired 2nd place team's VP while maximizing desired 1st place team's VP
+   */
+  const tryConstructScenario = (numFirsts: number): Array<{ red: 1 | 2 | 3; blue: 1 | 2 | 3; green: 1 | 2 | 3 }> => {
+    const placements: Array<{ red: 1 | 2 | 3; blue: 1 | 2 | 3; green: 1 | 2 | 3 }> = [];
+
+    // Initialize all placements
+    for (let i = 0; i < remainingSkirmishes.length; i++) {
+      placements.push({ red: 3, blue: 3, green: 3 } as any);
+    }
+
+    // Assign first places to desired winner in highest VP skirmishes
+    let firstPlacesGiven = 0;
+    for (const { originalIndex } of sortedIndices) {
+      if (firstPlacesGiven < numFirsts) {
+        // Desired 1st place team wins this skirmish
+        placements[originalIndex][first] = 1;
+        placements[originalIndex][second] = 2;
+        placements[originalIndex][third] = 3;
+        firstPlacesGiven++;
+      } else {
+        // Desired 1st place team doesn't win
+        // Give win to desired 3rd place (minimizes 2nd place's VP)
+        placements[originalIndex][third] = 1;
+        placements[originalIndex][first] = 2;
+        placements[originalIndex][second] = 3;
+      }
+    }
+
+    return placements;
+  };
 
   // Binary search for minimum number of 1st place finishes needed
+  let bestPlacements: Array<{ red: 1 | 2 | 3; blue: 1 | 2 | 3; green: 1 | 2 | 3 }> | null = null;
+  let minFirstPlaces = remainingSkirmishes.length + 1;
   let low = 0;
   let high = remainingSkirmishes.length;
 
   while (low <= high) {
     const mid = Math.floor((low + high) / 2);
-
-    // Try to achieve outcome with 'mid' first place finishes for desired winner
-    // Give 1st places in highest VP skirmishes
-    const placements: Array<{ red: 1 | 2 | 3; blue: 1 | 2 | 3; green: 1 | 2 | 3 }> = [];
-
-    for (let i = 0; i < remainingSkirmishes.length; i++) {
-      placements.push({ red: 3, blue: 3, green: 3 } as any);
-    }
-
-    // Assign 1st places to desired first place team in highest VP skirmishes
-    let firstPlacesGiven = 0;
-    for (const { originalIndex } of sortedIndices) {
-      if (firstPlacesGiven < mid) {
-        placements[originalIndex][first] = 1;
-        firstPlacesGiven++;
-      }
-    }
-
-    // Now assign 2nd and 3rd places optimally
-    // Calculate current VP with the 1st places we've assigned
-    const tempVP = { ...currentVP };
-    for (let i = 0; i < remainingSkirmishes.length; i++) {
-      if (placements[i][first] === 1) {
-        tempVP[first] += remainingSkirmishes[i].vpAwards.first;
-      }
-    }
-
-    // Determine optimal 2nd/3rd distribution
-    // Strategy: In skirmishes where first doesn't win, give wins to third place
-    // to minimize second place's VP and help first catch up
-    for (let i = 0; i < remainingSkirmishes.length; i++) {
-      if (placements[i][first] === 1) {
-        // First has 1st, assign 2nd and 3rd
-        placements[i][second] = 2;
-        placements[i][third] = 3;
-        tempVP[second] += remainingSkirmishes[i].vpAwards.second;
-        tempVP[third] += remainingSkirmishes[i].vpAwards.third;
-      } else {
-        // First doesn't have 1st - give 1st to third (minimize second's VP)
-        // This maximizes first's chance of beating second
-        placements[i][third] = 1;
-        placements[i][first] = 2;
-        placements[i][second] = 3;
-        tempVP[third] += remainingSkirmishes[i].vpAwards.first;
-        tempVP[first] += remainingSkirmishes[i].vpAwards.second;
-        tempVP[second] += remainingSkirmishes[i].vpAwards.third;
-      }
-    }
-
+    const placements = tryConstructScenario(mid);
     const finalVP = calculateFinalVP(placements);
 
     if (checkOutcome(finalVP)) {
