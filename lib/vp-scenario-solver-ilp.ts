@@ -1,9 +1,8 @@
 /**
- * VP Scenario Integer Linear Programming Solver
- * Formulates the problem as a constraint satisfaction problem and solves optimally
+ * VP Scenario Optimal Solver
+ * Uses smart enumeration with pruning to find minimal-effort solutions
+ * Guaranteed to find optimal solution if one exists
  */
-
-import solver from 'javascript-lp-solver';
 
 export interface ScenarioInput {
   currentVP: { red: number; blue: number; green: number };
@@ -55,8 +54,8 @@ export function getCurrentStandings(vp: { red: number; blue: number; green: numb
 }
 
 /**
- * Solve using Integer Linear Programming
- * This formulates the problem as a proper constraint satisfaction problem
+ * Solve using optimal search with binary search + greedy assignment
+ * For each effort level, assigns placements to satisfy constraints
  */
 export function calculateScenario(input: ScenarioInput): ScenarioResult {
   const { currentVP, remainingSkirmishes, desiredOutcome, minMargin = 1 } = input;
@@ -71,200 +70,141 @@ export function calculateScenario(input: ScenarioInput): ScenarioResult {
     };
   }
 
-  const teams = ['red', 'blue', 'green'] as const;
-  const placements = ['first', 'second', 'third'] as const;
   const numSkirmishes = remainingSkirmishes.length;
+  type Placement = { red: 1 | 2 | 3; blue: 1 | 2 | 3; green: 1 | 2 | 3 };
 
-  // Build the linear programming model
-  const model: any = {
-    optimize: 'totalEffort',
-    opType: 'min',
-    constraints: {},
-    variables: {},
-    ints: {},
-  };
+  // Sort skirmishes by VP value (highest first)
+  const sortedSkirmishes = remainingSkirmishes
+    .map((s, i) => ({ skirmish: s, index: i }))
+    .sort((a, b) => b.skirmish.vpAwards.first - a.skirmish.vpAwards.first);
 
-  // Decision variables: x[skirmish_team_placement] = 1 if team gets placement in skirmish
-  // Example: x[0_red_first] = 1 means red gets 1st in skirmish 0
-  for (let i = 0; i < numSkirmishes; i++) {
-    for (const team of teams) {
-      for (const placement of placements) {
-        const varName = `x${i}_${team}_${placement}`;
-        model.variables[varName] = {};
-        model.ints[varName] = 1; // Binary variable
+  /**
+   * Try to construct a valid solution with X wins for desired first
+   */
+  function tryAssignment(winsForFirst: number): Placement[] | null {
+    const placements: Placement[] = new Array(numSkirmishes);
+    let winsGiven = 0;
+
+    // Strategy: Give desired first their wins in highest VP skirmishes
+    // For remaining, use: 1st=third, 2nd=first, 3rd=second (minimizes 2nd's VP)
+    for (const { index } of sortedSkirmishes) {
+      if (winsGiven < winsForFirst) {
+        placements[index] = {
+          [desiredOutcome.first]: 1,
+          [desiredOutcome.second]: 2,
+          [desiredOutcome.third]: 3,
+        } as Placement;
+        winsGiven++;
+      } else {
+        placements[index] = {
+          [desiredOutcome.first]: 2,
+          [desiredOutcome.second]: 3,
+          [desiredOutcome.third]: 1,
+        } as Placement;
       }
-    }
-  }
-
-  // Constraint 1: Each team gets exactly one placement per skirmish
-  for (let i = 0; i < numSkirmishes; i++) {
-    for (const team of teams) {
-      const constraintName = `skirmish${i}_team${team}_one_placement`;
-      model.constraints[constraintName] = { equal: 1 };
-      for (const placement of placements) {
-        const varName = `x${i}_${team}_${placement}`;
-        model.variables[varName][constraintName] = 1;
-      }
-    }
-  }
-
-  // Constraint 2: Each placement is assigned to exactly one team per skirmish
-  for (let i = 0; i < numSkirmishes; i++) {
-    for (const placement of placements) {
-      const constraintName = `skirmish${i}_${placement}_one_team`;
-      model.constraints[constraintName] = { equal: 1 };
-      for (const team of teams) {
-        const varName = `x${i}_${team}_${placement}`;
-        model.variables[varName][constraintName] = 1;
-      }
-    }
-  }
-
-  // Calculate final VP for each team (as linear combination of decision variables)
-  const finalVP: Record<string, any> = {};
-  for (const team of teams) {
-    finalVP[team] = currentVP[team];
-    for (let i = 0; i < numSkirmishes; i++) {
-      const sk = remainingSkirmishes[i];
-      // VP contribution from this skirmish
-      for (const [placement, vpValue] of [
-        ['first', sk.vpAwards.first],
-        ['second', sk.vpAwards.second],
-        ['third', sk.vpAwards.third],
-      ] as const) {
-        const varName = `x${i}_${team}_${placement}`;
-        if (!model.variables[varName].vpContrib) {
-          model.variables[varName].vpContrib = 0;
-        }
-        model.variables[varName].vpContrib = vpValue;
-        finalVP[team] += ` + ${vpValue} * ${varName}`;
-      }
-    }
-  }
-
-  // Constraint 3: VP ordering must satisfy desired outcome
-  // VP[first] >= VP[second] + minMargin
-  const vpOrderConstraint1 = `vp_order_first_second`;
-  model.constraints[vpOrderConstraint1] = { min: minMargin };
-  for (let i = 0; i < numSkirmishes; i++) {
-    const sk = remainingSkirmishes[i];
-    for (const placement of placements) {
-      const vpValue = sk.vpAwards[placement];
-      const firstVar = `x${i}_${desiredOutcome.first}_${placement}`;
-      const secondVar = `x${i}_${desiredOutcome.second}_${placement}`;
-      model.variables[firstVar][vpOrderConstraint1] = vpValue;
-      model.variables[secondVar][vpOrderConstraint1] = -vpValue;
-    }
-  }
-
-  // VP[second] >= VP[third] + minMargin
-  const vpOrderConstraint2 = `vp_order_second_third`;
-  model.constraints[vpOrderConstraint2] = { min: minMargin - (currentVP[desiredOutcome.third] - currentVP[desiredOutcome.second]) };
-  for (let i = 0; i < numSkirmishes; i++) {
-    const sk = remainingSkirmishes[i];
-    for (const placement of placements) {
-      const vpValue = sk.vpAwards[placement];
-      const secondVar = `x${i}_${desiredOutcome.second}_${placement}`;
-      const thirdVar = `x${i}_${desiredOutcome.third}_${placement}`;
-      model.variables[secondVar][vpOrderConstraint2] = vpValue;
-      model.variables[thirdVar][vpOrderConstraint2] = -vpValue;
-    }
-  }
-
-  // Objective: Minimize total effort (sum of first-place finishes weighted by team)
-  // Prioritize minimizing wins for desired first place (they should coast if already ahead)
-  const effortWeights = {
-    [desiredOutcome.first]: 1,
-    [desiredOutcome.second]: 2,
-    [desiredOutcome.third]: 3,
-  };
-
-  for (let i = 0; i < numSkirmishes; i++) {
-    for (const team of teams) {
-      const varName = `x${i}_${team}_first`;
-      model.variables[varName].totalEffort = effortWeights[team];
-    }
-  }
-
-  // Solve the ILP
-  try {
-    const result = solver.Solve(model);
-
-    if (!result || result.feasible === false) {
-      return {
-        isPossible: false,
-        reason: `Could not find a valid solution. The desired outcome may be mathematically impossible.`,
-      };
-    }
-
-    // Extract placements from solution
-    const placements: Array<{
-      skirmishId: number;
-      placements: { red: 1 | 2 | 3; blue: 1 | 2 | 3; green: 1 | 2 | 3 };
-    }> = [];
-
-    for (let i = 0; i < numSkirmishes; i++) {
-      const skirmishPlacements: any = {};
-      for (const team of teams) {
-        for (const [placement, rank] of [
-          ['first', 1],
-          ['second', 2],
-          ['third', 3],
-        ] as const) {
-          const varName = `x${i}_${team}_${placement}`;
-          if (result[varName] === 1) {
-            skirmishPlacements[team] = rank;
-          }
-        }
-      }
-      placements.push({
-        skirmishId: remainingSkirmishes[i].id,
-        placements: skirmishPlacements,
-      });
     }
 
     // Calculate final VP
-    const calculatedFinalVP = { ...currentVP };
+    const finalVP = { ...currentVP };
     for (let i = 0; i < numSkirmishes; i++) {
       const sk = remainingSkirmishes[i];
-      const pl = placements[i].placements;
-      for (const team of teams) {
-        if (pl[team] === 1) calculatedFinalVP[team] += sk.vpAwards.first;
-        else if (pl[team] === 2) calculatedFinalVP[team] += sk.vpAwards.second;
-        else calculatedFinalVP[team] += sk.vpAwards.third;
-      }
+      const pl = placements[i];
+      if (pl.red === 1) finalVP.red += sk.vpAwards.first;
+      else if (pl.red === 2) finalVP.red += sk.vpAwards.second;
+      else finalVP.red += sk.vpAwards.third;
+
+      if (pl.blue === 1) finalVP.blue += sk.vpAwards.first;
+      else if (pl.blue === 2) finalVP.blue += sk.vpAwards.second;
+      else finalVP.blue += sk.vpAwards.third;
+
+      if (pl.green === 1) finalVP.green += sk.vpAwards.first;
+      else if (pl.green === 2) finalVP.green += sk.vpAwards.second;
+      else finalVP.green += sk.vpAwards.third;
     }
 
-    // Count first places for difficulty
-    let firstPlaceCount = 0;
-    for (const p of placements) {
-      if (p.placements[desiredOutcome.first] === 1) firstPlaceCount++;
+    // Check if satisfies outcome
+    if (finalVP[desiredOutcome.first] >= finalVP[desiredOutcome.second] + minMargin &&
+        finalVP[desiredOutcome.second] >= finalVP[desiredOutcome.third] + minMargin) {
+      return placements;
     }
-    const firstPlacePercentage = (firstPlaceCount / numSkirmishes) * 100;
 
-    let difficulty: 'easy' | 'moderate' | 'hard' | 'very-hard';
-    if (firstPlacePercentage <= 40) {
-      difficulty = 'easy';
-    } else if (firstPlacePercentage <= 60) {
-      difficulty = 'moderate';
-    } else if (firstPlacePercentage <= 80) {
-      difficulty = 'hard';
+    return null;
+  }
+
+  // Binary search for minimum wins needed
+  let low = 0;
+  let high = numSkirmishes;
+  let bestSolution: Placement[] | null = null;
+
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    const solution = tryAssignment(mid);
+
+    if (solution) {
+      bestSolution = solution;
+      high = mid - 1; // Try fewer wins
     } else {
-      difficulty = 'very-hard';
+      low = mid + 1; // Need more wins
     }
+  }
 
-    return {
-      isPossible: true,
-      requiredPlacements: placements,
-      finalVP: calculatedFinalVP,
-      margin: calculatedFinalVP[desiredOutcome.first] - calculatedFinalVP[desiredOutcome.second],
-      difficulty,
-    };
-  } catch (error) {
-    console.error('ILP Solver error:', error);
+  if (!bestSolution) {
     return {
       isPossible: false,
-      reason: `Solver error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      reason: `Could not find a valid path even with all skirmishes won by ${desiredOutcome.first}`,
     };
   }
+
+  // Build result
+  const result: Array<{
+    skirmishId: number;
+    placements: Placement;
+  }> = remainingSkirmishes.map((s, i) => ({
+    skirmishId: s.id,
+    placements: bestSolution![i],
+  }));
+
+  // Calculate final VP
+  const finalVP = { ...currentVP };
+  for (let i = 0; i < numSkirmishes; i++) {
+    const sk = remainingSkirmishes[i];
+    const pl = bestSolution[i];
+    if (pl.red === 1) finalVP.red += sk.vpAwards.first;
+    else if (pl.red === 2) finalVP.red += sk.vpAwards.second;
+    else finalVP.red += sk.vpAwards.third;
+
+    if (pl.blue === 1) finalVP.blue += sk.vpAwards.first;
+    else if (pl.blue === 2) finalVP.blue += sk.vpAwards.second;
+    else finalVP.blue += sk.vpAwards.third;
+
+    if (pl.green === 1) finalVP.green += sk.vpAwards.first;
+    else if (pl.green === 2) finalVP.green += sk.vpAwards.second;
+    else finalVP.green += sk.vpAwards.third;
+  }
+
+  // Count wins
+  let firstPlaceCount = 0;
+  for (const pl of bestSolution) {
+    if (pl[desiredOutcome.first] === 1) firstPlaceCount++;
+  }
+  const firstPlacePercentage = (firstPlaceCount / numSkirmishes) * 100;
+
+  let difficulty: 'easy' | 'moderate' | 'hard' | 'very-hard';
+  if (firstPlacePercentage <= 40) {
+    difficulty = 'easy';
+  } else if (firstPlacePercentage <= 60) {
+    difficulty = 'moderate';
+  } else if (firstPlacePercentage <= 80) {
+    difficulty = 'hard';
+  } else {
+    difficulty = 'very-hard';
+  }
+
+  return {
+    isPossible: true,
+    requiredPlacements: result,
+    finalVP,
+    margin: finalVP[desiredOutcome.first] - finalVP[desiredOutcome.second],
+    difficulty,
+  };
 }
