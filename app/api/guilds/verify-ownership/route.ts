@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
-import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb'
+import { DynamoDBDocumentClient, UpdateCommand, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 import { createCredentialsProvider } from '@/server/aws-credentials'
 
 const credentials = createCredentialsProvider()
@@ -16,6 +16,7 @@ interface VerifyOwnershipRequest {
   guildId: string
   apiKey: string
   allianceGuildId?: string
+  addNew?: boolean // Flag to indicate this is a new guild being added
 }
 
 export async function POST(request: NextRequest) {
@@ -24,13 +25,30 @@ export async function POST(request: NextRequest) {
   try {
     const body: VerifyOwnershipRequest = await request.json()
     apiKey = body.apiKey
-    const { guildId, allianceGuildId } = body
+    const { guildId, allianceGuildId, addNew } = body
 
     if (!guildId || !apiKey) {
       return NextResponse.json(
         { error: 'Guild ID and API key are required' },
         { status: 400 }
       )
+    }
+
+    // Check if guild exists if not adding new
+    if (!addNew) {
+      const existingGuild = await docClient.send(
+        new GetCommand({
+          TableName: process.env.TABLE_NAME,
+          Key: { type: 'guild', id: guildId },
+        })
+      )
+
+      if (!existingGuild.Item) {
+        return NextResponse.json(
+          { error: 'Guild not found. Use "Add Guild" to add a new guild.' },
+          { status: 404 }
+        )
+      }
     }
 
     // Step 1: Verify API key has correct permissions
@@ -104,11 +122,77 @@ export async function POST(request: NextRequest) {
 
     console.log('[VERIFY] User is confirmed guild leader')
 
-    // Step 3: Count members
+    // Step 3: Count members and get guild details
     const memberCount = members.length
     console.log(`[VERIFY] Guild has ${memberCount} members`)
 
-    // Step 4: Update guild in DynamoDB
+    // Fetch guild details from GW2 API
+    const guildDetailsResponse = await fetch(
+      `https://api.guildwars2.com/v2/guild/${guildId}`,
+      {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      }
+    )
+
+    if (!guildDetailsResponse.ok) {
+      return NextResponse.json(
+        { error: 'Failed to fetch guild details' },
+        { status: guildDetailsResponse.status }
+      )
+    }
+
+    const guildDetails = await guildDetailsResponse.json()
+
+    // Step 4: Add or update guild in DynamoDB
+    if (addNew) {
+      // Add new guild
+      const now = Date.now()
+      await docClient.send(
+        new PutCommand({
+          TableName: process.env.TABLE_NAME,
+          Item: {
+            type: 'guild',
+            id: guildId,
+            data: {
+              id: guildId,
+              name: guildDetails.name,
+              tag: guildDetails.tag,
+              worldId: members[0]?.world || 0, // Use leader's world
+            },
+            member_count: memberCount,
+            level: guildDetails.level,
+            classification: allianceGuildId ? 'member' : undefined,
+            allianceGuildId: allianceGuildId || undefined,
+            updatedAt: now,
+            auditLog: [
+              {
+                timestamp: now,
+                actor: accountInfo.name,
+                action: 'guild-created',
+                changes: {
+                  created: { from: null, to: true },
+                  member_count: { from: null, to: memberCount },
+                  ...(allianceGuildId && {
+                    allianceGuildId: { from: null, to: allianceGuildId }
+                  })
+                },
+              },
+            ],
+          },
+        })
+      )
+
+      console.log('[VERIFY] New guild added successfully')
+
+      return NextResponse.json({
+        success: true,
+        memberCount,
+        updatedBy: accountInfo.name,
+        added: true,
+      })
+    }
+
+    // Update existing guild
     const updateExpressions: string[] = []
     const expressionAttributeNames: Record<string, string> = {}
     const expressionAttributeValues: Record<string, any> = {}

@@ -1,5 +1,5 @@
 import * as cdk from 'aws-cdk-lib';
-import { Effect, FederatedPrincipal, OpenIdConnectProvider, Policy, PolicyDocument, PolicyStatement, Role, User } from 'aws-cdk-lib/aws-iam';
+import { Effect, FederatedPrincipal, OpenIdConnectProvider, PolicyDocument, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import path from 'node:path';
 import { AutomationStack } from './automation-stack';
@@ -17,7 +17,6 @@ interface WvWGGStackProps extends cdk.StackProps {
 
 export class WvWGGStack extends cdk.Stack {
   public readonly dynamoDbTable: cdk.aws_dynamodb.TableV2;
-  public readonly vercelDeploymentUser: User;
   public readonly auth: AuthConstruct;
 
   constructor(scope: Construct, id: string, props: WvWGGStackProps) {
@@ -88,61 +87,7 @@ export class WvWGGStack extends cdk.Stack {
     });
     fetchWorldsRule.node.addDependency(fetchWorldsLambda);
 
-    // IAM User for Vercel Deployment (Legacy - kept for backward compatibility)
-    this.vercelDeploymentUser = new User(this, `VercelDeploymentUser-${props.stage}`, {
-      userName: `vercel-deployment-user-${props.stage}`,
-    });
-
-    // IAM Policy: DynamoDB Access for Vercel
-    const vercelDynamoDbPolicy = new Policy(this, `VercelDynamoDbPolicy-${props.stage}`, {
-      policyName: `VercelDynamoDbAccess-${props.stage}`,
-      users: [this.vercelDeploymentUser],
-      statements: [
-        new PolicyStatement({
-          effect: Effect.ALLOW,
-          actions: [
-            'dynamodb:GetItem',
-            'dynamodb:PutItem',
-            'dynamodb:Scan',
-            'dynamodb:Query'
-          ],
-          resources: [this.dynamoDbTable.tableArn]
-        })
-      ]
-    });
-
-    // ===== IAM Roles Anywhere Setup =====
-    // Role that Vercel will assume via Roles Anywhere
-    const vercelRolesAnywhereRole = new Role(this, `VercelRolesAnywhereRole-${props.stage}`, {
-      roleName: `vercel-roles-anywhere-${props.stage}`,
-      assumedBy: new FederatedPrincipal(
-        'rolesanywhere.amazonaws.com',
-        {
-          'StringEquals': {
-            'aws:PrincipalType': 'RolesAnywhereRoleSession'
-          }
-        },
-        'sts:AssumeRole'
-      ),
-      description: `Role for Vercel to access DynamoDB via IAM Roles Anywhere (${props.stage})`,
-      inlinePolicies: {
-        DynamoDBAccess: new PolicyDocument({
-          statements: [
-            new PolicyStatement({
-              effect: Effect.ALLOW,
-              actions: [
-                'dynamodb:GetItem',
-                'dynamodb:Scan',
-                'dynamodb:Query'
-              ],
-              resources: [this.dynamoDbTable.tableArn]
-            })
-          ]
-        })
-      }
-    });
-
-    // ===== Vercel OIDC Setup (Recommended) =====
+    // ===== Vercel OIDC Setup =====
     // OIDC provider URL and audience
     const oidcProviderUrl = props.vercelTeamSlug
       ? `oidc.vercel.com/${props.vercelTeamSlug}`
@@ -179,6 +124,7 @@ export class WvWGGStack extends cdk.Stack {
               effect: Effect.ALLOW,
               actions: [
                 'dynamodb:GetItem',
+                'dynamodb:PutItem',
                 'dynamodb:Scan',
                 'dynamodb:Query'
               ],
@@ -201,18 +147,6 @@ export class WvWGGStack extends cdk.Stack {
       value: this.dynamoDbTable.tableName,
       description: `DynamoDB table name for ${props.stage} environment`,
       exportName: `WvWGGTableName-${props.stage}`
-    });
-
-    new cdk.CfnOutput(this, `VercelUserArn-${props.stage}`, {
-      value: this.vercelDeploymentUser.userArn,
-      description: `Vercel deployment user ARN for ${props.stage}`,
-      exportName: `VercelUserArn-${props.stage}`
-    });
-
-    new cdk.CfnOutput(this, `VercelUserName-${props.stage}`, {
-      value: this.vercelDeploymentUser.userName,
-      description: `Vercel deployment user name for ${props.stage}`,
-      exportName: `VercelUserName-${props.stage}`
     });
   }
 }

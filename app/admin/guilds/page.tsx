@@ -20,9 +20,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Search, Edit, Loader2, Users } from 'lucide-react'
+import { Search, Edit, Loader2, Users, Plus } from 'lucide-react'
 import { IGuild } from '@/server/queries'
 import { GuildEditModal } from '@/components/admin/guild-edit-modal'
+import { GuildSearchModal } from '@/components/guild-search-modal'
 import { useAuth } from '@/lib/auth-context'
 
 interface AdminGuild extends IGuild {
@@ -50,6 +51,8 @@ export default function AdminGuildsPage() {
   const [classificationFilter, setClassificationFilter] = useState<string>('all')
   const [reviewedFilter, setReviewedFilter] = useState<string>('all')
   const [selectedGuild, setSelectedGuild] = useState<AdminGuild | null>(null)
+  const [searchModalOpen, setSearchModalOpen] = useState(false)
+  const [addingGuild, setAddingGuild] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 50
 
@@ -128,6 +131,34 @@ export default function AdminGuildsPage() {
     setSelectedGuild(guild)
   }, [])
 
+  const handleAddGuild = async (guildId: string) => {
+    setAddingGuild(true)
+    try {
+      const response = await fetch('/api/admin/guilds/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          guildId,
+          addedBy: user?.getUsername() || 'unknown',
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to add guild')
+      }
+
+      // Refresh guild list
+      await fetchData()
+      setSearchModalOpen(false)
+    } catch (error) {
+      console.error('Error adding guild:', error)
+      alert(error instanceof Error ? error.message : 'Failed to add guild')
+    } finally {
+      setAddingGuild(false)
+    }
+  }
+
   const stats = useMemo(() => {
     return {
       total: guilds.length,
@@ -168,6 +199,10 @@ export default function AdminGuildsPage() {
             Search and edit guild classifications and relationships
           </p>
         </div>
+        <Button onClick={() => setSearchModalOpen(true)} disabled={addingGuild}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Guild
+        </Button>
       </div>
 
       {/* Stats Cards */}
@@ -402,6 +437,13 @@ export default function AdminGuildsPage() {
             throw error
           }
         }}
+      />
+
+      {/* Guild Search Modal for adding guilds */}
+      <GuildSearchModal
+        open={searchModalOpen}
+        onOpenChange={setSearchModalOpen}
+        onGuildSelected={handleAddGuild}
       />
     </div>
   )

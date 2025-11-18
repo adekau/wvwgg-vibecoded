@@ -14,9 +14,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Search } from 'lucide-react'
+import { Search, Plus } from 'lucide-react'
 import { IGuild } from '@/server/queries'
 import Link from 'next/link'
+import { GuildSearchModal } from './guild-search-modal'
+import { GuildUpdateModal } from './guild-update-modal'
+import { useRouter } from 'next/navigation'
 
 interface GuildsListProps {
   guilds: IGuild[]
@@ -24,9 +27,13 @@ interface GuildsListProps {
 }
 
 export function GuildsList({ guilds, worldMap }: GuildsListProps) {
+  const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedWorld, setSelectedWorld] = useState<string>('all')
   const [currentPage, setCurrentPage] = useState(1)
+  const [searchModalOpen, setSearchModalOpen] = useState(false)
+  const [updateModalOpen, setUpdateModalOpen] = useState(false)
+  const [selectedGuildForAdd, setSelectedGuildForAdd] = useState<{ id: string; name: string; tag: string } | null>(null)
   const itemsPerPage = 50
 
   // Get unique worlds from guilds
@@ -76,6 +83,28 @@ export function GuildsList({ guilds, worldMap }: GuildsListProps) {
 
   const totalPages = Math.ceil(filteredGuilds.length / itemsPerPage)
 
+  const handleGuildSelected = async (guildId: string) => {
+    // Fetch guild details to get name and tag for the modal
+    try {
+      const response = await fetch(`https://api.guildwars2.com/v2/guild/${guildId}`)
+      if (response.ok) {
+        const guildData = await response.json()
+        setSelectedGuildForAdd({
+          id: guildId,
+          name: guildData.name,
+          tag: guildData.tag,
+        })
+        setUpdateModalOpen(true)
+      }
+    } catch (error) {
+      console.error('Failed to fetch guild details:', error)
+    }
+  }
+
+  const handleUpdateSuccess = () => {
+    router.refresh()
+  }
+
   return (
     <div className="space-y-6">
       {/* Search and Filter Controls */}
@@ -104,6 +133,11 @@ export function GuildsList({ guilds, worldMap }: GuildsListProps) {
             ))}
           </SelectContent>
         </Select>
+
+        <Button onClick={() => setSearchModalOpen(true)} className="w-full sm:w-auto">
+          <Plus className="h-4 w-4 mr-2" />
+          Add Guild
+        </Button>
       </div>
 
       {/* Results Count */}
@@ -235,6 +269,28 @@ export function GuildsList({ guilds, worldMap }: GuildsListProps) {
             Next
           </Button>
         </div>
+      )}
+
+      {/* Guild Search Modal */}
+      <GuildSearchModal
+        open={searchModalOpen}
+        onOpenChange={setSearchModalOpen}
+        onGuildSelected={handleGuildSelected}
+      />
+
+      {/* Guild Update Modal (for adding new guild) */}
+      {selectedGuildForAdd && (
+        <GuildUpdateModal
+          guild={selectedGuildForAdd}
+          allGuilds={guilds}
+          open={updateModalOpen}
+          onClose={() => {
+            setUpdateModalOpen(false)
+            setSelectedGuildForAdd(null)
+          }}
+          onSuccess={handleUpdateSuccess}
+          addNew={true}
+        />
       )}
     </div>
   )

@@ -25,14 +25,15 @@ import { Loader2, Shield, AlertTriangle, Eye, EyeOff, ExternalLink } from 'lucid
 import { IGuild } from '@/server/queries'
 
 interface GuildUpdateModalProps {
-  guild: IGuild
+  guild?: IGuild | { id: string; name: string; tag: string }
   allGuilds: IGuild[]
   open: boolean
   onClose: () => void
   onSuccess: () => void
+  addNew?: boolean
 }
 
-export function GuildUpdateModal({ guild, allGuilds, open, onClose, onSuccess }: GuildUpdateModalProps) {
+export function GuildUpdateModal({ guild, allGuilds, open, onClose, onSuccess, addNew = false }: GuildUpdateModalProps) {
   const [apiKey, setApiKey] = useState('')
   const [showApiKey, setShowApiKey] = useState(false)
   const [allianceGuildId, setAllianceGuildId] = useState('')
@@ -43,12 +44,12 @@ export function GuildUpdateModal({ guild, allGuilds, open, onClose, onSuccess }:
 
   const allianceGuilds = useMemo(() => {
     return allGuilds.filter(g =>
-      ((g as any).classification === 'alliance' || !g.id.includes(guild.id)) &&
-      g.id !== guild.id &&
+      ((g as any).classification === 'alliance' || !g.id.includes(guild?.id || '')) &&
+      g.id !== guild?.id &&
       (g.name.toLowerCase().includes(allianceSearch.toLowerCase()) ||
        g.tag.toLowerCase().includes(allianceSearch.toLowerCase()))
     ).slice(0, 10)
-  }, [allGuilds, guild.id, allianceSearch])
+  }, [allGuilds, guild?.id, allianceSearch])
 
   const selectedAlliance = allGuilds.find(g => g.id === allianceGuildId)
 
@@ -72,9 +73,10 @@ export function GuildUpdateModal({ guild, allGuilds, open, onClose, onSuccess }:
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          guildId: guild.id,
+          guildId: guild?.id,
           apiKey,
           allianceGuildId: allianceGuildId || undefined,
+          addNew,
         }),
       })
 
@@ -114,10 +116,12 @@ export function GuildUpdateModal({ guild, allGuilds, open, onClose, onSuccess }:
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            Update Guild Information
+            {addNew ? 'Add Your Guild' : 'Update Guild Information'}
           </DialogTitle>
           <DialogDescription>
-            Verify your guild leadership to update guild information
+            {addNew
+              ? 'Verify your guild leadership to add your guild to the database'
+              : 'Verify your guild leadership to update guild information'}
           </DialogDescription>
         </DialogHeader>
 
@@ -250,7 +254,7 @@ export function GuildUpdateModal({ guild, allGuilds, open, onClose, onSuccess }:
             />
             <label htmlFor="accept" className="text-sm cursor-pointer">
               I understand that my API key will be used to verify my guild leadership and fetch member count.
-              I confirm that my API key has the required "guilds" permission and that I am the guild leader of {guild.name} [{guild.tag}].
+              I confirm that my API key has the required "guilds" permission and that I am the guild leader of {guild?.name} [{guild?.tag}].
             </label>
           </div>
 

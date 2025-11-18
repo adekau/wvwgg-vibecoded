@@ -1,12 +1,12 @@
+import { GuildDetailHeader } from '@/components/guild-detail-header'
 import { MatchesHeader } from '@/components/matches-header'
-import { getGuilds, getWorlds } from '@/server/queries'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Users, Globe, Link as LinkIcon } from 'lucide-react'
-import { notFound } from 'next/navigation'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { getGuilds, getWorlds } from '@/server/queries'
+import { Globe, Link as LinkIcon, Shield, Users } from 'lucide-react'
 import Link from 'next/link'
-import { GuildDetailHeader } from '@/components/guild-detail-header'
+import { notFound } from 'next/navigation'
 
 interface PageProps {
   params: Promise<{ guildId: string }>
