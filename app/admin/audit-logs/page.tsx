@@ -149,6 +149,8 @@ export default function AuditLogsPage() {
       'update': 'default',
       'public-update': 'secondary',
       'create': 'outline',
+      'guild-created': 'default',
+      'admin-created': 'default',
       'delete': 'destructive',
     }
     return <Badge variant={variants[action] || 'outline'}>{action}</Badge>

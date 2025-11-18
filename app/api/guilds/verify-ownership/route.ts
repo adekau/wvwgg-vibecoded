@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, UpdateCommand, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 import { createCredentialsProvider } from '@/server/aws-credentials'
+import { revalidateTag } from 'next/cache'
 
 const credentials = createCredentialsProvider()
 
@@ -10,7 +11,11 @@ const client = new DynamoDBClient({
   ...(credentials && { credentials }),
 })
 
-const docClient = DynamoDBDocumentClient.from(client)
+const docClient = DynamoDBDocumentClient.from(client, {
+  marshallOptions: {
+    removeUndefinedValues: true,
+  },
+})
 
 interface VerifyOwnershipRequest {
   guildId: string
@@ -184,6 +189,9 @@ export async function POST(request: NextRequest) {
 
       console.log('[VERIFY] New guild added successfully')
 
+      // Revalidate the guilds cache
+      revalidateTag('guilds')
+
       return NextResponse.json({
         success: true,
         memberCount,
@@ -249,6 +257,9 @@ export async function POST(request: NextRequest) {
     )
 
     console.log('[VERIFY] Guild updated successfully')
+
+    // Revalidate the guilds cache
+    revalidateTag('guilds')
 
     return NextResponse.json({
       success: true,

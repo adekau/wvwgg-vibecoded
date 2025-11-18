@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, UpdateCommand, GetCommand } from '@aws-sdk/lib-dynamodb'
 import { createCredentialsProvider } from '@/server/aws-credentials'
+import { revalidateTag } from 'next/cache'
 
 const credentials = createCredentialsProvider()
 
@@ -10,7 +11,11 @@ const client = new DynamoDBClient({
   ...(credentials && { credentials }),
 })
 
-const docClient = DynamoDBDocumentClient.from(client)
+const docClient = DynamoDBDocumentClient.from(client, {
+  marshallOptions: {
+    removeUndefinedValues: true,
+  },
+})
 
 interface UpdateGuildRequest {
   classification?: 'alliance' | 'member' | 'independent'
@@ -131,6 +136,9 @@ export async function PATCH(
         ReturnValues: 'ALL_NEW',
       })
     )
+
+    // Revalidate the guilds cache
+    revalidateTag('guilds')
 
     return NextResponse.json({
       success: true,

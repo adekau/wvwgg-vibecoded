@@ -2,7 +2,7 @@ import { MatchesHeader } from '@/components/matches-header'
 import { MatchDashboard } from '@/components/match-dashboard'
 import { MatchHistoryChart } from '@/components/match-history-chart'
 import { notFound } from 'next/navigation'
-import { getMatches, getWorlds } from '@/server/queries'
+import { getMatches, getWorlds, getGuilds } from '@/server/queries'
 
 interface PageProps {
   params: Promise<{ matchId: string }>
@@ -12,9 +12,10 @@ export default async function MatchDetailPage({ params }: PageProps) {
   const { matchId } = await params
 
   // Fetch real data from DynamoDB
-  const [matchesData, worldsData] = await Promise.all([
+  const [matchesData, worldsData, guildsData] = await Promise.all([
     getMatches(),
     getWorlds(),
+    getGuilds(),
   ]);
 
   if (!matchesData || !worldsData) {
@@ -154,6 +155,7 @@ export default async function MatchDetailPage({ params }: PageProps) {
     skirmishes: matchData.skirmishes || [],
     worlds: [
       {
+        id: matchData.red?.world?.id || 0,
         name: matchData.red?.world?.name || 'Unknown',
         kills: matchData.red?.kills || 0,
         deaths: matchData.red?.deaths || 0,
@@ -163,6 +165,7 @@ export default async function MatchDetailPage({ params }: PageProps) {
         skirmishes: calculateSkirmishStats('red'),
       },
       {
+        id: matchData.blue?.world?.id || 0,
         name: matchData.blue?.world?.name || 'Unknown',
         kills: matchData.blue?.kills || 0,
         deaths: matchData.blue?.deaths || 0,
@@ -172,6 +175,7 @@ export default async function MatchDetailPage({ params }: PageProps) {
         skirmishes: calculateSkirmishStats('blue'),
       },
       {
+        id: matchData.green?.world?.id || 0,
         name: matchData.green?.world?.name || 'Unknown',
         kills: matchData.green?.kills || 0,
         deaths: matchData.green?.deaths || 0,
@@ -190,7 +194,7 @@ export default async function MatchDetailPage({ params }: PageProps) {
       <MatchesHeader />
 
       <main className="container mx-auto px-4 py-8 space-y-6">
-        <MatchDashboard match={match} matchId={matchId} />
+        <MatchDashboard match={match} matchId={matchId} guilds={guildsData} />
 
         <MatchHistoryChart matchId={matchId} />
       </main>

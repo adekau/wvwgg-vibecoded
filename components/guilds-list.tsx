@@ -179,34 +179,42 @@ export function GuildsList({ guilds, worldMap }: GuildsListProps) {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paginatedGuilds.map((guild) => (
-                    <TableRow key={guild.id} className="hover:bg-accent/50 cursor-pointer">
-                      <TableCell>
-                        <Link href={`/guilds/${guild.id}`} className="block">
-                          <Badge variant="outline" className="font-mono">
-                            {guild.tag}
-                          </Badge>
-                        </Link>
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        <Link href={`/guilds/${guild.id}`} className="block">
-                          {guild.name}
-                        </Link>
-                      </TableCell>
-                      <TableCell>
-                        <Link href={`/guilds/${guild.id}`} className="block">
-                          {worldMap.get(guild.worldId) || `Unknown (${guild.worldId})`}
-                        </Link>
-                      </TableCell>
-                      {guild.member_count !== undefined && (
-                        <TableCell className="text-right">
+                  paginatedGuilds.map((guild) => {
+                    // For member guilds, find the alliance guild to get its server
+                    const allianceGuild = guild.allianceGuildId
+                      ? guilds.find(g => g.id === guild.allianceGuildId)
+                      : null
+                    const displayWorldId = allianceGuild ? allianceGuild.worldId : guild.worldId
+
+                    return (
+                      <TableRow key={guild.id} className="hover:bg-accent/50 cursor-pointer">
+                        <TableCell>
                           <Link href={`/guilds/${guild.id}`} className="block">
-                            {guild.member_count}
+                            <Badge variant="outline" className="font-mono">
+                              {guild.tag}
+                            </Badge>
                           </Link>
                         </TableCell>
-                      )}
-                    </TableRow>
-                  ))
+                        <TableCell className="font-medium">
+                          <Link href={`/guilds/${guild.id}`} className="block">
+                            {guild.name}
+                          </Link>
+                        </TableCell>
+                        <TableCell>
+                          <Link href={`/guilds/${guild.id}`} className="block">
+                            {worldMap.get(displayWorldId) || `Unknown (${displayWorldId})`}
+                          </Link>
+                        </TableCell>
+                        {guild.member_count !== undefined && (
+                          <TableCell className="text-right">
+                            <Link href={`/guilds/${guild.id}`} className="block">
+                              {guild.member_count}
+                            </Link>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    )
+                  })
                 )}
               </TableBody>
             </Table>

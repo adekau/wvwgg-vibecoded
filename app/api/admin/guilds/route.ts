@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
-import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb'
+import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb'
 import { createCredentialsProvider } from '@/server/aws-credentials'
 
 const credentials = createCredentialsProvider()
@@ -26,9 +26,10 @@ export async function GET(request: NextRequest) {
     do {
       iterations++
       const response = await docClient.send(
-        new ScanCommand({
+        new QueryCommand({
           TableName: process.env.TABLE_NAME,
-          FilterExpression: '#type = :type',
+          IndexName: 'type-interval-index',
+          KeyConditionExpression: '#type = :type',
           ExpressionAttributeNames: {
             '#type': 'type',
           },

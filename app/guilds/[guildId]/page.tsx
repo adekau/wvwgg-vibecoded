@@ -22,17 +22,18 @@ export default async function GuildDetailPage({ params }: PageProps) {
     notFound()
   }
 
-  const world = worldsData?.find(w => w.id === guild.worldId)
-
   // Find alliance if this is a member guild
-  const allianceGuild = guilds.find(g => g.id === (guild as any).allianceGuildId)
+  const allianceGuild = guilds.find(g => g.id === guild.allianceGuildId)
 
   // Find member guilds if this is an alliance
+  // Check both memberGuildIds (admin set) and find guilds that reference this as their alliance
   const memberGuilds = guilds.filter(g =>
-    (guild as any).memberGuildIds?.includes(g.id)
+    guild.memberGuildIds?.includes(g.id) || g.allianceGuildId === guild.id
   )
 
-  const classification = (guild as any).classification as string | undefined
+  // For member guilds, use alliance's world; otherwise use guild's world
+  const displayWorldId = allianceGuild ? allianceGuild.worldId : guild.worldId
+  const world = worldsData?.find(w => w.id === displayWorldId)
 
   return (
     <div className="min-h-screen">
@@ -43,7 +44,7 @@ export default async function GuildDetailPage({ params }: PageProps) {
         <GuildDetailHeader
           guild={guild}
           allGuilds={guilds}
-          classification={classification}
+          classification={guild.classification}
         />
 
         <div className="grid gap-6 md:grid-cols-2">
@@ -57,11 +58,14 @@ export default async function GuildDetailPage({ params }: PageProps) {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <div className="text-sm text-muted-foreground mb-1">World/Server</div>
+                <div className="text-sm text-muted-foreground mb-1">
+                  World/Server
+                  {allianceGuild && <span className="ml-1">(from Alliance)</span>}
+                </div>
                 <div className="flex items-center gap-2">
                   <Globe className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">
-                    {world?.name || `Unknown (${guild.worldId})`}
+                    {world?.name || `Unknown (${displayWorldId})`}
                   </span>
                 </div>
               </div>

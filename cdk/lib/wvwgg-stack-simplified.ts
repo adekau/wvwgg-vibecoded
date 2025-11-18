@@ -33,7 +33,15 @@ export class WvWGGStack extends cdk.Stack {
       partitionKey: { name: 'type', type: cdk.aws_dynamodb.AttributeType.STRING },
       sortKey: { name: 'id', type: cdk.aws_dynamodb.AttributeType.STRING },
       billing: cdk.aws_dynamodb.Billing.onDemand(),
-      removalPolicy: props.stage === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY
+      removalPolicy: props.stage === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      // GSI for efficient querying by type + interval (for match-history)
+      globalSecondaryIndexes: [
+        {
+          indexName: 'type-interval-index',
+          partitionKey: { name: 'type', type: cdk.aws_dynamodb.AttributeType.STRING },
+          sortKey: { name: 'interval', type: cdk.aws_dynamodb.AttributeType.NUMBER },
+        }
+      ]
     });
 
     // Grant guild batch lambda permission to write to DynamoDB
@@ -125,10 +133,14 @@ export class WvWGGStack extends cdk.Stack {
               actions: [
                 'dynamodb:GetItem',
                 'dynamodb:PutItem',
+                'dynamodb:UpdateItem',
                 'dynamodb:Scan',
                 'dynamodb:Query'
               ],
-              resources: [this.dynamoDbTable.tableArn]
+              resources: [
+                this.dynamoDbTable.tableArn,
+                `${this.dynamoDbTable.tableArn}/index/*` // Allow access to GSI
+              ]
             })
           ]
         })

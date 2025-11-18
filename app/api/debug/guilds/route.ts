@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
-import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb'
+import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb'
 import { createCredentialsProvider } from '@/server/aws-credentials'
 
 const credentials = createCredentialsProvider()
@@ -14,12 +14,12 @@ const docClient = DynamoDBDocumentClient.from(client)
 
 export async function GET() {
   try {
-    console.log('Debug: Scanning for guilds...')
+    console.log('Debug: Querying for guilds...')
     console.log('TABLE_NAME:', process.env.TABLE_NAME)
     console.log('AWS_ROLE_ARN:', process.env.AWS_ROLE_ARN)
     console.log('Has credentials provider:', !!credentials)
 
-    console.log('Sending scan command with pagination...')
+    console.log('Sending query command with pagination...')
 
     let allItems: any[] = []
     let lastEvaluatedKey: Record<string, any> | undefined
@@ -28,19 +28,20 @@ export async function GET() {
 
     do {
       iterations++
-      console.log(`Scan iteration ${iterations}...`)
+      console.log(`Query iteration ${iterations}...`)
 
       const response = await docClient.send(
-        new ScanCommand({
+        new QueryCommand({
           TableName: process.env.TABLE_NAME,
-          FilterExpression: '#type = :type',
+          IndexName: 'type-interval-index',
+          KeyConditionExpression: '#type = :type',
           ExpressionAttributeNames: { '#type': 'type' },
           ExpressionAttributeValues: { ':type': 'guild' },
           ExclusiveStartKey: lastEvaluatedKey,
         })
       )
 
-      console.log(`Iteration ${iterations} - Scanned: ${response.ScannedCount}, Found: ${response.Count}`)
+      console.log(`Iteration ${iterations} - Found: ${response.Count}`)
 
       if (response.Items) {
         allItems = allItems.concat(response.Items)
@@ -49,7 +50,7 @@ export async function GET() {
       lastEvaluatedKey = response.LastEvaluatedKey
     } while (lastEvaluatedKey && iterations < maxIterations)
 
-    console.log(`Scan complete after ${iterations} iterations`)
+    console.log(`Query complete after ${iterations} iterations`)
     console.log(`Total guilds found: ${allItems.length}`)
     console.log('First item:', JSON.stringify(allItems[0], null, 2))
 

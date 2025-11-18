@@ -1,5 +1,5 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, GetCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, GetCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { unstable_cache } from 'next/cache';
 import { createCredentialsProvider } from './aws-credentials';
 
@@ -57,6 +57,9 @@ export interface IGuild {
   favor?: number;
   member_count?: number;
   emblem?: any;
+  classification?: 'alliance' | 'member' | 'independent';
+  allianceGuildId?: string;
+  memberGuildIds?: string[];
 }
 
 // DynamoDB Client Setup
@@ -152,13 +155,14 @@ export const getGuilds = unstable_cache(
       let iterations = 0;
       const maxIterations = 100; // Safety limit
 
-      // Paginate through all results since match-history entries fill up response size
+      // Use QueryCommand with GSI for efficient querying (no full table scan!)
       do {
         iterations++;
         const response = await docClient.send(
-          new ScanCommand({
+          new QueryCommand({
             TableName: process.env.TABLE_NAME,
-            FilterExpression: '#type = :type',
+            IndexName: 'type-interval-index',
+            KeyConditionExpression: '#type = :type',
             ExpressionAttributeNames: { '#type': 'type' },
             ExpressionAttributeValues: { ':type': 'guild' },
             ExclusiveStartKey: lastEvaluatedKey,
@@ -172,9 +176,14 @@ export const getGuilds = unstable_cache(
         lastEvaluatedKey = response.LastEvaluatedKey;
       } while (lastEvaluatedKey && iterations < maxIterations);
 
-      console.log(`[GUILDS] Found ${allItems.length} guilds after ${iterations} scan iterations`);
+      console.log(`[GUILDS] Queried ${allItems.length} guilds after ${iterations} iterations`);
 
-      return allItems.map(item => item.data) || [];
+      return allItems.map(item => ({
+        ...item.data,
+        classification: item.classification,
+        allianceGuildId: item.allianceGuildId,
+        memberGuildIds: item.memberGuildIds,
+      })) || [];
     } catch (error) {
       console.error('Error fetching guilds:', error);
       return [];
@@ -202,12 +211,13 @@ export const getMatchHistory = async (hours: number = 24): Promise<HistoricalSna
     let allSnapshots: HistoricalSnapshot[] = [];
     let lastEvaluatedKey: Record<string, any> | undefined;
 
-    // Handle pagination - keep scanning until we have all items
+    // Use QueryCommand with GSI for efficient querying (no full table scan!)
     do {
       const response = await docClient.send(
-        new ScanCommand({
+        new QueryCommand({
           TableName: process.env.TABLE_NAME,
-          FilterExpression: '#type = :type AND #interval >= :startInterval',
+          IndexName: 'type-interval-index',
+          KeyConditionExpression: '#type = :type AND #interval >= :startInterval',
           ExpressionAttributeNames: {
             '#type': 'type',
             '#interval': 'interval',
@@ -224,7 +234,7 @@ export const getMatchHistory = async (hours: number = 24): Promise<HistoricalSna
       lastEvaluatedKey = response.LastEvaluatedKey;
     } while (lastEvaluatedKey);
 
-    console.log(`[HISTORY] Fetched ${allSnapshots.length} snapshots for last ${hours} hours (intervals >= ${startInterval})`);
+    console.log(`[HISTORY] Queried ${allSnapshots.length} snapshots for last ${hours} hours (intervals >= ${startInterval})`);
 
     // Sort by timestamp ascending (oldest first)
     return allSnapshots.sort((a, b) => a.timestamp - b.timestamp);

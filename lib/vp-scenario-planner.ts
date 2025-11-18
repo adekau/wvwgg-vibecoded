@@ -189,6 +189,8 @@ function findMinimumEffortPath(input: ScenarioInput): ScenarioResult {
     }
 
     // Determine optimal 2nd/3rd distribution
+    // Strategy: In skirmishes where first doesn't win, give wins to third place
+    // to minimize second place's VP and help first catch up
     for (let i = 0; i < remainingSkirmishes.length; i++) {
       if (placements[i][first] === 1) {
         // First has 1st, assign 2nd and 3rd
@@ -197,50 +199,14 @@ function findMinimumEffortPath(input: ScenarioInput): ScenarioResult {
         tempVP[second] += remainingSkirmishes[i].vpAwards.second;
         tempVP[third] += remainingSkirmishes[i].vpAwards.third;
       } else {
-        // First doesn't have 1st - need to assign all three placements
-        // Check what each team needs based on current temp VP
-        const firstBehindSecond = tempVP[first] < tempVP[second];
-        const secondBehindThird = tempVP[second] < tempVP[third];
-
-        if (firstBehindSecond) {
-          // First needs more VP - give them 2nd
-          if (secondBehindThird) {
-            // Second also needs more - give them 1st, third gets 3rd
-            placements[i][first] = 2;
-            placements[i][second] = 1;
-            placements[i][third] = 3;
-            tempVP[first] += remainingSkirmishes[i].vpAwards.second;
-            tempVP[second] += remainingSkirmishes[i].vpAwards.first;
-            tempVP[third] += remainingSkirmishes[i].vpAwards.third;
-          } else {
-            // Second is ahead of third - can give third 1st to slow them down
-            placements[i][first] = 2;
-            placements[i][third] = 1;
-            placements[i][second] = 3;
-            tempVP[first] += remainingSkirmishes[i].vpAwards.second;
-            tempVP[third] += remainingSkirmishes[i].vpAwards.first;
-            tempVP[second] += remainingSkirmishes[i].vpAwards.third;
-          }
-        } else {
-          // First is ahead of second - can afford to give them 3rd
-          if (secondBehindThird) {
-            // Second needs help - give them 1st
-            placements[i][second] = 1;
-            placements[i][third] = 2;
-            placements[i][first] = 3;
-            tempVP[second] += remainingSkirmishes[i].vpAwards.first;
-            tempVP[third] += remainingSkirmishes[i].vpAwards.second;
-            tempVP[first] += remainingSkirmishes[i].vpAwards.third;
-          } else {
-            // Second is ahead of third - give third 1st to keep them in range
-            placements[i][third] = 1;
-            placements[i][second] = 2;
-            placements[i][first] = 3;
-            tempVP[third] += remainingSkirmishes[i].vpAwards.first;
-            tempVP[second] += remainingSkirmishes[i].vpAwards.second;
-            tempVP[first] += remainingSkirmishes[i].vpAwards.third;
-          }
-        }
+        // First doesn't have 1st - give 1st to third (minimize second's VP)
+        // This maximizes first's chance of beating second
+        placements[i][third] = 1;
+        placements[i][first] = 2;
+        placements[i][second] = 3;
+        tempVP[third] += remainingSkirmishes[i].vpAwards.first;
+        tempVP[first] += remainingSkirmishes[i].vpAwards.second;
+        tempVP[second] += remainingSkirmishes[i].vpAwards.third;
       }
     }
 

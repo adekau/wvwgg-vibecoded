@@ -12,10 +12,13 @@ import { AutoRefresh } from '@/components/auto-refresh'
 import { PrimeTimePerformance } from '@/components/prime-time-performance'
 import { VPScenarioPlanner } from '@/components/vp-scenario-planner'
 import { PPTBreakdown } from '@/components/ppt-breakdown'
+import { WorldAlliances } from '@/components/world-alliances'
 import { useState, useEffect } from 'react'
 import { calculateMatchPPT, getPPTTrend, calculateTicksBehind, ticksToTimeString, getTeamStatus, calculateRequiredPPTToOvertake, getMaximumPossiblePPT } from '@/lib/ppt-calculator'
+import { IGuild } from '@/server/queries'
 
 interface World {
+  id: number
   name: string
   kills: number
   deaths: number
@@ -71,6 +74,7 @@ interface Match {
 interface MatchDashboardProps {
   match: Match
   matchId: string
+  guilds: IGuild[]
 }
 
 const colorClasses = {
@@ -123,7 +127,7 @@ interface HistoryMapData {
   deaths: { red: number; blue: number; green: number }
 }
 
-export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
+export function MatchDashboard({ match, matchId, guilds }: MatchDashboardProps) {
   const sortedWorlds = [...match.worlds].sort((a, b) => b.score - a.score)
   const highestScore = sortedWorlds[0]?.score || 1 // Prevent division by zero
 
@@ -136,6 +140,10 @@ export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
       }
     : calculateMatchPPT(match.objectives)
   const highestPPT = Math.max(matchPPT.red.total, matchPPT.blue.total, matchPPT.green.total)
+
+  // Get the leader's PPT (for comparison - teams are compared against the score leader, not PPT leader)
+  const leaderColor = sortedWorlds[0]?.color || 'red'
+  const leaderPPT = matchPPT[leaderColor].total
 
   const [selectedSkirmish, setSelectedSkirmish] = useState<number | 'all'>('all')
   const [selectedMap, setSelectedMap] = useState<string>('all')
@@ -414,7 +422,7 @@ export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
           // Get PPT data for this team
           const teamPPT = matchPPT[world.color]
           const pptTrend = getPPTTrend(teamPPT.total, highestPPT)
-          const pptDifferential = teamPPT.total - highestPPT
+          const pptDifferential = teamPPT.total - leaderPPT
 
           // Calculate ticks behind and team status
           const ticksBehind = pointsBehind > 0 ? calculateTicksBehind(pointsBehind, pptDifferential) : null
@@ -436,7 +444,7 @@ export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
             requiredPPT = calculateRequiredPPTToOvertake(
               pointsBehind,
               teamPPT.total,
-              highestPPT,
+              leaderPPT,
               minutesRemaining
             )
           }
@@ -823,6 +831,12 @@ export function MatchDashboard({ match, matchId }: MatchDashboardProps) {
           }}
         />
       </div>
+
+      {/* World Alliances */}
+      <WorldAlliances
+        worlds={match.worlds.map(w => ({ id: w.id, name: w.name, color: w.color }))}
+        guilds={guilds}
+      />
 
       {/* Prime Time Performance */}
       <PrimeTimePerformance matchId={matchId} worlds={match.worlds.map(w => ({ name: w.name, color: w.color }))} />
