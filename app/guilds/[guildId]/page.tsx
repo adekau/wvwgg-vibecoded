@@ -3,9 +3,10 @@ import { getGuilds, getWorlds } from '@/server/queries'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Shield, Users, Globe, Link as LinkIcon } from 'lucide-react'
+import { Users, Globe, Link as LinkIcon } from 'lucide-react'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { GuildDetailHeader } from '@/components/guild-detail-header'
 
 interface PageProps {
   params: Promise<{ guildId: string }>
@@ -39,29 +40,11 @@ export default async function GuildDetailPage({ params }: PageProps) {
 
       <main className="container mx-auto px-4 py-8 space-y-8">
         {/* Header */}
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <Badge variant="outline" className="font-mono text-lg px-3 py-1">
-                {guild.tag}
-              </Badge>
-              {classification && (
-                <Badge variant={
-                  classification === 'alliance' ? 'default' :
-                  classification === 'member' ? 'secondary' : 'outline'
-                }>
-                  {classification}
-                </Badge>
-              )}
-            </div>
-            <h1 className="text-4xl font-bold">{guild.name}</h1>
-          </div>
-
-          <Button variant="outline" size="sm">
-            <Shield className="h-4 w-4 mr-2" />
-            Update Guild Info
-          </Button>
-        </div>
+        <GuildDetailHeader
+          guild={guild}
+          allGuilds={guilds}
+          classification={classification}
+        />
 
         <div className="grid gap-6 md:grid-cols-2">
           {/* Basic Info */}
