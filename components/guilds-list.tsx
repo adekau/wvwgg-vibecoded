@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Users, Shield, Search } from 'lucide-react'
 import { IGuild } from '@/server/queries'
@@ -16,6 +17,8 @@ interface GuildsListProps {
 export function GuildsList({ guilds, worldMap }: GuildsListProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedWorld, setSelectedWorld] = useState<string>('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 48 // 4 columns × 12 rows
 
   // Get unique worlds from guilds
   const availableWorlds = useMemo(() => {
@@ -49,8 +52,20 @@ export function GuildsList({ guilds, worldMap }: GuildsListProps) {
     }
 
     // Sort alphabetically
-    return filtered.sort((a, b) => a.name.localeCompare(b.name))
+    const sorted = filtered.sort((a, b) => a.name.localeCompare(b.name))
+
+    // Reset to page 1 when filters change
+    setCurrentPage(1)
+    return sorted
   }, [guilds, selectedWorld, searchQuery])
+
+  const paginatedGuilds = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    return filteredGuilds.slice(startIndex, endIndex)
+  }, [filteredGuilds, currentPage, itemsPerPage])
+
+  const totalPages = Math.ceil(filteredGuilds.length / itemsPerPage)
 
   return (
     <div className="space-y-6">
@@ -83,8 +98,19 @@ export function GuildsList({ guilds, worldMap }: GuildsListProps) {
       </div>
 
       {/* Results Count */}
-      <div className="text-sm text-muted-foreground">
-        Showing {filteredGuilds.length.toLocaleString()} of {guilds.length.toLocaleString()} guilds
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-muted-foreground">
+          {filteredGuilds.length === guilds.length ? (
+            <>Showing all {guilds.length.toLocaleString()} guilds</>
+          ) : (
+            <>Showing {filteredGuilds.length.toLocaleString()} of {guilds.length.toLocaleString()} guilds</>
+          )}
+        </div>
+        {totalPages > 1 && (
+          <div className="text-sm text-muted-foreground">
+            Page {currentPage} of {totalPages}
+          </div>
+        )}
       </div>
 
       {/* Guilds Grid */}
@@ -96,7 +122,7 @@ export function GuildsList({ guilds, worldMap }: GuildsListProps) {
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filteredGuilds.map((guild, idx) => (
+          {paginatedGuilds.map((guild, idx) => (
             <Card
               key={guild.id}
               className="panel-border inset-card hover:shadow-lg transition-all duration-300 hover:scale-[1.02]"
@@ -129,6 +155,63 @@ export function GuildsList({ guilds, worldMap }: GuildsListProps) {
               </div>
             </Card>
           ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 pt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setCurrentPage(p => Math.max(1, p - 1))
+              window.scrollTo({ top: 0, behavior: 'smooth' })
+            }}
+            disabled={currentPage === 1}
+          >
+            Previous
+          </Button>
+          <div className="flex items-center gap-1">
+            {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+              let pageNum: number
+              if (totalPages <= 7) {
+                pageNum = i + 1
+              } else if (currentPage <= 4) {
+                pageNum = i + 1
+              } else if (currentPage >= totalPages - 3) {
+                pageNum = totalPages - 6 + i
+              } else {
+                pageNum = currentPage - 3 + i
+              }
+
+              return (
+                <Button
+                  key={pageNum}
+                  variant={currentPage === pageNum ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => {
+                    setCurrentPage(pageNum)
+                    window.scrollTo({ top: 0, behavior: 'smooth' })
+                  }}
+                  className="w-10"
+                >
+                  {pageNum}
+                </Button>
+              )
+            })}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setCurrentPage(p => Math.min(totalPages, p + 1))
+              window.scrollTo({ top: 0, behavior: 'smooth' })
+            }}
+            disabled={currentPage === totalPages}
+          >
+            Next
+          </Button>
         </div>
       )}
     </div>
