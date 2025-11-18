@@ -122,17 +122,16 @@ export function calculateScenario(input: ScenarioInput): ScenarioResult {
 
   /**
    * Greedy search: for each level of effort, try to construct a valid solution
+   * Simple strategy: desired first gets X wins, remaining distribute optimally
    */
   function greedySearch(maxFirstPlacesForDesiredFirst: number): Placement[] | null {
     const placements: Placement[] = new Array(numSkirmishes);
     let firstPlacesGiven = 0;
 
-    // Assign placements greedily (highest VP skirmishes first)
-    for (const { skirmish, index } of sortedSkirmishes) {
-      const needsFirstForDesired = firstPlacesGiven < maxFirstPlacesForDesiredFirst;
-
-      if (needsFirstForDesired) {
-        // Give 1st to desired first place
+    // Assign placements (highest VP skirmishes first for desired winner)
+    for (const { index } of sortedSkirmishes) {
+      if (firstPlacesGiven < maxFirstPlacesForDesiredFirst) {
+        // Desired 1st place team wins this skirmish
         placements[index] = {
           [desiredOutcome.first]: 1,
           [desiredOutcome.second]: 2,
@@ -140,47 +139,12 @@ export function calculateScenario(input: ScenarioInput): ScenarioResult {
         } as Placement;
         firstPlacesGiven++;
       } else {
-        // Choose best placement where desired first doesn't get 1st
-        // Score based on how well it achieves desired outcome
-        let bestPlacement: Placement | null = null;
-        let bestScore = -Infinity;
-
-        for (const candidate of validPlacements) {
-          // Skip if desired first gets 1st (we already allocated those)
-          if (candidate[desiredOutcome.first] === 1) continue;
-
-          // Build temp placements array with only filled indices so far
-          const filledIndices = sortedSkirmishes
-            .slice(0, sortedSkirmishes.findIndex(s => s.index === index) + 1)
-            .map(s => s.index);
-
-          const tempPlacements = filledIndices.map(i =>
-            i === index ? candidate : placements[i]
-          );
-          const relevantSkirmishes = filledIndices.map(i => remainingSkirmishes[i]);
-
-          const tempVP = calculateFinalVP(currentVP, relevantSkirmishes, tempPlacements);
-
-          // Score: how well does this help achieve desired outcome?
-          const score = (tempVP[desiredOutcome.first] - tempVP[desiredOutcome.second]) +
-                       (tempVP[desiredOutcome.second] - tempVP[desiredOutcome.third]);
-
-          if (score > bestScore) {
-            bestScore = score;
-            bestPlacement = candidate;
-          }
-        }
-
-        // Fallback: if no placement found, use one that minimizes 2nd place VP
-        if (bestPlacement) {
-          placements[index] = bestPlacement;
-        } else {
-          placements[index] = {
-            [desiredOutcome.first]: 2,
-            [desiredOutcome.second]: 3,
-            [desiredOutcome.third]: 1,
-          } as Placement;
-        }
+        // Desired 1st doesn't win - give win to 3rd (minimizes 2nd's VP)
+        placements[index] = {
+          [desiredOutcome.first]: 2,
+          [desiredOutcome.second]: 3,
+          [desiredOutcome.third]: 1,
+        } as Placement;
       }
     }
 
