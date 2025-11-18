@@ -2149,3 +2149,8 @@ Building on Phase 1 prediction tool:
 - Feature #14 (Tier Movement & Rankings) - Strategic depth
 - Feature #8 (Historical Archive) - Requires infrastructure decisions
 - Feature #17 (Mobile PWA) - Broader audience reach
+
+
+## Optimizaitons
+
+- Scan commands expensive? Can we use queries instead?

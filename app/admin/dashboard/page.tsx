@@ -166,22 +166,22 @@ export default function AdminDashboard() {
         <div>
           <h2 className="text-2xl font-bold mb-4">Quick Actions</h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Card className="panel-border hover:shadow-lg transition-shadow cursor-pointer group" onClick={() => router.push('/admin/guilds/review')}>
+            <Card className="panel-border hover:shadow-lg transition-shadow cursor-pointer group" onClick={() => router.push('/admin/guilds')}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 group-hover:text-accent transition-colors">
                   <List className="h-5 w-5" />
-                  Review Queue
+                  Manage Guilds
                 </CardTitle>
                 <CardDescription>
-                  Review and classify {stats.needsReview} pending guilds
+                  Search and edit guild classifications
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <Button className="w-full" onClick={(e) => {
                   e.stopPropagation()
-                  router.push('/admin/guilds/review')
+                  router.push('/admin/guilds')
                 }}>
-                  Start Reviewing
+                  Manage Guilds
                 </Button>
               </CardContent>
             </Card>
