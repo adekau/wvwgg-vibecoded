@@ -10,7 +10,7 @@ import {
   getCurrentStandings,
   type ScenarioInput,
   type ScenarioResult,
-} from '@/lib/vp-scenario-solver'
+} from '@/lib/vp-scenario-solver-ilp'
 import { getVPTierForTime, getRegionFromMatchId } from '@/lib/vp-tiers'
 
 interface VPScenarioPlannerProps {

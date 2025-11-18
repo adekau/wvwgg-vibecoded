@@ -49,6 +49,7 @@
     "date-fns": "4.1.0",
     "embla-carousel-react": "8.5.1",
     "input-otp": "1.4.1",
+    "javascript-lp-solver": "^0.4.24",
     "logic-solver": "^2.0.1",
     "lucide-react": "^0.454.0",
     "next": "^16.0.3",
