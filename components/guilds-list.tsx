@@ -1,12 +1,20 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Card } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Users, Shield, Search } from 'lucide-react'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Search } from 'lucide-react'
 import { IGuild } from '@/server/queries'
 
 interface GuildsListProps {
@@ -18,7 +26,7 @@ export function GuildsList({ guilds, worldMap }: GuildsListProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedWorld, setSelectedWorld] = useState<string>('all')
   const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 48 // 4 columns × 12 rows
+  const itemsPerPage = 50
 
   // Get unique worlds from guilds
   const availableWorlds = useMemo(() => {
@@ -113,50 +121,53 @@ export function GuildsList({ guilds, worldMap }: GuildsListProps) {
         )}
       </div>
 
-      {/* Guilds Grid */}
-      {filteredGuilds.length === 0 ? (
-        <Card className="panel-border inset-card p-12 text-center">
-          <p className="text-muted-foreground">
-            No guilds found matching your search criteria.
-          </p>
-        </Card>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {paginatedGuilds.map((guild, idx) => (
-            <Card
-              key={guild.id}
-              className="panel-border inset-card hover:shadow-lg transition-all duration-300 hover:scale-[1.02]"
-              style={{ animationDelay: `${Math.min(idx * 0.01, 0.5)}s` }}
-            >
-              <div className="p-5 space-y-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="outline" className="font-mono text-xs shrink-0">
-                        {guild.tag}
-                      </Badge>
-                    </div>
-                    <h3 className="font-bold text-base truncate" title={guild.name}>
-                      {guild.name}
-                    </h3>
-                  </div>
-                  <Shield className="h-5 w-5 text-accent shrink-0 ml-2" />
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs text-muted-foreground">World</div>
-                    <div className="text-sm font-medium truncate" title={worldMap.get(guild.worldId)}>
-                      {worldMap.get(guild.worldId) || `Unknown (${guild.worldId})`}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
+      {/* Guilds Table */}
+      <Card className="panel-border">
+        <CardContent className="p-0">
+          <div className="rounded-md border-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Guild Name</TableHead>
+                  <TableHead>Tag</TableHead>
+                  <TableHead>World</TableHead>
+                  {guilds[0]?.member_count !== undefined && (
+                    <TableHead className="text-right">Members</TableHead>
+                  )}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedGuilds.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                      No guilds found matching your search criteria.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  paginatedGuilds.map((guild) => (
+                    <TableRow key={guild.id} className="hover:bg-accent/50">
+                      <TableCell className="font-medium">{guild.name}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="font-mono">
+                          {guild.tag}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {worldMap.get(guild.worldId) || `Unknown (${guild.worldId})`}
+                      </TableCell>
+                      {guild.member_count !== undefined && (
+                        <TableCell className="text-right">
+                          {guild.member_count}
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Pagination */}
       {totalPages > 1 && (
