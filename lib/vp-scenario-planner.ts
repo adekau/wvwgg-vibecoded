@@ -171,10 +171,9 @@ function findMinimumEffortPath(input: ScenarioInput): ScenarioResult {
 
   /**
    * Try to construct a valid scenario with X first-place finishes for desired winner
-   * Optimal strategy:
-   * - Skirmishes where desired 1st wins: 1st=first, 2nd=second, 3rd=third
-   * - Skirmishes where desired 1st doesn't win: 1st=third, 2nd=first, 3rd=second
-   * This minimizes desired 2nd place team's VP while maximizing desired 1st place team's VP
+   * Optimal strategy depends on whether desired 1st is ahead or behind:
+   * - If behind: Give desired 1st the wins, minimize 2nd's VP
+   * - If ahead: Give desired 1st fewer wins, give wins to 3rd (keep them low)
    */
   const tryConstructScenario = (numFirsts: number): Array<{ red: 1 | 2 | 3; blue: 1 | 2 | 3; green: 1 | 2 | 3 }> => {
     const placements: Array<{ red: 1 | 2 | 3; blue: 1 | 2 | 3; green: 1 | 2 | 3 }> = [];
@@ -183,6 +182,9 @@ function findMinimumEffortPath(input: ScenarioInput): ScenarioResult {
     for (let i = 0; i < remainingSkirmishes.length; i++) {
       placements.push({ red: 3, blue: 3, green: 3 } as any);
     }
+
+    // Check if desired 1st is already ahead of desired 2nd
+    const firstIsAhead = currentVP[first] > currentVP[second];
 
     // Assign first places to desired winner in highest VP skirmishes
     let firstPlacesGiven = 0;
@@ -195,21 +197,32 @@ function findMinimumEffortPath(input: ScenarioInput): ScenarioResult {
         firstPlacesGiven++;
       } else {
         // Desired 1st place team doesn't win
-        // Give win to desired 3rd place (minimizes 2nd place's VP)
-        placements[originalIndex][third] = 1;
-        placements[originalIndex][first] = 2;
-        placements[originalIndex][second] = 3;
+        if (firstIsAhead) {
+          // First is already ahead - give wins to 3rd to keep them competitive
+          // This prevents 2nd from getting too many wins
+          placements[originalIndex][third] = 1;
+          placements[originalIndex][second] = 2;
+          placements[originalIndex][first] = 3;
+        } else {
+          // First is behind - give 2nd place to first, minimize 2nd's VP
+          placements[originalIndex][third] = 1;
+          placements[originalIndex][first] = 2;
+          placements[originalIndex][second] = 3;
+        }
       }
     }
 
     return placements;
   };
 
-  // Binary search for minimum number of 1st place finishes needed
+  // Determine starting point for binary search based on current standings
+  // If desired 1st is already ahead, start with fewer wins
+  const firstIsAhead = currentVP[first] > currentVP[second];
+  let low = firstIsAhead ? 0 : Math.floor(remainingSkirmishes.length * 0.3);
+  let high = firstIsAhead ? Math.floor(remainingSkirmishes.length * 0.5) : remainingSkirmishes.length;
+
   let bestPlacements: Array<{ red: 1 | 2 | 3; blue: 1 | 2 | 3; green: 1 | 2 | 3 }> | null = null;
   let minFirstPlaces = remainingSkirmishes.length + 1;
-  let low = 0;
-  let high = remainingSkirmishes.length;
 
   while (low <= high) {
     const mid = Math.floor((low + high) / 2);
