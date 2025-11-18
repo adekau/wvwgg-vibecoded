@@ -21,8 +21,15 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, X, Search } from 'lucide-react'
+import { Loader2, X, Search, History } from 'lucide-react'
 import { IGuild } from '@/server/queries'
+
+interface AuditLogEntry {
+  timestamp: number
+  actor: string
+  action: string
+  changes: Record<string, { from: any; to: any }>
+}
 
 interface AdminGuild extends IGuild {
   classification?: 'alliance' | 'member' | 'independent'
@@ -32,6 +39,7 @@ interface AdminGuild extends IGuild {
   reviewed?: boolean
   reviewedAt?: number
   reviewedBy?: string
+  auditLog?: AuditLogEntry[]
 }
 
 interface GuildEditModalProps {
@@ -261,6 +269,35 @@ export function GuildEditModal({ guild, allGuilds, open, onClose, onSave }: Guil
               rows={4}
             />
           </div>
+
+          {/* Audit Log */}
+          {guild.auditLog && guild.auditLog.length > 0 && (
+            <div className="space-y-2 pt-4 border-t">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <History className="h-4 w-4" />
+                Audit Log
+              </div>
+              <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                {[...guild.auditLog].reverse().map((entry, idx) => (
+                  <div key={idx} className="text-sm p-3 rounded-md bg-muted/50 border">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium">{entry.actor}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(entry.timestamp).toLocaleString()}
+                      </span>
+                    </div>
+                    {Object.entries(entry.changes).map(([field, change]) => (
+                      <div key={field} className="text-xs text-muted-foreground">
+                        <span className="font-medium">{field}:</span>{' '}
+                        <span className="line-through">{JSON.stringify(change.from)}</span>{' '}
+                        → <span className="text-foreground">{JSON.stringify(change.to)}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <DialogFooter>

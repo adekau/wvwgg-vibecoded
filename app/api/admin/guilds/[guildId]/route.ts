@@ -28,6 +28,37 @@ export async function PATCH(
     const { guildId } = await params
     const body: UpdateGuildRequest = await request.json()
 
+    // Get current guild state for audit log
+    const currentGuild = await docClient.send(
+      new GetCommand({
+        TableName: process.env.TABLE_NAME,
+        Key: { type: 'guild', id: guildId },
+      })
+    )
+
+    if (!currentGuild.Item) {
+      return NextResponse.json(
+        { error: 'Guild not found' },
+        { status: 404 }
+      )
+    }
+
+    // Track changes for audit log
+    const changes: Record<string, { from: any; to: any }> = {}
+
+    if (body.classification && body.classification !== currentGuild.Item.classification) {
+      changes.classification = { from: currentGuild.Item.classification, to: body.classification }
+    }
+    if (body.allianceGuildId !== undefined && body.allianceGuildId !== currentGuild.Item.allianceGuildId) {
+      changes.allianceGuildId = { from: currentGuild.Item.allianceGuildId, to: body.allianceGuildId }
+    }
+    if (body.memberGuildIds !== undefined && JSON.stringify(body.memberGuildIds) !== JSON.stringify(currentGuild.Item.memberGuildIds)) {
+      changes.memberGuildIds = { from: currentGuild.Item.memberGuildIds, to: body.memberGuildIds }
+    }
+    if (body.notes !== undefined && body.notes !== currentGuild.Item.notes) {
+      changes.notes = { from: currentGuild.Item.notes, to: body.notes }
+    }
+
     // Build update expression dynamically
     const updateExpressions: string[] = []
     const expressionAttributeNames: Record<string, string> = {}
@@ -56,6 +87,21 @@ export async function PATCH(
       expressionAttributeNames['#notes'] = 'notes'
       expressionAttributeValues[':notes'] = body.notes
     }
+
+    // Create audit log entry
+    const auditEntry = {
+      timestamp: Date.now(),
+      actor: body.reviewedBy || 'unknown',
+      action: 'update',
+      changes,
+    }
+
+    // Append to audit log (create if doesn't exist)
+    const existingAuditLog = currentGuild.Item.auditLog || []
+    updateExpressions.push('#auditLog = list_append(if_not_exists(#auditLog, :emptyList), :auditEntry)')
+    expressionAttributeNames['#auditLog'] = 'auditLog'
+    expressionAttributeValues[':auditEntry'] = [auditEntry]
+    expressionAttributeValues[':emptyList'] = []
 
     // Always mark as reviewed when updating
     updateExpressions.push('#isReviewed = :isReviewed')
