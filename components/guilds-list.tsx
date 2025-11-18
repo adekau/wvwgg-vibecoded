@@ -122,14 +122,14 @@ export function GuildsList({ guilds, worldMap }: GuildsListProps) {
       </div>
 
       {/* Guilds Table */}
-      <Card className="panel-border">
+      <Card className="panel-border inset-card">
         <CardContent className="p-0">
           <div className="rounded-md border-0">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Guild Name</TableHead>
                   <TableHead>Tag</TableHead>
+                  <TableHead>Guild Name</TableHead>
                   <TableHead>World</TableHead>
                   {guilds[0]?.member_count !== undefined && (
                     <TableHead className="text-right">Members</TableHead>
@@ -146,12 +146,12 @@ export function GuildsList({ guilds, worldMap }: GuildsListProps) {
                 ) : (
                   paginatedGuilds.map((guild) => (
                     <TableRow key={guild.id} className="hover:bg-accent/50">
-                      <TableCell className="font-medium">{guild.name}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="font-mono">
                           {guild.tag}
                         </Badge>
                       </TableCell>
+                      <TableCell className="font-medium">{guild.name}</TableCell>
                       <TableCell>
                         {worldMap.get(guild.worldId) || `Unknown (${guild.worldId})`}
                       </TableCell>
