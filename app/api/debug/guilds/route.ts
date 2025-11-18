@@ -19,38 +19,47 @@ export async function GET() {
     console.log('AWS_ROLE_ARN:', process.env.AWS_ROLE_ARN)
     console.log('Has credentials provider:', !!credentials)
 
-    console.log('Sending scan command...')
+    console.log('Sending scan command with pagination...')
 
-    const response = await docClient.send(
-      new ScanCommand({
-        TableName: process.env.TABLE_NAME,
-        FilterExpression: '#type = :type',
-        ExpressionAttributeNames: { '#type': 'type' },
-        ExpressionAttributeValues: { ':type': 'guild' },
-      })
-    )
+    let allItems: any[] = []
+    let lastEvaluatedKey: Record<string, any> | undefined
+    let iterations = 0
+    const maxIterations = 100 // Safety limit
 
-    console.log('Scan complete')
-    console.log('Response:', {
-      Count: response.Count,
-      ScannedCount: response.ScannedCount,
-      ItemsLength: response.Items?.length || 0,
-      LastEvaluatedKey: response.LastEvaluatedKey
-    })
-    console.log('Response count:', response.Items?.length || 0)
-    console.log('First item:', JSON.stringify(response.Items?.[0], null, 2))
-    console.log('First item type:', response.Items?.[0]?.type)
-    console.log('First item data:', JSON.stringify(response.Items?.[0]?.data, null, 2))
+    do {
+      iterations++
+      console.log(`Scan iteration ${iterations}...`)
 
-    const mappedGuilds = response.Items?.map(item => {
-      console.log('Mapping item:', JSON.stringify(item, null, 2))
-      return item.data
-    }) || []
+      const response = await docClient.send(
+        new ScanCommand({
+          TableName: process.env.TABLE_NAME,
+          FilterExpression: '#type = :type',
+          ExpressionAttributeNames: { '#type': 'type' },
+          ExpressionAttributeValues: { ':type': 'guild' },
+          ExclusiveStartKey: lastEvaluatedKey,
+        })
+      )
+
+      console.log(`Iteration ${iterations} - Scanned: ${response.ScannedCount}, Found: ${response.Count}`)
+
+      if (response.Items) {
+        allItems = allItems.concat(response.Items)
+      }
+
+      lastEvaluatedKey = response.LastEvaluatedKey
+    } while (lastEvaluatedKey && iterations < maxIterations)
+
+    console.log(`Scan complete after ${iterations} iterations`)
+    console.log(`Total guilds found: ${allItems.length}`)
+    console.log('First item:', JSON.stringify(allItems[0], null, 2))
+
+    const mappedGuilds = allItems.map(item => item.data)
 
     return NextResponse.json({
       tableName: process.env.TABLE_NAME,
-      count: response.Items?.length || 0,
-      rawItems: response.Items?.slice(0, 3),
+      count: allItems.length,
+      iterations,
+      rawItems: allItems.slice(0, 3),
       mappedGuilds: mappedGuilds.slice(0, 3),
       error: null,
     })

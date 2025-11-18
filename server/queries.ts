@@ -52,6 +52,7 @@ export interface IGuild {
   id: string;
   name: string;
   tag: string;
+  worldId: number;
   level?: number;
   favor?: number;
   member_count?: number;
@@ -146,23 +147,41 @@ export const getWorlds = unstable_cache(
 export const getGuilds = unstable_cache(
   async (): Promise<IGuild[]> => {
     try {
-      const response = await docClient.send(
-        new ScanCommand({
-          TableName: process.env.TABLE_NAME,
-          FilterExpression: '#type = :type',
-          ExpressionAttributeNames: { '#type': 'type' },
-          ExpressionAttributeValues: { ':type': 'guild' },
-        })
-      );
+      let allItems: any[] = [];
+      let lastEvaluatedKey: Record<string, any> | undefined;
+      let iterations = 0;
+      const maxIterations = 100; // Safety limit
 
-      return response.Items?.map(item => item.data) || [];
+      // Paginate through all results since match-history entries fill up response size
+      do {
+        iterations++;
+        const response = await docClient.send(
+          new ScanCommand({
+            TableName: process.env.TABLE_NAME,
+            FilterExpression: '#type = :type',
+            ExpressionAttributeNames: { '#type': 'type' },
+            ExpressionAttributeValues: { ':type': 'guild' },
+            ExclusiveStartKey: lastEvaluatedKey,
+          })
+        );
+
+        if (response.Items) {
+          allItems = allItems.concat(response.Items);
+        }
+
+        lastEvaluatedKey = response.LastEvaluatedKey;
+      } while (lastEvaluatedKey && iterations < maxIterations);
+
+      console.log(`[GUILDS] Found ${allItems.length} guilds after ${iterations} scan iterations`);
+
+      return allItems.map(item => item.data) || [];
     } catch (error) {
       console.error('Error fetching guilds:', error);
       return [];
     }
   },
   ['guilds'],
-  { revalidate: 86400, tags: ['guilds'] }
+  { revalidate: 3600, tags: ['guilds'] } // Changed to 1 hour
 );
 
 export interface HistoricalSnapshot {
