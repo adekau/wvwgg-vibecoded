@@ -25,7 +25,6 @@ export async function GET() {
         FilterExpression: '#type = :type',
         ExpressionAttributeNames: { '#type': 'type' },
         ExpressionAttributeValues: { ':type': 'guild' },
-        Limit: 10,
       })
     )
 
