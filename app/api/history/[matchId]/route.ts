@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getMatchHistory } from '@/server/queries';
+import { getMatchHistory, getMatches } from '@/server/queries';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 300; // Cache for 5 minutes
+// Caching is handled by unstable_cache in getMatchHistory (2 minutes)
+export const revalidate = 120; // Cache API route for 2 minutes
 
 interface RouteParams {
   params: Promise<{
@@ -16,10 +16,32 @@ export async function GET(
 ) {
   const { matchId } = await params;
   const { searchParams } = new URL(request.url);
-  const hours = parseInt(searchParams.get('hours') || '24', 10);
+  const hoursParam = searchParams.get('hours');
 
   try {
-    const history = await getMatchHistory(hours);
+    let history;
+
+    // If hours parameter is provided, use legacy time-based query
+    if (hoursParam) {
+      const hours = parseInt(hoursParam, 10);
+      history = await getMatchHistory({ hours });
+    } else {
+      // Otherwise, fetch match-specific history from match start to now
+      const matchesData = await getMatches();
+      const matchData = matchesData?.[matchId];
+
+      if (!matchData?.start_time) {
+        // Fallback to 24 hours if we can't find match start time
+        console.warn(`[HISTORY API] Could not find start_time for match ${matchId}, falling back to 24h`);
+        history = await getMatchHistory({ hours: 24 });
+      } else {
+        // Query from match start time to now
+        history = await getMatchHistory({
+          matchId,
+          matchStartTime: matchData.start_time,
+        });
+      }
+    }
 
     // Extract data for specific match
     const matchHistory = history

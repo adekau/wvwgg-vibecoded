@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState, useMemo, useTransition } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { TrendingUp, Clock, Calendar } from 'lucide-react';
+import { TrendingUp, Clock } from 'lucide-react';
 
 interface HistoryDataPoint {
   timestamp: number;
@@ -36,33 +36,30 @@ const colorClasses = {
 };
 
 export function MatchHistoryChart({ matchId }: MatchHistoryChartProps) {
+  // Fetch history data client-side
   const [history, setHistory] = useState<HistoryDataPoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState<24 | 72 | 168>(24); // 24h, 72h (3d), 168h (7d)
+  const isPending = false; // No pending transitions in this component
   const [metric, setMetric] = useState<'score' | 'kills' | 'deaths' | 'kd' | 'victoryPoints'>('score');
-  const [isPending, startTransition] = useTransition();
+  const [timeRange, setTimeRange] = useState<6 | 12 | 24 | 48>(24);
 
+  // Fetch history data when matchId or timeRange changes
   useEffect(() => {
-    const fetchHistory = async () => {
-      setIsLoading(true);
+    async function fetchHistory() {
       try {
-        const response = await fetch(`/api/history/${matchId}?hours=${timeRange}`);
+        setIsLoading(true);
+        const response = await fetch(`/api/match-history?matchId=${matchId}&hours=${timeRange}`);
         if (response.ok) {
           const data = await response.json();
           setHistory(data.history || []);
         }
       } catch (error) {
-        console.error('Failed to fetch history:', error);
+        console.error('Failed to fetch match history:', error);
       } finally {
         setIsLoading(false);
       }
-    };
-
+    }
     fetchHistory();
-
-    // Refresh every 5 minutes
-    const interval = setInterval(fetchHistory, 5 * 60 * 1000);
-    return () => clearInterval(interval);
   }, [matchId, timeRange]);
 
   // Transform data for chart (memoized to prevent expensive recalculations)
@@ -178,56 +175,28 @@ export function MatchHistoryChart({ matchId }: MatchHistoryChartProps) {
             <h3 className="text-xl font-bold">Match History</h3>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {/* Time Range Selector */}
-            <div className="flex gap-1">
-              <Button
-                variant={timeRange === 24 ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => {
-                  startTransition(() => {
-                    setTimeRange(24);
-                  });
-                }}
-              >
-                <Clock className="h-3 w-3 mr-1" />
-                24h
-              </Button>
-              <Button
-                variant={timeRange === 72 ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => {
-                  startTransition(() => {
-                    setTimeRange(72);
-                  });
-                }}
-              >
-                <Calendar className="h-3 w-3 mr-1" />
-                3d
-              </Button>
-              <Button
-                variant={timeRange === 168 ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => {
-                  startTransition(() => {
-                    setTimeRange(168);
-                  });
-                }}
-              >
-                <Calendar className="h-3 w-3 mr-1" />
-                7d
-              </Button>
+            <div className="flex items-center gap-1">
+              <Clock className="h-3 w-3 text-muted-foreground" />
+              {([6, 12, 24, 48] as const).map((hours) => (
+                <Button
+                  key={hours}
+                  variant={timeRange === hours ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTimeRange(hours)}
+                  className="h-7 text-xs"
+                >
+                  {hours}h
+                </Button>
+              ))}
             </div>
 
             {/* Metric Selector */}
             <select
               className="text-sm border rounded px-2 py-1 bg-background"
               value={metric}
-              onChange={(e) => {
-                startTransition(() => {
-                  setMetric(e.target.value as any);
-                });
-              }}
+              onChange={(e) => setMetric(e.target.value as any)}
             >
               <option value="score">Total Score</option>
               <option value="kills">Kills</option>

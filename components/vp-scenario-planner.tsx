@@ -10,7 +10,7 @@ import {
   getCurrentStandings,
   type ScenarioInput,
   type ScenarioResult,
-} from '@/lib/vp-scenario-solver-ilp'
+} from '@/lib/vp-scenario-solver-greedy'
 import { getVPTierForTime, getRegionFromMatchId } from '@/lib/vp-tiers'
 
 interface VPScenarioPlannerProps {
@@ -64,6 +64,7 @@ export function VPScenarioPlanner({ matchId, match }: VPScenarioPlannerProps) {
   const [desiredSecond, setDesiredSecond] = useState<'red' | 'blue' | 'green'>('blue')
   const [desiredThird, setDesiredThird] = useState<'red' | 'blue' | 'green'>('green')
   const [result, setResult] = useState<ScenarioResult | null>(null)
+  const [isCalculating, setIsCalculating] = useState(false)
 
   // Reset result when desired outcome changes
   const handleFirstChange = (value: 'red' | 'blue' | 'green') => {
@@ -128,19 +129,30 @@ export function VPScenarioPlanner({ matchId, match }: VPScenarioPlannerProps) {
     })
   }
 
-  const handleCalculate = () => {
-    const input: ScenarioInput = {
-      currentVP,
-      remainingSkirmishes,
-      desiredOutcome: {
-        first: desiredFirst,
-        second: desiredSecond,
-        third: desiredThird,
-      },
-    }
+  const handleCalculate = async () => {
+    setIsCalculating(true)
+    try {
+      const input: ScenarioInput = {
+        currentVP,
+        remainingSkirmishes,
+        desiredOutcome: {
+          first: desiredFirst,
+          second: desiredSecond,
+          third: desiredThird,
+        },
+      }
 
-    const scenarioResult = calculateScenario(input)
-    setResult(scenarioResult)
+      const scenarioResult = await calculateScenario(input)
+      setResult(scenarioResult)
+    } catch (error) {
+      console.error('Error calculating scenario:', error)
+      setResult({
+        isPossible: false,
+        reason: `Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`,
+      })
+    } finally {
+      setIsCalculating(false)
+    }
   }
 
   // Get current standings
@@ -251,10 +263,10 @@ export function VPScenarioPlanner({ matchId, match }: VPScenarioPlannerProps) {
           <Button
             onClick={handleCalculate}
             className="w-full mt-4"
-            disabled={remainingCount === 0}
+            disabled={remainingCount === 0 || isCalculating}
           >
             <Calculator className="h-4 w-4 mr-2" />
-            Calculate Scenario
+            {isCalculating ? 'Calculating...' : 'Calculate Scenario'}
           </Button>
         </div>
 
@@ -281,14 +293,24 @@ export function VPScenarioPlanner({ matchId, match }: VPScenarioPlannerProps) {
 
             {result.isPossible ? (
               <div className="space-y-4">
-                {result.difficulty && (
-                  <div>
-                    <span className="text-sm text-muted-foreground">Difficulty: </span>
-                    <Badge variant="outline" className={difficultyColors[result.difficulty]}>
-                      {result.difficulty.replace('-', ' ')}
-                    </Badge>
-                  </div>
-                )}
+                <div className="flex items-center gap-3 flex-wrap">
+                  {result.difficulty && (
+                    <div>
+                      <span className="text-sm text-muted-foreground">Difficulty: </span>
+                      <Badge variant="outline" className={difficultyColors[result.difficulty]}>
+                        {result.difficulty.replace('-', ' ')}
+                      </Badge>
+                    </div>
+                  )}
+                  {result.solver && (
+                    <div>
+                      <span className="text-sm text-muted-foreground">Solver: </span>
+                      <Badge variant="outline">
+                        {result.solver === 'random' ? 'Random Search' : 'Greedy'}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
 
                 {result.finalVP && (
                   <div>

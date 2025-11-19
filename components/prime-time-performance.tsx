@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge'
 import { Clock } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import {
-  calculatePrimeTimeStats,
   getDominantTeam,
   calculateScoreDistribution,
   calculateActivityDistribution,
@@ -19,19 +18,13 @@ import {
   type PrimeTimeWindow,
 } from '@/lib/prime-time-windows'
 
-interface HistoricalDataPoint {
-  timestamp: string | number
-  red: { score: number; kills: number; deaths: number; victoryPoints: number }
-  blue: { score: number; kills: number; deaths: number; victoryPoints: number }
-  green: { score: number; kills: number; deaths: number; victoryPoints: number }
-}
-
 interface PrimeTimePerformanceProps {
   matchId: string
   worlds: Array<{
     name: string
     color: 'red' | 'blue' | 'green'
   }>
+  primeTimeStats?: WindowStats[] | null // Pre-computed stats from SSR
 }
 
 const colorClasses = {
@@ -52,43 +45,12 @@ const colorClasses = {
   },
 }
 
-export function PrimeTimePerformance({ matchId, worlds }: PrimeTimePerformanceProps) {
-  const [windowStats, setWindowStats] = useState<WindowStats[]>([])
-  const [loading, setLoading] = useState(true)
+export function PrimeTimePerformance({ matchId, worlds, primeTimeStats }: PrimeTimePerformanceProps) {
+  // Use pre-computed stats from SSR (no client-side fetching needed!)
   const [activeWindow, setActiveWindow] = useState<PrimeTimeWindow>(getCurrentActiveWindow())
 
-  useEffect(() => {
-    const fetchHistory = async () => {
-      try {
-        const response = await fetch(`/api/history/${matchId}`)
-        if (!response.ok) {
-          console.error('Failed to fetch match history')
-          setLoading(false)
-          return
-        }
-
-        const responseData = await response.json()
-        const data: HistoricalDataPoint[] = responseData.history || []
-
-        // Calculate stats for each time window
-        const stats = calculatePrimeTimeStats(data)
-        setWindowStats(stats)
-        setLoading(false)
-      } catch (error) {
-        console.error('Error fetching match history:', error)
-        setLoading(false)
-      }
-    }
-
-    fetchHistory()
-
-    // Refresh data every 2 minutes to capture new snapshots during active windows
-    const refreshInterval = setInterval(() => {
-      fetchHistory()
-    }, 2 * 60 * 1000) // 2 minutes
-
-    return () => clearInterval(refreshInterval)
-  }, [matchId])
+  // Window stats are either from SSR or empty array
+  const windowStats = primeTimeStats || []
 
   // Update active window every minute
   useEffect(() => {
@@ -98,22 +60,6 @@ export function PrimeTimePerformance({ matchId, worlds }: PrimeTimePerformancePr
 
     return () => clearInterval(interval)
   }, [])
-
-  if (loading) {
-    return (
-      <Card className="panel-border inset-card frosted-panel" style={{ background: 'transparent' }}>
-        <div className="p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Clock className="h-5 w-5 text-primary" />
-            <h2 className="text-xl font-bold">Prime Time Performance</h2>
-          </div>
-          <p className="text-muted-foreground text-sm">
-            Loading prime time data...
-          </p>
-        </div>
-      </Card>
-    )
-  }
 
   if (windowStats.length === 0) {
     return (

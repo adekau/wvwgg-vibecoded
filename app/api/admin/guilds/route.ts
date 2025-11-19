@@ -28,7 +28,6 @@ export async function GET(request: NextRequest) {
       const response = await docClient.send(
         new QueryCommand({
           TableName: process.env.TABLE_NAME,
-          IndexName: 'type-interval-index',
           KeyConditionExpression: '#type = :type',
           ExpressionAttributeNames: {
             '#type': 'type',

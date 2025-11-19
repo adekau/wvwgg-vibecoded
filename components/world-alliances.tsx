@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Users, Shield } from 'lucide-react'
 import { IGuild } from '@/server/queries'
+import Link from 'next/link'
 
 interface WorldAlliancesProps {
   worlds: Array<{
@@ -40,14 +41,31 @@ export function WorldAlliances({ worlds, guilds }: WorldAlliancesProps) {
   const guildsByWorld = worlds.map((world) => {
     const worldGuilds = guilds.filter((guild) => guild.worldId === world.id)
 
-    // Separate alliances and independent guilds
-    const alliances = worldGuilds.filter((guild) => guild.classification === 'alliance')
+    // Find all alliances - either directly on this world OR that have member guilds on this world
+    const allAllianceGuilds = guilds.filter((guild) => guild.classification === 'alliance')
+    const relevantAlliances = allAllianceGuilds.filter((alliance) => {
+      // Alliance is directly on this world
+      if (alliance.worldId === world.id) return true
+
+      // Alliance has member guilds on this world
+      const hasMembers = guilds.some(
+        (guild) =>
+          guild.classification === 'member' &&
+          guild.allianceGuildId === alliance.id &&
+          guild.worldId === world.id
+      )
+      return hasMembers
+    })
+
     const independents = worldGuilds.filter((guild) => guild.classification === 'independent')
 
     // Get member guilds for each alliance
-    const alliancesWithMembers = alliances.map((alliance) => {
-      const members = worldGuilds.filter(
-        (guild) => guild.classification === 'member' && guild.allianceGuildId === alliance.id
+    const alliancesWithMembers = relevantAlliances.map((alliance) => {
+      const members = guilds.filter(
+        (guild) =>
+          guild.classification === 'member' &&
+          guild.allianceGuildId === alliance.id &&
+          guild.worldId === world.id
       )
       return {
         ...alliance,
@@ -97,22 +115,29 @@ export function WorldAlliances({ worlds, guilds }: WorldAlliancesProps) {
                       <div className="space-y-2">
                         {world.alliances.map((alliance) => (
                           <div key={alliance.id} className="space-y-1">
-                            <div className="flex items-center gap-2">
+                            <Link
+                              href={`/guilds/${alliance.id}`}
+                              className="flex items-center gap-2 hover:underline"
+                            >
                               <Shield className="h-3 w-3" />
                               <span className="font-semibold text-sm">
                                 [{alliance.tag}] {alliance.name}
                               </span>
-                            </div>
+                            </Link>
                             {alliance.members.length > 0 && (
                               <div className="ml-5 flex flex-wrap gap-1">
                                 {alliance.members.map((member) => (
-                                  <Badge
+                                  <Link
                                     key={member.id}
-                                    variant="outline"
-                                    className={`text-xs h-5 ${classes.badge} border`}
+                                    href={`/guilds/${member.id}`}
                                   >
-                                    [{member.tag}]
-                                  </Badge>
+                                    <Badge
+                                      variant="outline"
+                                      className={`text-xs h-5 ${classes.badge} border cursor-pointer hover:opacity-80 transition-opacity`}
+                                    >
+                                      [{member.tag}]
+                                    </Badge>
+                                  </Link>
                                 ))}
                               </div>
                             )}
@@ -130,13 +155,17 @@ export function WorldAlliances({ worlds, guilds }: WorldAlliancesProps) {
                       </div>
                       <div className="flex flex-wrap gap-1">
                         {world.independents.map((guild) => (
-                          <Badge
+                          <Link
                             key={guild.id}
-                            variant="outline"
-                            className={`text-xs h-5 ${classes.badge} border`}
+                            href={`/guilds/${guild.id}`}
                           >
-                            [{guild.tag}]
-                          </Badge>
+                            <Badge
+                              variant="outline"
+                              className={`text-xs h-5 ${classes.badge} border cursor-pointer hover:opacity-80 transition-opacity`}
+                            >
+                              [{guild.tag}]
+                            </Badge>
+                          </Link>
                         ))}
                       </div>
                     </div>

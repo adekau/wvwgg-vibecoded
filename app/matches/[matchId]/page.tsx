@@ -2,7 +2,7 @@ import { MatchesHeader } from '@/components/matches-header'
 import { MatchDashboard } from '@/components/match-dashboard'
 import { MatchHistoryChart } from '@/components/match-history-chart'
 import { notFound } from 'next/navigation'
-import { getMatches, getWorlds, getGuilds } from '@/server/queries'
+import { getMatches, getWorlds, getGuilds, getPrimeTimeStats } from '@/server/queries'
 
 interface PageProps {
   params: Promise<{ matchId: string }>
@@ -11,11 +11,12 @@ interface PageProps {
 export default async function MatchDetailPage({ params }: PageProps) {
   const { matchId } = await params
 
-  // Fetch real data from DynamoDB
-  const [matchesData, worldsData, guildsData] = await Promise.all([
+  // Fetch real data from DynamoDB (minimal server-side data)
+  const [matchesData, worldsData, guildsData, primeTimeStats] = await Promise.all([
     getMatches(),
     getWorlds(),
     getGuilds(),
+    getPrimeTimeStats(matchId),
   ]);
 
   if (!matchesData || !worldsData) {
@@ -43,6 +44,7 @@ export default async function MatchDetailPage({ params }: PageProps) {
     blue: { keeps: 0, towers: 0, camps: 0, castles: 0 },
     green: { keeps: 0, towers: 0, camps: 0, castles: 0 },
   };
+  let detailedObjectives: any[] = [];
 
   try {
     const objectivesResponse = await fetch(
@@ -52,6 +54,11 @@ export default async function MatchDetailPage({ params }: PageProps) {
 
     if (objectivesResponse.ok) {
       const matchDataFromAPI = await objectivesResponse.json();
+
+      // Store detailed objectives for PPT breakdown
+      if (matchDataFromAPI.maps && Array.isArray(matchDataFromAPI.maps)) {
+        detailedObjectives = matchDataFromAPI.maps.flatMap((map: any) => map.objectives || []);
+      }
 
       // Count objectives by type for display
       if (matchDataFromAPI.maps && Array.isArray(matchDataFromAPI.maps)) {
@@ -146,6 +153,8 @@ export default async function MatchDetailPage({ params }: PageProps) {
     };
   };
 
+  // Match history is now fetched client-side to avoid SSR payload issues
+
   const match = {
     tier: matchId,
     region: regionName,
@@ -194,7 +203,13 @@ export default async function MatchDetailPage({ params }: PageProps) {
       <MatchesHeader />
 
       <main className="container mx-auto px-4 py-8 space-y-6">
-        <MatchDashboard match={match} matchId={matchId} guilds={guildsData} />
+        <MatchDashboard
+          match={match}
+          matchId={matchId}
+          guilds={guildsData}
+          detailedObjectives={detailedObjectives}
+          primeTimeStats={primeTimeStats}
+        />
 
         <MatchHistoryChart matchId={matchId} />
       </main>

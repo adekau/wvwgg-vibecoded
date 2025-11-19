@@ -1,0 +1,230 @@
+/**
+ * Prime Time Statistics Calculator for Lambda
+ * Calculates aggregate stats for each coverage window to be stored in DynamoDB
+ */
+
+export type PrimeTimeWindow = 'na-prime' | 'eu-prime' | 'ocx' | 'sea' | 'off-hours';
+
+interface TimeRange {
+  startHour: number; // UTC hour (0-23)
+  endHour: number;   // UTC hour (0-23)
+}
+
+export interface PrimeTimeWindowConfig {
+  id: PrimeTimeWindow;
+  name: string;
+  ranges: TimeRange[];
+}
+
+// Prime Time Window Definitions (UTC)
+const PRIME_TIME_WINDOWS: PrimeTimeWindowConfig[] = [
+  {
+    id: 'na-prime',
+    name: 'NA Prime Time',
+    ranges: [{ startHour: 1, endHour: 6 }], // 1:00 AM - 6:00 AM UTC (5 PM - 10 PM PST / 8 PM - 1 AM EST)
+  },
+  {
+    id: 'eu-prime',
+    name: 'EU Prime Time',
+    ranges: [{ startHour: 18, endHour: 22 }], // 6:00 PM - 10:00 PM UTC
+  },
+  {
+    id: 'ocx',
+    name: 'OCX Prime Time',
+    ranges: [{ startHour: 7, endHour: 12 }], // 7:00 AM - 12:00 PM UTC (5 PM - 10 PM AEST)
+  },
+  {
+    id: 'sea',
+    name: 'SEA Prime Time',
+    ranges: [{ startHour: 13, endHour: 18 }], // 1:00 PM - 6:00 PM UTC (9 PM - 2 AM SGT)
+  },
+];
+
+/**
+ * Determine which prime time window a timestamp falls into
+ */
+function getPrimeTimeWindow(timestamp: number): PrimeTimeWindow {
+  const date = new Date(timestamp);
+  const hour = date.getUTCHours();
+
+  for (const window of PRIME_TIME_WINDOWS) {
+    for (const range of window.ranges) {
+      if (hour >= range.startHour && hour < range.endHour) {
+        return window.id;
+      }
+    }
+  }
+
+  return 'off-hours';
+}
+
+/**
+ * Group historical data points by prime time window
+ */
+export function groupByPrimeTimeWindow(
+  historyData: any[]
+): Record<PrimeTimeWindow, any[]> {
+  const grouped: Record<PrimeTimeWindow, any[]> = {
+    'na-prime': [],
+    'eu-prime': [],
+    'ocx': [],
+    'sea': [],
+    'off-hours': [],
+  };
+
+  for (const point of historyData) {
+    const timestamp = typeof point.timestamp === 'number'
+      ? point.timestamp
+      : new Date(point.timestamp).getTime();
+    const window = getPrimeTimeWindow(timestamp);
+    grouped[window].push(point);
+  }
+
+  return grouped;
+}
+
+export interface TeamStats {
+  kills: number;
+  deaths: number;
+  kdRatio: string;
+  victoryPoints: number;
+  score: number;
+}
+
+export interface WindowStats {
+  windowId: PrimeTimeWindow;
+  windowName: string;
+  red: TeamStats;
+  blue: TeamStats;
+  green: TeamStats;
+  dataPoints: number;
+  duration: number;
+}
+
+/**
+ * Calculate stats for a prime time window
+ */
+function calculateWindowStats(
+  windowData: any[],
+  windowId: PrimeTimeWindow,
+  windowName: string
+): WindowStats {
+  if (windowData.length === 0) {
+    const emptyStats: TeamStats = {
+      kills: 0,
+      deaths: 0,
+      kdRatio: '0.00',
+      victoryPoints: 0,
+      score: 0,
+    };
+
+    return {
+      windowId,
+      windowName,
+      red: emptyStats,
+      blue: emptyStats,
+      green: emptyStats,
+      dataPoints: 0,
+      duration: 0,
+    };
+  }
+
+  // Sort by timestamp
+  const sorted = [...windowData].sort((a, b) => {
+    const timeA = typeof a.timestamp === 'number' ? a.timestamp : new Date(a.timestamp).getTime();
+    const timeB = typeof b.timestamp === 'number' ? b.timestamp : new Date(b.timestamp).getTime();
+    return timeA - timeB;
+  });
+
+  const firstPoint = sorted[0];
+  const lastPoint = sorted[sorted.length - 1];
+
+  // Calculate team stats
+  const calculateTeamStats = (color: 'red' | 'blue' | 'green'): TeamStats => {
+    const killsDelta = lastPoint[color].kills - firstPoint[color].kills;
+    const deathsDelta = lastPoint[color].deaths - firstPoint[color].deaths;
+    const vpDelta = lastPoint[color].victoryPoints - firstPoint[color].victoryPoints;
+    const scoreDelta = lastPoint[color].score - firstPoint[color].score;
+
+    const kdRatio = deathsDelta > 0 ? killsDelta / deathsDelta : killsDelta;
+
+    return {
+      kills: Math.max(0, killsDelta),
+      deaths: Math.max(0, deathsDelta),
+      kdRatio: (Math.round(kdRatio * 100) / 100).toFixed(2),
+      victoryPoints: Math.max(0, vpDelta),
+      score: Math.max(0, scoreDelta),
+    };
+  };
+
+  // Calculate duration based on number of snapshots
+  // Each snapshot represents a 15-minute interval
+  // Since snapshots are taken every 15 min, count * 0.25 hours = total duration
+  const duration = Math.round((windowData.length * 0.25) * 10) / 10;
+
+  return {
+    windowId,
+    windowName,
+    red: calculateTeamStats('red'),
+    blue: calculateTeamStats('blue'),
+    green: calculateTeamStats('green'),
+    dataPoints: windowData.length,
+    duration,
+  };
+}
+
+/**
+ * Calculate prime time statistics for a specific match from historical data
+ */
+export function calculateMatchPrimeTimeStats(
+  matchId: string,
+  allSnapshots: any[]
+): WindowStats[] {
+  // Extract history for this specific match
+  const matchHistory = allSnapshots
+    .map((snapshot) => {
+      const matchData = snapshot.data[matchId];
+      if (!matchData) return null;
+
+      return {
+        timestamp: snapshot.timestamp,
+        red: {
+          score: matchData.red?.totalScore || 0,
+          kills: matchData.red?.kills || 0,
+          deaths: matchData.red?.deaths || 0,
+          victoryPoints: matchData.red?.victoryPoints || 0,
+        },
+        blue: {
+          score: matchData.blue?.totalScore || 0,
+          kills: matchData.blue?.kills || 0,
+          deaths: matchData.blue?.deaths || 0,
+          victoryPoints: matchData.blue?.victoryPoints || 0,
+        },
+        green: {
+          score: matchData.green?.totalScore || 0,
+          kills: matchData.green?.kills || 0,
+          deaths: matchData.green?.deaths || 0,
+          victoryPoints: matchData.green?.victoryPoints || 0,
+        },
+      };
+    })
+    .filter(Boolean);
+
+  if (matchHistory.length === 0) {
+    return [];
+  }
+
+  // Group by prime time window
+  const grouped = groupByPrimeTimeWindow(matchHistory);
+
+  // Calculate stats for each window
+  const allWindows = [
+    ...PRIME_TIME_WINDOWS,
+    { id: 'off-hours' as PrimeTimeWindow, name: 'Off Hours', ranges: [] }
+  ];
+
+  return allWindows.map(window => {
+    const windowData = grouped[window.id];
+    return calculateWindowStats(windowData, window.id, window.name);
+  });
+}

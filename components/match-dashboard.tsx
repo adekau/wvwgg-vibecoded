@@ -3,7 +3,7 @@
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Trophy, Swords } from 'lucide-react'
+import { ArrowLeft, Trophy, Swords, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { Progress } from '@/components/ui/progress'
 import { ObjectivesDisplay } from '@/components/objectives-display'
@@ -75,6 +75,8 @@ interface MatchDashboardProps {
   match: Match
   matchId: string
   guilds: IGuild[]
+  detailedObjectives: any[]
+  primeTimeStats?: any // Pre-computed prime time stats from DynamoDB
 }
 
 const colorClasses = {
@@ -127,7 +129,7 @@ interface HistoryMapData {
   deaths: { red: number; blue: number; green: number }
 }
 
-export function MatchDashboard({ match, matchId, guilds }: MatchDashboardProps) {
+export function MatchDashboard({ match, matchId, guilds, detailedObjectives, primeTimeStats }: MatchDashboardProps) {
   const sortedWorlds = [...match.worlds].sort((a, b) => b.score - a.score)
   const highestScore = sortedWorlds[0]?.score || 1 // Prevent division by zero
 
@@ -148,9 +150,29 @@ export function MatchDashboard({ match, matchId, guilds }: MatchDashboardProps) 
   const [selectedSkirmish, setSelectedSkirmish] = useState<number | 'all'>('all')
   const [selectedMap, setSelectedMap] = useState<string>('all')
   const [historyData, setHistoryData] = useState<HistoryPoint[]>([])
+  const [historyLoading, setHistoryLoading] = useState(true)
 
   const skirmishes = match.skirmishes || []
   const maps = match.maps || []
+
+  // Fetch history data client-side for skirmish calculations
+  useEffect(() => {
+    async function fetchHistory() {
+      try {
+        setHistoryLoading(true)
+        const response = await fetch(`/api/history/${matchId}`)
+        if (response.ok) {
+          const data = await response.json()
+          setHistoryData(data.history || [])
+        }
+      } catch (error) {
+        console.error('Failed to fetch match history:', error)
+      } finally {
+        setHistoryLoading(false)
+      }
+    }
+    fetchHistory()
+  }, [matchId])
 
   const mapTypeNames: Record<string, string> = {
     'Center': 'Eternal Battlegrounds',
@@ -167,22 +189,7 @@ export function MatchDashboard({ match, matchId, guilds }: MatchDashboardProps) 
     }))
   ]
 
-  // Fetch match history for per-skirmish stats
-  useEffect(() => {
-    const fetchHistory = async () => {
-      try {
-        const response = await fetch(`/api/history/${matchId}`)
-        if (response.ok) {
-          const data = await response.json()
-          setHistoryData(data.history || [])
-        }
-      } catch (error) {
-        console.error('Failed to fetch match history:', error)
-      }
-    }
-
-    fetchHistory()
-  }, [matchId])
+  // History data is now passed as a prop from the server, no client-side fetching needed
 
   // Format skirmish time based on when it occurred
   const formatSkirmishTime = (skirmishId: number) => {
@@ -512,7 +519,7 @@ export function MatchDashboard({ match, matchId, guilds }: MatchDashboardProps) 
                         )}
                         {(teamStatus.status === 'falling-behind' || teamStatus.status === 'maintaining-gap') && requiredPPT !== null && requiredPPT > maxPossiblePPT && (
                           <div className="text-muted-foreground">
-                            Cannot win this skirmish (need {requiredPPT} PPT)
+                            Can't win with current PPT (need {requiredPPT})
                           </div>
                         )}
                       </div>
@@ -612,28 +619,36 @@ export function MatchDashboard({ match, matchId, guilds }: MatchDashboardProps) 
                           </span>
                         </td>
                         <td className="text-right py-3 px-2 font-mono">
-                          {world.displayVP !== undefined ? (
+                          {historyLoading && (selectedSkirmish !== 'all' || selectedMap !== 'all') ? (
+                            <Loader2 className="h-4 w-4 animate-spin mx-auto text-muted-foreground" />
+                          ) : world.displayVP !== undefined ? (
                             <span className={world.displayVP === highestDisplayVP && highestDisplayVP > 0 ? 'bg-yellow-500/20 px-1.5 py-0.5 rounded' : ''}>
                               {world.displayVP.toLocaleString()}
                             </span>
                           ) : '-'}
                         </td>
                         <td className="text-right py-3 px-2 font-mono">
-                          {world.displayKills !== undefined ? (
+                          {historyLoading && (selectedSkirmish !== 'all' || selectedMap !== 'all') ? (
+                            <Loader2 className="h-4 w-4 animate-spin mx-auto text-muted-foreground" />
+                          ) : world.displayKills !== undefined ? (
                             <span className={world.displayKills === highestDisplayKills && highestDisplayKills > 0 ? 'bg-yellow-500/20 px-1.5 py-0.5 rounded' : ''}>
                               {world.displayKills.toLocaleString()}
                             </span>
                           ) : '-'}
                         </td>
                         <td className="text-right py-3 px-2 font-mono">
-                          {world.displayDeaths !== undefined ? (
+                          {historyLoading && (selectedSkirmish !== 'all' || selectedMap !== 'all') ? (
+                            <Loader2 className="h-4 w-4 animate-spin mx-auto text-muted-foreground" />
+                          ) : world.displayDeaths !== undefined ? (
                             <span className={world.displayDeaths === highestDisplayDeaths && highestDisplayDeaths > 0 ? 'bg-yellow-500/20 px-1.5 py-0.5 rounded' : ''}>
                               {world.displayDeaths.toLocaleString()}
                             </span>
                           ) : '-'}
                         </td>
                         <td className="text-right py-3 px-2 font-mono">
-                          {world.displayKills !== undefined && world.displayDeaths !== undefined ? (
+                          {historyLoading && (selectedSkirmish !== 'all' || selectedMap !== 'all') ? (
+                            <Loader2 className="h-4 w-4 animate-spin mx-auto text-muted-foreground" />
+                          ) : world.displayKills !== undefined && world.displayDeaths !== undefined ? (
                             <span className={kdValue === highestDisplayKD && highestDisplayKD > 0 ? 'bg-yellow-500/20 px-1.5 py-0.5 rounded' : ''}>
                               {kdRatio}
                             </span>
@@ -829,6 +844,7 @@ export function MatchDashboard({ match, matchId, guilds }: MatchDashboardProps) 
             blue: matchPPT.blue.total,
             green: matchPPT.green.total,
           }}
+          objectives={detailedObjectives}
         />
       </div>
 
@@ -839,7 +855,11 @@ export function MatchDashboard({ match, matchId, guilds }: MatchDashboardProps) 
       />
 
       {/* Prime Time Performance */}
-      <PrimeTimePerformance matchId={matchId} worlds={match.worlds.map(w => ({ name: w.name, color: w.color }))} />
+      <PrimeTimePerformance
+        matchId={matchId}
+        worlds={match.worlds.map(w => ({ name: w.name, color: w.color }))}
+        primeTimeStats={primeTimeStats}
+      />
 
       {/* VP Scenario Planner */}
       <VPScenarioPlanner matchId={matchId} match={match} />

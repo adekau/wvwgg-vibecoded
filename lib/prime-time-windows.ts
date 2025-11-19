@@ -214,12 +214,34 @@ export function getAllTimeWindows(): TimeWindow[] {
 
 /**
  * Group historical data points by prime time window
+ * Only includes the most recent occurrence of each window to avoid
+ * inflated activity metrics from multiple days of data.
  * @param historyData - Array of historical snapshot data
  * @returns Map of window ID to array of timestamps that fall in that window
  */
 export function groupByPrimeTimeWindow<T extends { timestamp: string | number }>(
   historyData: T[]
 ): Record<PrimeTimeWindow, T[]> {
+  // First, group all data by window and day
+  const groupedByWindowAndDay: Record<string, T[]> = {};
+
+  for (const point of historyData) {
+    const window = getPrimeTimeWindow(point.timestamp);
+    const date = typeof point.timestamp === 'number'
+      ? new Date(point.timestamp)
+      : new Date(point.timestamp);
+
+    // Use UTC date to group (format: YYYY-MM-DD)
+    const dateKey = date.toISOString().split('T')[0];
+    const key = `${window}_${dateKey}`;
+
+    if (!groupedByWindowAndDay[key]) {
+      groupedByWindowAndDay[key] = [];
+    }
+    groupedByWindowAndDay[key].push(point);
+  }
+
+  // Now, for each window, only keep the most recent day's data
   const grouped: Record<PrimeTimeWindow, T[]> = {
     'na-prime': [],
     'eu-prime': [],
@@ -228,9 +250,19 @@ export function groupByPrimeTimeWindow<T extends { timestamp: string | number }>
     'off-hours': [],
   };
 
-  for (const point of historyData) {
-    const window = getPrimeTimeWindow(point.timestamp);
-    grouped[window].push(point);
+  const allWindows: PrimeTimeWindow[] = ['na-prime', 'eu-prime', 'ocx', 'sea', 'off-hours'];
+
+  for (const window of allWindows) {
+    // Find all day keys for this window
+    const windowKeys = Object.keys(groupedByWindowAndDay)
+      .filter(key => key.startsWith(`${window}_`))
+      .sort()
+      .reverse(); // Most recent first
+
+    // Use only the most recent day's data for this window
+    if (windowKeys.length > 0) {
+      grouped[window] = groupedByWindowAndDay[windowKeys[0]];
+    }
   }
 
   return grouped;

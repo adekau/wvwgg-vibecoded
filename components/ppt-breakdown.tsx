@@ -3,7 +3,7 @@
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Zap } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useMemo } from 'react'
 
 interface PPTBreakdownProps {
   matchId: string
@@ -12,6 +12,7 @@ interface PPTBreakdownProps {
     blue: number
     green: number
   }
+  objectives: any[]
 }
 
 interface TierBreakdown {
@@ -53,92 +54,75 @@ const colorClasses = {
   },
 }
 
-export function PPTBreakdown({ matchId, ppt }: PPTBreakdownProps) {
-  const [detailedPPT, setDetailedPPT] = useState<DetailedPPT | null>(null)
-  const [loading, setLoading] = useState(true)
+export function PPTBreakdown({ matchId, ppt, objectives: serverObjectives }: PPTBreakdownProps) {
+  const loading = false
 
-  useEffect(() => {
-    const fetchDetailedPPT = async () => {
-      try {
-        // Fetch actual objectives from GW2 API
-        const response = await fetch(`https://api.guildwars2.com/v2/wvw/matches?id=${matchId}`)
-        if (!response.ok) throw new Error('Failed to fetch match data')
-
-        const matchData = await response.json()
-
-        // Helper to infer tier from points_tick
-        const inferTier = (type: string, pointsTick: number): number => {
-          const tierMaps: { [key: string]: { [key: number]: number } } = {
-            Camp: { 2: 0, 3: 1, 4: 2, 5: 3 },
-            Tower: { 4: 0, 6: 1, 8: 2, 10: 3 },
-            Keep: { 8: 0, 12: 1, 16: 2, 20: 3 },
-            Castle: { 12: 0, 18: 1, 24: 2, 30: 3 },
-          }
-          return tierMaps[type]?.[pointsTick] ?? 0
+  const detailedPPT = useMemo(() => {
+    try {
+      // Helper to infer tier from points_tick
+      const inferTier = (type: string, pointsTick: number): number => {
+        const tierMaps: { [key: string]: { [key: number]: number } } = {
+          Camp: { 2: 0, 3: 1, 4: 2, 5: 3 },
+          Tower: { 4: 0, 6: 1, 8: 2, 10: 3 },
+          Keep: { 8: 0, 12: 1, 16: 2, 20: 3 },
+          Castle: { 12: 0, 18: 1, 24: 2, 30: 3 },
         }
-
-        // Initialize breakdown structure
-        const createEmptyBreakdown = (): ObjectiveTypeBreakdown => ({
-          camps: { tier0: { count: 0, ppt: 0 }, tier1: { count: 0, ppt: 0 }, tier2: { count: 0, ppt: 0 }, tier3: { count: 0, ppt: 0 }, total: 0 },
-          towers: { tier0: { count: 0, ppt: 0 }, tier1: { count: 0, ppt: 0 }, tier2: { count: 0, ppt: 0 }, tier3: { count: 0, ppt: 0 }, total: 0 },
-          keeps: { tier0: { count: 0, ppt: 0 }, tier1: { count: 0, ppt: 0 }, tier2: { count: 0, ppt: 0 }, tier3: { count: 0, ppt: 0 }, total: 0 },
-          castles: { tier0: { count: 0, ppt: 0 }, tier1: { count: 0, ppt: 0 }, tier2: { count: 0, ppt: 0 }, tier3: { count: 0, ppt: 0 }, total: 0 },
-        })
-
-        const breakdown: DetailedPPT = {
-          red: createEmptyBreakdown(),
-          blue: createEmptyBreakdown(),
-          green: createEmptyBreakdown(),
-        }
-
-        if (matchData.maps && Array.isArray(matchData.maps)) {
-          for (const map of matchData.maps) {
-            if (map.objectives && Array.isArray(map.objectives)) {
-              for (const obj of map.objectives) {
-                const owner = obj.owner?.toLowerCase() as 'red' | 'blue' | 'green' | undefined
-                if (!owner || !['red', 'blue', 'green'].includes(owner)) continue
-
-                const pointsTick = obj.points_tick || 0
-                const tier = inferTier(obj.type, pointsTick)
-                const tierKey = `tier${tier}` as 'tier0' | 'tier1' | 'tier2' | 'tier3'
-
-                switch (obj.type) {
-                  case 'Camp':
-                    breakdown[owner].camps[tierKey].count++
-                    breakdown[owner].camps[tierKey].ppt += pointsTick
-                    breakdown[owner].camps.total += pointsTick
-                    break
-                  case 'Tower':
-                    breakdown[owner].towers[tierKey].count++
-                    breakdown[owner].towers[tierKey].ppt += pointsTick
-                    breakdown[owner].towers.total += pointsTick
-                    break
-                  case 'Keep':
-                    breakdown[owner].keeps[tierKey].count++
-                    breakdown[owner].keeps[tierKey].ppt += pointsTick
-                    breakdown[owner].keeps.total += pointsTick
-                    break
-                  case 'Castle':
-                    breakdown[owner].castles[tierKey].count++
-                    breakdown[owner].castles[tierKey].ppt += pointsTick
-                    breakdown[owner].castles.total += pointsTick
-                    break
-                }
-              }
-            }
-          }
-        }
-
-        setDetailedPPT(breakdown)
-      } catch (error) {
-        console.error('Failed to fetch detailed PPT:', error)
-      } finally {
-        setLoading(false)
+        return tierMaps[type]?.[pointsTick] ?? 0
       }
-    }
 
-    fetchDetailedPPT()
-  }, [matchId])
+      // Initialize breakdown structure
+      const createEmptyBreakdown = (): ObjectiveTypeBreakdown => ({
+        camps: { tier0: { count: 0, ppt: 0 }, tier1: { count: 0, ppt: 0 }, tier2: { count: 0, ppt: 0 }, tier3: { count: 0, ppt: 0 }, total: 0 },
+        towers: { tier0: { count: 0, ppt: 0 }, tier1: { count: 0, ppt: 0 }, tier2: { count: 0, ppt: 0 }, tier3: { count: 0, ppt: 0 }, total: 0 },
+        keeps: { tier0: { count: 0, ppt: 0 }, tier1: { count: 0, ppt: 0 }, tier2: { count: 0, ppt: 0 }, tier3: { count: 0, ppt: 0 }, total: 0 },
+        castles: { tier0: { count: 0, ppt: 0 }, tier1: { count: 0, ppt: 0 }, tier2: { count: 0, ppt: 0 }, tier3: { count: 0, ppt: 0 }, total: 0 },
+      })
+
+      const breakdown: DetailedPPT = {
+        red: createEmptyBreakdown(),
+        blue: createEmptyBreakdown(),
+        green: createEmptyBreakdown(),
+      }
+
+      // Process server-provided objectives
+      for (const obj of serverObjectives) {
+        const owner = obj.owner?.toLowerCase() as 'red' | 'blue' | 'green' | undefined
+        if (!owner || !['red', 'blue', 'green'].includes(owner)) continue
+
+        const pointsTick = obj.points_tick || 0
+        const tier = inferTier(obj.type, pointsTick)
+        const tierKey = `tier${tier}` as 'tier0' | 'tier1' | 'tier2' | 'tier3'
+
+        switch (obj.type) {
+          case 'Camp':
+            breakdown[owner].camps[tierKey].count++
+            breakdown[owner].camps[tierKey].ppt += pointsTick
+            breakdown[owner].camps.total += pointsTick
+            break
+          case 'Tower':
+            breakdown[owner].towers[tierKey].count++
+            breakdown[owner].towers[tierKey].ppt += pointsTick
+            breakdown[owner].towers.total += pointsTick
+            break
+          case 'Keep':
+            breakdown[owner].keeps[tierKey].count++
+            breakdown[owner].keeps[tierKey].ppt += pointsTick
+            breakdown[owner].keeps.total += pointsTick
+            break
+          case 'Castle':
+            breakdown[owner].castles[tierKey].count++
+            breakdown[owner].castles[tierKey].ppt += pointsTick
+            breakdown[owner].castles.total += pointsTick
+            break
+        }
+      }
+
+      return breakdown
+    } catch (error) {
+      console.error('Failed to calculate detailed PPT:', error)
+      return null
+    }
+  }, [serverObjectives])
 
   const highestPPT = Math.max(ppt.red, ppt.blue, ppt.green)
 

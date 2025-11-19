@@ -155,13 +155,12 @@ export const getGuilds = unstable_cache(
       let iterations = 0;
       const maxIterations = 100; // Safety limit
 
-      // Use QueryCommand with GSI for efficient querying (no full table scan!)
+      // Query primary table (type='guild') since guilds don't have 'interval' field
       do {
         iterations++;
         const response = await docClient.send(
           new QueryCommand({
             TableName: process.env.TABLE_NAME,
-            IndexName: 'type-interval-index',
             KeyConditionExpression: '#type = :type',
             ExpressionAttributeNames: { '#type': 'type' },
             ExpressionAttributeValues: { ':type': 'guild' },
@@ -178,8 +177,16 @@ export const getGuilds = unstable_cache(
 
       console.log(`[GUILDS] Queried ${allItems.length} guilds after ${iterations} iterations`);
 
+      // Parse the marshaled data from DynamoDB
       return allItems.map(item => ({
-        ...item.data,
+        id: item.id,
+        name: item.data?.name || '',
+        tag: item.data?.tag || '',
+        worldId: parseInt(item.data?.worldId) || 0,
+        level: item.data?.level,
+        favor: item.data?.favor,
+        member_count: item.data?.member_count,
+        emblem: item.data?.emblem,
         classification: item.classification,
         allianceGuildId: item.allianceGuildId,
         memberGuildIds: item.memberGuildIds,
@@ -199,14 +206,35 @@ export interface HistoricalSnapshot {
   data: Record<string, IFormattedMatch>;
 }
 
-export const getMatchHistory = async (hours: number = 24): Promise<HistoricalSnapshot[]> => {
+export interface MatchHistoryOptions {
+  // Time-based query (legacy, for last N hours from now)
+  hours?: number;
+  // Match-specific query (for specific match time window)
+  matchId?: string;
+  matchStartTime?: string;
+}
+
+// Internal function that does the actual query
+async function _getMatchHistory(options: MatchHistoryOptions = {}): Promise<HistoricalSnapshot[]> {
   try {
-    const now = Date.now();
-    // Calculate 15-minute intervals
-    const current15Min = Math.floor(now / (1000 * 60 * 15));
-    // Calculate how many 15-min intervals are in the requested hours
-    const intervalsToFetch = hours * 4; // 4 intervals per hour
-    const startInterval = current15Min - intervalsToFetch;
+    let startInterval: number;
+    let queryDescription: string;
+
+    // If matchId and matchStartTime are provided, use match-specific time window
+    if (options.matchId && options.matchStartTime) {
+      const matchStartMs = new Date(options.matchStartTime).getTime();
+      // Calculate the 15-minute interval for match start
+      startInterval = Math.floor(matchStartMs / (1000 * 60 * 15));
+      queryDescription = `match ${options.matchId} from ${options.matchStartTime}`;
+    } else {
+      // Legacy: query based on last N hours from now
+      const hours = options.hours || 24;
+      const now = Date.now();
+      const current15Min = Math.floor(now / (1000 * 60 * 15));
+      const intervalsToFetch = hours * 4; // 4 intervals per hour
+      startInterval = current15Min - intervalsToFetch;
+      queryDescription = `last ${hours} hours`;
+    }
 
     let allSnapshots: HistoricalSnapshot[] = [];
     let lastEvaluatedKey: Record<string, any> | undefined;
@@ -234,7 +262,7 @@ export const getMatchHistory = async (hours: number = 24): Promise<HistoricalSna
       lastEvaluatedKey = response.LastEvaluatedKey;
     } while (lastEvaluatedKey);
 
-    console.log(`[HISTORY] Queried ${allSnapshots.length} snapshots for last ${hours} hours (intervals >= ${startInterval})`);
+    console.log(`[HISTORY] Queried ${allSnapshots.length} snapshots for ${queryDescription} (intervals >= ${startInterval})`);
 
     // Sort by timestamp ascending (oldest first)
     return allSnapshots.sort((a, b) => a.timestamp - b.timestamp);
@@ -242,4 +270,42 @@ export const getMatchHistory = async (hours: number = 24): Promise<HistoricalSna
     console.error('Error fetching match history:', error);
     return [];
   }
-};
+}
+
+// Cached version - revalidate every 2 minutes
+// Note: Cache key varies based on parameters
+export const getMatchHistory = unstable_cache(
+  _getMatchHistory,
+  ['match-history'],
+  { revalidate: 120, tags: ['match-history'] }
+);
+
+/**
+ * Get pre-computed prime time statistics for a match
+ */
+async function _getPrimeTimeStats(matchId: string): Promise<any | null> {
+  try {
+    const response = await docClient.send(
+      new GetCommand({
+        TableName: process.env.TABLE_NAME,
+        Key: { type: 'prime-time-stats', id: matchId },
+      })
+    );
+
+    if (!response.Item?.stats) {
+      console.log(`[PRIME-TIME] No stats found for match ${matchId}`);
+      return null;
+    }
+
+    return response.Item.stats;
+  } catch (error) {
+    console.error(`Error fetching prime time stats for ${matchId}:`, error);
+    return null;
+  }
+}
+
+export const getPrimeTimeStats = unstable_cache(
+  _getPrimeTimeStats,
+  ['prime-time-stats'],
+  { revalidate: 120, tags: ['prime-time-stats'] }
+);

@@ -2154,3 +2154,30 @@ Building on Phase 1 prediction tool:
 ## Optimizaitons
 
 - Scan commands expensive? Can we use queries instead?
+
+## Current Issues (11/18/2025)
+
+### Prime Time Performance
+
+- The currently active window always shows "24h of data" and because of that overtakes everything else in terms of activity so it becomes the Key Insights' most active for each server.
+- Still very slow to load (takes about 6s per refresh)
+
+### Match History
+
+- Still very slow to load (takes about 6s per refresh)
+
+### Match Statistics
+
+- Needs a loading spinner instead of showing "-" until match histories load when selecting a past skirmish on a specific map
+
+### Alliances by World
+
+- Not showing anything for Yohlon Haven despite me adding [bTd] as an alliance and it's on that world.
+
+### Top "Summary" cards (green, blue, red frosted cards)
+
+- "Cannot win this skirmish (need 277 PPT)" Not a big fan of this wording. It's more of a "can't win this skirmish with current PPT"
+
+### Guilds Page and Guilds Management Admin page
+
+- Guilds are not loading anymore. It appears to have randomly broken as this was loading last time I was on my computer a few hours ago. I can see guilds in dynamodb.
