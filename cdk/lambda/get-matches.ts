@@ -103,6 +103,7 @@ const saveMatchesToDynamo = async (matchesResponse: IMatchResponse[], worlds: IW
 
 /**
  * Calculate and save prime time statistics for all matches
+ * Optimized to query snapshots once per region instead of per match
  */
 const calculateAndSavePrimeTimeStats = async (formattedMatches: any): Promise<void> => {
   if (!TABLE_NAME) {
@@ -112,20 +113,35 @@ const calculateAndSavePrimeTimeStats = async (formattedMatches: any): Promise<vo
   const matchIds = Object.keys(formattedMatches);
   console.log(`[PRIME-TIME] Calculating stats for ${matchIds.length} matches`);
 
+  // Group matches by region (NA/EU) since they share the same start/end times
+  const matchesByRegion: { [key: string]: { matchId: string; startInterval: number }[] } = {};
+
   for (const matchId of matchIds) {
+    const matchData = formattedMatches[matchId];
+    if (!matchData?.start_time) {
+      console.log(`[PRIME-TIME] Skipping ${matchId} - no start_time`);
+      continue;
+    }
+
+    // Extract region from matchId (format: "region-tier", e.g., "1-1" for NA, "2-1" for EU)
+    const region = matchId.startsWith('1-') ? 'na' : 'eu';
+    const startTime = new Date(matchData.start_time).getTime();
+    const startInterval = Math.floor(startTime / (1000 * 60 * 15));
+
+    if (!matchesByRegion[region]) {
+      matchesByRegion[region] = [];
+    }
+    matchesByRegion[region].push({ matchId, startInterval });
+  }
+
+  // Process each region (query snapshots once per region)
+  for (const [region, matches] of Object.entries(matchesByRegion)) {
     try {
-      const matchData = formattedMatches[matchId];
-      if (!matchData?.start_time) {
-        console.log(`[PRIME-TIME] Skipping ${matchId} - no start_time`);
-        continue;
-      }
+      // All matches in a region share the same start time, so use the first one
+      const startInterval = matches[0].startInterval;
+      console.log(`[PRIME-TIME] Querying snapshots for ${region.toUpperCase()} region (${matches.length} matches) from interval ${startInterval}`);
 
-      // Get match start time and calculate interval
-      const startTime = new Date(matchData.start_time).getTime();
-      const startInterval = Math.floor(startTime / (1000 * 60 * 15));
-
-      // Query all snapshots for this match from start to now
-      // Handle pagination to ensure we get ALL snapshots
+      // Query all snapshots for this region ONCE
       let allSnapshots: any[] = [];
       let lastEvaluatedKey: Record<string, any> | undefined;
 
@@ -152,31 +168,39 @@ const calculateAndSavePrimeTimeStats = async (formattedMatches: any): Promise<vo
       } while (lastEvaluatedKey);
 
       const snapshots = allSnapshots.sort((a, b) => a.timestamp - b.timestamp);
+      console.log(`[PRIME-TIME] Retrieved ${snapshots.length} snapshots for ${region.toUpperCase()} region`);
 
-      if (snapshots.length === 0) {
-        console.log(`[PRIME-TIME] No snapshots found for ${matchId}`);
-        continue;
-      }
+      // Now calculate stats for each match in this region using the SAME snapshots
+      for (const { matchId } of matches) {
+        try {
+          if (snapshots.length === 0) {
+            console.log(`[PRIME-TIME] No snapshots found for ${matchId}`);
+            continue;
+          }
 
-      // Calculate prime time stats
-      const primeTimeStats = calculateMatchPrimeTimeStats(matchId, snapshots);
+          // Calculate prime time stats
+          const primeTimeStats = calculateMatchPrimeTimeStats(matchId, snapshots);
 
-      // Save to DynamoDB
-      await dynamoDb.put({
-        TableName: TABLE_NAME,
-        Item: {
-          type: 'prime-time-stats',
-          id: matchId,
-          stats: primeTimeStats,
-          updatedAt: Date.now(),
-          ttl: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7 days TTL
+          // Save to DynamoDB
+          await dynamoDb.put({
+            TableName: TABLE_NAME,
+            Item: {
+              type: 'prime-time-stats',
+              id: matchId,
+              stats: primeTimeStats,
+              updatedAt: Date.now(),
+              ttl: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7 days TTL
+            }
+          });
+
+          console.log(`[PRIME-TIME] Saved stats for ${matchId} (${primeTimeStats.length} windows, ${snapshots.length} snapshots)`);
+        } catch (err) {
+          console.error(`[PRIME-TIME] Failed to calculate stats for ${matchId}:`, err);
+          // Continue with other matches even if one fails
         }
-      });
-
-      console.log(`[PRIME-TIME] Saved stats for ${matchId} (${primeTimeStats.length} windows, ${snapshots.length} snapshots)`);
+      }
     } catch (err) {
-      console.error(`[PRIME-TIME] Failed to calculate stats for ${matchId}:`, err);
-      // Continue with other matches even if one fails
+      console.error(`[PRIME-TIME] Failed to process ${region.toUpperCase()} region:`, err);
     }
   }
 }
