@@ -1,20 +1,22 @@
 /**
- * VP Scenario Solver using Deterministic Greedy Solver
+ * VP Scenario Solver - Orchestrates multiple solving strategies
  *
- * Strategy:
- * Use only the deterministic greedy solver (GLPK removed as it never works)
+ * Strategy Waterfall (in order of preference):
+ * 1. DFS Solver (Deterministic with Branch & Bound) - Guarantees finding solution if it exists
+ * 2. Random Search (Hybrid Solver) - Fast exploration, good for easy scenarios
+ * 3. Greedy Solver (Hybrid Solver) - Fallback for when random fails
  *
- * The deterministic solver is reliable for edge cases where the solution
- * space is narrow and provides minimum-effort solutions.
+ * Each solver is tried in sequence until one finds a solution.
  */
 
+import { DeterministicDFSSolver } from './vp-scenario-solver-dfs'
 import {
   WvWHybridSolver,
   type WorldState,
   type HybridSolverResult,
-} from './vp-scenario-solver-random';
+} from './vp-scenario-solver-random'
 
-type WorldId = 'red' | 'blue' | 'green';
+type WorldId = 'red' | 'blue' | 'green'
 
 export interface ScenarioInput {
   currentVP: { red: number; blue: number; green: number };
@@ -42,7 +44,7 @@ export interface ScenarioResult {
   margin?: number;
   reason?: string;
   difficulty?: 'easy' | 'moderate' | 'hard' | 'very-hard';
-  solver?: 'random' | 'deterministic'; // Which solver method found the solution
+  solver?: 'dfs' | 'random' | 'greedy'; // Which solver method found the solution
 }
 
 /**
@@ -116,7 +118,7 @@ function calculateDifficulty(
 }
 
 /**
- * Main solver entry point - uses only deterministic greedy solver
+ * Main solver entry point - tries solvers in order: DFS → Random → Greedy
  */
 export async function calculateScenario(input: ScenarioInput): Promise<ScenarioResult> {
   const { currentVP, remainingSkirmishes, desiredOutcome } = input;
@@ -138,6 +140,14 @@ export async function calculateScenario(input: ScenarioInput): Promise<ScenarioR
     };
   }
 
+  // Safety check: limit complexity for very large scenarios
+  if (remainingSkirmishes.length > 50) {
+    return {
+      isPossible: false,
+      reason: 'Too many remaining skirmishes (max 50). This scenario is too complex to analyze.',
+    };
+  }
+
   // Determine region from skirmish data
   const region = determineRegion(remainingSkirmishes);
 
@@ -147,73 +157,65 @@ export async function calculateScenario(input: ScenarioInput): Promise<ScenarioR
     desiredOutcome.third,
   ];
 
-  // Use deterministic solver
+  // SOLVER 1: Try DFS solver first (deterministic, guaranteed solution if exists)
   try {
-    console.log('[Solver] Running deterministic greedy solver...');
-    const result = tryDeterministicSolver(input, currentVP, remainingSkirmishes, desiredOrder, region);
+    console.log('[Solver] Trying DFS solver (deterministic with branch & bound)...');
+    const dfsResult = tryDFSSolver(input, currentVP, remainingSkirmishes, desiredOrder, region);
 
-    if (result.isPossible) {
-      console.log('[Solver] Solution found');
+    if (dfsResult.isPossible) {
+      console.log('[Solver] DFS solver found solution');
+      return dfsResult;
+    }
+    console.log('[Solver] DFS solver proved impossible, skipping other solvers');
+    return dfsResult; // If DFS says impossible, it's mathematically impossible
+  } catch (error) {
+    console.error('[Solver] DFS solver error:', error);
+  }
+
+  // SOLVER 2: Try random search solver (fast, good for easy scenarios)
+  try {
+    console.log('[Solver] Trying random search solver...');
+    const randomResult = tryRandomSolver(input, currentVP, remainingSkirmishes, desiredOrder, region);
+
+    if (randomResult.isPossible) {
+      console.log('[Solver] Random solver found solution');
+      return randomResult;
+    }
+  } catch (error) {
+    console.error('[Solver] Random solver error:', error);
+  }
+
+  // SOLVER 3: Try greedy solver as fallback
+  try {
+    console.log('[Solver] Trying greedy solver...');
+    const greedyResult = tryGreedySolver(input, currentVP, remainingSkirmishes, desiredOrder, region);
+
+    if (greedyResult.isPossible) {
+      console.log('[Solver] Greedy solver found solution');
     } else {
-      console.log('[Solver] No solution possible');
+      console.log('[Solver] All solvers failed - no solution found');
     }
 
-    return result;
+    return greedyResult;
   } catch (error) {
-    console.error('[Solver] Deterministic solver error:', error);
+    console.error('[Solver] Greedy solver error:', error);
     return {
       isPossible: false,
-      reason: `Solver error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      reason: `All solvers failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
     };
   }
 }
 
 /**
- * Run the deterministic greedy solver
+ * Helper to convert solver result to UI format
  */
-function tryDeterministicSolver(
+function convertToUIFormat(
+  result: any,
+  remainingSkirmishes: Array<{ id: number }>,
   input: ScenarioInput,
-  currentVP: { red: number; blue: number; green: number },
-  remainingSkirmishes: Array<{
-    id: number;
-    startTime: Date;
-    endTime: Date;
-    vpAwards: { first: number; second: number; third: number };
-  }>,
-  desiredOrder: [WorldId, WorldId, WorldId],
-  region: 'na' | 'eu'
+  solverName: 'dfs' | 'random' | 'greedy'
 ): ScenarioResult {
-  // Build world states for deterministic solver
-  const worlds: WorldState[] = [
-    { id: 'red', color: 'red', currentVP: currentVP.red },
-    { id: 'blue', color: 'blue', currentVP: currentVP.blue },
-    { id: 'green', color: 'green', currentVP: currentVP.green },
-  ];
-
-  // Extract skirmish times
-  const skirmishTimes = remainingSkirmishes.map((s) => s.startTime);
-
-  // Create and run deterministic solver
-  const solver = new WvWHybridSolver(
-    worlds,
-    skirmishTimes,
-    desiredOrder,
-    region
-  );
-
-  const result: HybridSolverResult = solver.solve();
-
-  if (!result.achievable) {
-    return {
-      isPossible: false,
-      reason: 'The desired outcome is not mathematically achievable with the remaining skirmishes.',
-    };
-  }
-
-  console.log(`[Solver] Found solution (${result.method}, ${result.iterations} iterations)`);
-
-  // Convert result to UI format
-  const requiredPlacements = result.scenario!.map((s) => {
+  const requiredPlacements = result.scenario!.map((s: any) => {
     const placements: { red: 1 | 2 | 3; blue: 1 | 2 | 3; green: 1 | 2 | 3 } = {
       red: 3,
       blue: 3,
@@ -246,7 +248,6 @@ function tryDeterministicSolver(
   };
 
   const difficulty = calculateDifficulty(requiredPlacements, input.desiredOutcome.first);
-
   const firstVP = finalVP[input.desiredOutcome.first];
   const secondVP = finalVP[input.desiredOutcome.second];
 
@@ -256,6 +257,117 @@ function tryDeterministicSolver(
     finalVP,
     margin: firstVP - secondVP,
     difficulty,
-    solver: result.method === 'random' ? 'random' : 'deterministic',
+    solver: solverName,
   };
+}
+
+/**
+ * SOLVER 1: DFS with Branch & Bound (Guaranteed solution)
+ */
+function tryDFSSolver(
+  input: ScenarioInput,
+  currentVP: { red: number; blue: number; green: number },
+  remainingSkirmishes: Array<{
+    id: number;
+    startTime: Date;
+    endTime: Date;
+    vpAwards: { first: number; second: number; third: number };
+  }>,
+  desiredOrder: [WorldId, WorldId, WorldId],
+  region: 'na' | 'eu'
+): ScenarioResult {
+  // DFS solver uses simple WorldState without 'color' property
+  const worlds = [
+    { id: 'red', currentVP: currentVP.red },
+    { id: 'blue', currentVP: currentVP.blue },
+    { id: 'green', currentVP: currentVP.green },
+  ];
+
+  const skirmishTimes = remainingSkirmishes.map((s) => s.startTime);
+
+  const solver = new DeterministicDFSSolver(worlds, skirmishTimes, desiredOrder, region);
+  const result = solver.solve();
+
+  if (!result.achievable) {
+    return {
+      isPossible: false,
+      reason: 'DFS proved this outcome is mathematically impossible.',
+    };
+  }
+
+  return convertToUIFormat(result, remainingSkirmishes, input, 'dfs');
+}
+
+/**
+ * SOLVER 2: Random Search (Hybrid Solver)
+ */
+function tryRandomSolver(
+  input: ScenarioInput,
+  currentVP: { red: number; blue: number; green: number },
+  remainingSkirmishes: Array<{
+    id: number;
+    startTime: Date;
+    endTime: Date;
+    vpAwards: { first: number; second: number; third: number };
+  }>,
+  desiredOrder: [WorldId, WorldId, WorldId],
+  region: 'na' | 'eu'
+): ScenarioResult {
+  const worlds: WorldState[] = [
+    { id: 'red', color: 'red', currentVP: currentVP.red },
+    { id: 'blue', color: 'blue', currentVP: currentVP.blue },
+    { id: 'green', color: 'green', currentVP: currentVP.green },
+  ];
+
+  const skirmishTimes = remainingSkirmishes.map((s) => s.startTime);
+
+  // Use WvWHybridSolver which does random search first
+  const solver = new WvWHybridSolver(worlds, skirmishTimes, desiredOrder, region);
+  const result: HybridSolverResult = solver.solve();
+
+  if (!result.achievable || result.method !== 'random') {
+    return {
+      isPossible: false,
+      reason: 'Random search did not find a solution.',
+    };
+  }
+
+  return convertToUIFormat(result, remainingSkirmishes, input, 'random');
+}
+
+/**
+ * SOLVER 3: Greedy Solver (Hybrid Solver fallback)
+ */
+function tryGreedySolver(
+  input: ScenarioInput,
+  currentVP: { red: number; blue: number; green: number },
+  remainingSkirmishes: Array<{
+    id: number;
+    startTime: Date;
+    endTime: Date;
+    vpAwards: { first: number; second: number; third: number };
+  }>,
+  desiredOrder: [WorldId, WorldId, WorldId],
+  region: 'na' | 'eu'
+): ScenarioResult {
+  const worlds: WorldState[] = [
+    { id: 'red', color: 'red', currentVP: currentVP.red },
+    { id: 'blue', color: 'blue', currentVP: currentVP.blue },
+    { id: 'green', color: 'green', currentVP: currentVP.green },
+  ];
+
+  const skirmishTimes = remainingSkirmishes.map((s) => s.startTime);
+
+  // Use WvWHybridSolver which does greedy deterministic search
+  const solver = new WvWHybridSolver(worlds, skirmishTimes, desiredOrder, region);
+  const result: HybridSolverResult = solver.solve();
+
+  if (!result.achievable || result.method === 'random') {
+    return {
+      isPossible: false,
+      reason: 'Greedy solver did not find a solution.',
+    };
+  }
+
+  return convertToUIFormat(result, remainingSkirmishes, input, 'greedy');
 }

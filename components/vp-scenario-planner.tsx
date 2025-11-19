@@ -306,7 +306,7 @@ export function VPScenarioPlanner({ matchId, match }: VPScenarioPlannerProps) {
                     <div>
                       <span className="text-sm text-muted-foreground">Solver: </span>
                       <Badge variant="outline">
-                        {result.solver === 'random' ? 'Random Search' : 'Greedy'}
+                        {result.solver === 'dfs' ? 'DFS (Optimal)' : result.solver === 'random' ? 'Random Search' : 'Greedy'}
                       </Badge>
                     </div>
                   )}

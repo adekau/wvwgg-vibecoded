@@ -55,7 +55,7 @@ export class WvWGGStack extends cdk.Stack {
       entry: path.join(__dirname, '../lambda/get-matches.ts'),
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'handler',
-      timeout: cdk.Duration.seconds(60), // Increased to 60s for prime time calculations
+      timeout: cdk.Duration.minutes(5), // Increased to 5 minutes for prime time calculations
       environment: {
         TABLE_NAME: this.dynamoDbTable.tableName,
         ANET_MATCHES_ENDPOINT: 'https://api.guildwars2.com/v2/wvw/matches?ids=all',
