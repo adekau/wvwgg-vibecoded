@@ -3,20 +3,25 @@
  * Calculates PPT based on objectives held and their upgrade tiers
  */
 
-export type ObjectiveType = 'camp' | 'tower' | 'keep' | 'castle';
-export type ObjectiveTier = 0 | 1 | 2 | 3;
-export type TeamColor = 'red' | 'blue' | 'green';
+import {
+  OBJECTIVE_TYPES,
+  OBJECTIVE_TIERS,
+  TEAM_COLORS,
+  PPT_VALUES,
+  PPT_TICK_INTERVAL_MINUTES,
+  SKIRMISH_DURATION_MINUTES,
+  MAX_PPT,
+  API_TYPE_MAPPING,
+  type ObjectiveType,
+  type ObjectiveTier,
+  type TeamColor,
+} from './game-constants';
 
 /**
  * PPT values for each objective type by tier
  * Tier 0 = Base, Tier 1 = Fortified, Tier 2 = Reinforced, Tier 3 = Secured
  */
-const PPT_TABLE: Record<ObjectiveType, [number, number, number, number]> = {
-  camp: [2, 3, 4, 5],
-  tower: [4, 6, 8, 10],
-  keep: [8, 12, 16, 20],
-  castle: [12, 18, 24, 30],
-};
+const PPT_TABLE = PPT_VALUES;
 
 /**
  * Objectives count for a team
@@ -154,7 +159,7 @@ export function calculateTicksBehind(
  * Each tick is 5 minutes
  */
 export function ticksToTimeString(ticks: number): string {
-  const totalMinutes = ticks * 5;
+  const totalMinutes = ticks * PPT_TICK_INTERVAL_MINUTES;
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
 
@@ -244,9 +249,8 @@ export function calculatePPTRange(objectives: ObjectivesCount): {
  */
 export function getTimeRemainingInSkirmish(skirmishStartTime: Date): number {
   const now = new Date();
-  const skirmishDuration = 120; // 120 minutes per skirmish
   const elapsedMinutes = Math.floor((now.getTime() - skirmishStartTime.getTime()) / (1000 * 60));
-  const remainingMinutes = Math.max(0, skirmishDuration - elapsedMinutes);
+  const remainingMinutes = Math.max(0, SKIRMISH_DURATION_MINUTES - elapsedMinutes);
   return remainingMinutes;
 }
 
@@ -266,7 +270,7 @@ export function calculateRequiredPPTToOvertake(
 ): number | null {
   if (minutesRemaining <= 0) return null;
 
-  const ticksRemaining = Math.ceil(minutesRemaining / 5); // Ticks are every 5 minutes
+  const ticksRemaining = Math.ceil(minutesRemaining / PPT_TICK_INTERVAL_MINUTES);
 
   // To overtake, we need to gain more points than the leader
   // If leader gains L points and we gain W points, we need: W - L >= scoreDeficit + 1
@@ -285,7 +289,7 @@ export function calculateRequiredPPTToOvertake(
  * Total available: 12 camps (24), 12 towers (48), 9 keeps (72), 1 castle (12) = 156 PPT
  */
 export function getMaximumPossiblePPT(): number {
-  return 156; // All objectives at tier 0
+  return MAX_PPT;
 }
 
 /**
@@ -315,12 +319,7 @@ export function calculateMaxAchievablePPT(
   const capturableBreakdown = { camps: 0, towers: 0, keeps: 0, castles: 0 };
 
   // Map objective types from API to our types
-  const typeMap: Record<string, ObjectiveType> = {
-    Camp: 'camp',
-    Tower: 'tower',
-    Keep: 'keep',
-    Castle: 'castle',
-  };
+  const typeMap = API_TYPE_MAPPING;
 
   for (const obj of detailedObjectives) {
     const objType = typeMap[obj.type];

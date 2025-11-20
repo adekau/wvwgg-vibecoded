@@ -17,6 +17,7 @@ import { SkirmishWinScenarioModal } from '@/components/skirmish-win-scenario-mod
 import { useState, useEffect } from 'react'
 import { calculateMatchPPT, getPPTTrend, calculateTicksBehind, ticksToTimeString, getTeamStatus, calculateRequiredPPTToOvertake, calculateMaxAchievablePPT } from '@/lib/ppt-calculator'
 import { IGuild } from '@/server/queries'
+import { SKIRMISH_DURATION_MS, POLL_INTERVALS_MS } from '@/lib/game-constants'
 
 interface World {
   id: number
@@ -197,7 +198,7 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
   const formatSkirmishTime = (skirmishId: number) => {
     const matchStart = new Date(match.startDate)
     // Each skirmish is 2 hours, skirmish IDs are 1-indexed
-    const skirmishStart = new Date(matchStart.getTime() + ((skirmishId - 1) * 2 * 60 * 60 * 1000))
+    const skirmishStart = new Date(matchStart.getTime() + ((skirmishId - 1) * SKIRMISH_DURATION_MS))
 
     return skirmishStart.toLocaleString(undefined, {
       month: 'short',
@@ -238,8 +239,8 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
     if (historyData.length === 0) return null
 
     const matchStart = new Date(match.startDate)
-    const skirmishStart = new Date(matchStart.getTime() + ((skirmishId - 1) * 2 * 60 * 60 * 1000))
-    const skirmishEnd = new Date(skirmishStart.getTime() + (2 * 60 * 60 * 1000))
+    const skirmishStart = new Date(matchStart.getTime() + ((skirmishId - 1) * SKIRMISH_DURATION_MS))
+    const skirmishEnd = new Date(skirmishStart.getTime() + SKIRMISH_DURATION_MS)
 
     // Find history points closest to start and end of skirmish
     const startPoint = historyData.reduce((closest, point) => {
@@ -278,8 +279,8 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
     if (historyData.length === 0) return null
 
     const matchStart = new Date(match.startDate)
-    const skirmishStart = new Date(matchStart.getTime() + ((skirmishId - 1) * 2 * 60 * 60 * 1000))
-    const skirmishEnd = new Date(skirmishStart.getTime() + (2 * 60 * 60 * 1000))
+    const skirmishStart = new Date(matchStart.getTime() + ((skirmishId - 1) * SKIRMISH_DURATION_MS))
+    const skirmishEnd = new Date(skirmishStart.getTime() + SKIRMISH_DURATION_MS)
 
     // Find history points closest to start and end of skirmish
     const startPoint = historyData.reduce((closest, point) => {
@@ -456,7 +457,7 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
         </div>
         <div className="flex items-center gap-3">
           <SkirmishTimer matchStartDate={match.startDate} />
-          <AutoRefresh interval={60000} />
+          <AutoRefresh interval={POLL_INTERVALS_MS.DASHBOARD} />
         </div>
       </div>
 

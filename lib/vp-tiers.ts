@@ -2,6 +2,8 @@
  * Victory Points tier calculation utility (client-side)
  */
 
+import { VP_TIERS, REGIONS } from './game-constants';
+
 export interface VPTier {
   first: number;
   second: number;
@@ -16,33 +18,33 @@ export interface VPTier {
 const VP_SCHEDULES = {
   // Europe region (region code '2')
   eu: [
-    { start: 0, end: 2, vp: { first: 15, second: 14, third: 12 }, tier: 'low' as const },
-    { start: 2, end: 4, vp: { first: 15, second: 14, third: 12 }, tier: 'low' as const },
-    { start: 4, end: 6, vp: { first: 15, second: 14, third: 12 }, tier: 'low' as const },
-    { start: 6, end: 8, vp: { first: 15, second: 14, third: 12 }, tier: 'low' as const },
-    { start: 8, end: 10, vp: { first: 22, second: 18, third: 14 }, tier: 'medium' as const },
-    { start: 10, end: 12, vp: { first: 22, second: 18, third: 14 }, tier: 'medium' as const },
-    { start: 12, end: 14, vp: { first: 22, second: 18, third: 14 }, tier: 'medium' as const },
-    { start: 14, end: 16, vp: { first: 31, second: 24, third: 17 }, tier: 'high' as const },
-    { start: 16, end: 18, vp: { first: 31, second: 24, third: 17 }, tier: 'high' as const },
-    { start: 18, end: 20, vp: { first: 51, second: 37, third: 24 }, tier: 'peak' as const },
-    { start: 20, end: 22, vp: { first: 51, second: 37, third: 24 }, tier: 'peak' as const },
-    { start: 22, end: 24, vp: { first: 31, second: 24, third: 17 }, tier: 'high' as const },
+    { start: 0, end: 2, vp: VP_TIERS[REGIONS.EUROPE]['00:00'], tier: 'low' as const },
+    { start: 2, end: 4, vp: VP_TIERS[REGIONS.EUROPE]['02:00'], tier: 'low' as const },
+    { start: 4, end: 6, vp: VP_TIERS[REGIONS.EUROPE]['04:00'], tier: 'low' as const },
+    { start: 6, end: 8, vp: VP_TIERS[REGIONS.EUROPE]['06:00'], tier: 'low' as const },
+    { start: 8, end: 10, vp: VP_TIERS[REGIONS.EUROPE]['08:00'], tier: 'medium' as const },
+    { start: 10, end: 12, vp: VP_TIERS[REGIONS.EUROPE]['10:00'], tier: 'medium' as const },
+    { start: 12, end: 14, vp: VP_TIERS[REGIONS.EUROPE]['12:00'], tier: 'medium' as const },
+    { start: 14, end: 16, vp: VP_TIERS[REGIONS.EUROPE]['14:00'], tier: 'high' as const },
+    { start: 16, end: 18, vp: VP_TIERS[REGIONS.EUROPE]['16:00'], tier: 'high' as const },
+    { start: 18, end: 20, vp: VP_TIERS[REGIONS.EUROPE]['18:00'], tier: 'peak' as const },
+    { start: 20, end: 22, vp: VP_TIERS[REGIONS.EUROPE]['20:00'], tier: 'peak' as const },
+    { start: 22, end: 24, vp: VP_TIERS[REGIONS.EUROPE]['22:00'], tier: 'high' as const },
   ],
   // North America region (region code '1')
   na: [
-    { start: 0, end: 2, vp: { first: 43, second: 32, third: 21 }, tier: 'peak' as const },
-    { start: 2, end: 4, vp: { first: 43, second: 32, third: 21 }, tier: 'peak' as const },
-    { start: 4, end: 6, vp: { first: 31, second: 24, third: 17 }, tier: 'high' as const },
-    { start: 6, end: 8, vp: { first: 23, second: 18, third: 14 }, tier: 'medium' as const },
-    { start: 8, end: 10, vp: { first: 19, second: 16, third: 13 }, tier: 'low' as const },
-    { start: 10, end: 12, vp: { first: 19, second: 16, third: 13 }, tier: 'low' as const },
-    { start: 12, end: 14, vp: { first: 19, second: 16, third: 13 }, tier: 'low' as const },
-    { start: 14, end: 16, vp: { first: 23, second: 18, third: 14 }, tier: 'medium' as const },
-    { start: 16, end: 18, vp: { first: 23, second: 18, third: 14 }, tier: 'medium' as const },
-    { start: 18, end: 20, vp: { first: 23, second: 18, third: 14 }, tier: 'medium' as const },
-    { start: 20, end: 22, vp: { first: 23, second: 18, third: 14 }, tier: 'medium' as const },
-    { start: 22, end: 24, vp: { first: 31, second: 24, third: 17 }, tier: 'high' as const },
+    { start: 0, end: 2, vp: VP_TIERS[REGIONS.NORTH_AMERICA]['00:00'], tier: 'peak' as const },
+    { start: 2, end: 4, vp: VP_TIERS[REGIONS.NORTH_AMERICA]['02:00'], tier: 'peak' as const },
+    { start: 4, end: 6, vp: VP_TIERS[REGIONS.NORTH_AMERICA]['04:00'], tier: 'high' as const },
+    { start: 6, end: 8, vp: VP_TIERS[REGIONS.NORTH_AMERICA]['06:00'], tier: 'medium' as const },
+    { start: 8, end: 10, vp: VP_TIERS[REGIONS.NORTH_AMERICA]['08:00'], tier: 'low' as const },
+    { start: 10, end: 12, vp: VP_TIERS[REGIONS.NORTH_AMERICA]['10:00'], tier: 'low' as const },
+    { start: 12, end: 14, vp: VP_TIERS[REGIONS.NORTH_AMERICA]['12:00'], tier: 'low' as const },
+    { start: 14, end: 16, vp: VP_TIERS[REGIONS.NORTH_AMERICA]['14:00'], tier: 'medium' as const },
+    { start: 16, end: 18, vp: VP_TIERS[REGIONS.NORTH_AMERICA]['16:00'], tier: 'medium' as const },
+    { start: 18, end: 20, vp: VP_TIERS[REGIONS.NORTH_AMERICA]['18:00'], tier: 'medium' as const },
+    { start: 20, end: 22, vp: VP_TIERS[REGIONS.NORTH_AMERICA]['20:00'], tier: 'medium' as const },
+    { start: 22, end: 24, vp: VP_TIERS[REGIONS.NORTH_AMERICA]['22:00'], tier: 'high' as const },
   ],
 };
 
@@ -89,5 +91,5 @@ export function getVPTierForTime(
  */
 export function getRegionFromMatchId(matchId: string): 'na' | 'eu' {
   const regionCode = matchId.split('-')[0];
-  return regionCode === '1' ? 'na' : 'eu';
+  return regionCode === REGIONS.NORTH_AMERICA ? 'na' : 'eu';
 }

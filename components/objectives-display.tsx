@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Shield, Castle as CastleIcon, Home, Flag } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { POLL_INTERVALS_MS } from '@/lib/game-constants';
 
 interface ObjectivesData {
   red: { keeps: number; towers: number; camps: number; castles: number };
@@ -61,7 +62,7 @@ export function ObjectivesDisplay({ matchId, worlds }: ObjectivesDisplayProps) {
     fetchObjectives();
 
     // Refresh objectives every 30 seconds
-    const interval = setInterval(fetchObjectives, 30000);
+    const interval = setInterval(fetchObjectives, POLL_INTERVALS_MS.OBJECTIVES);
     return () => clearInterval(interval);
   }, [matchId]);
 

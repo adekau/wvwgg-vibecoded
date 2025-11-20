@@ -12,6 +12,7 @@ import {
   type ScenarioResult,
 } from '@/lib/vp-scenario-solver-greedy'
 import { getVPTierForTime, getRegionFromMatchId } from '@/lib/vp-tiers'
+import { TOTAL_SKIRMISHES_PER_MATCH } from '@/lib/game-constants'
 
 interface VPScenarioPlannerProps {
   matchId: string
@@ -91,9 +92,8 @@ export function VPScenarioPlanner({ matchId, match }: VPScenarioPlannerProps) {
   }
 
   // Calculate remaining skirmishes
-  const totalSkirmishes = 84 // 7 days × 12 skirmishes per day
   const completedSkirmishes = match.skirmishes?.length || 0
-  const remainingCount = totalSkirmishes - completedSkirmishes
+  const remainingCount = TOTAL_SKIRMISHES_PER_MATCH - completedSkirmishes
 
   // Get current skirmish ID (0-indexed, so if 34 are complete, next is skirmish 34 which is the 35th skirmish)
   const currentSkirmishId = completedSkirmishes - 1

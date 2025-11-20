@@ -11,6 +11,7 @@
  */
 
 import { getVPTierForTime } from './vp-tiers'
+import { SOLVER_LIMITS } from './game-constants'
 
 // --- Types ---
 
@@ -59,7 +60,7 @@ export class DeterministicDFSSolver {
   private skirmishes: SkirmishInfo[]
   private targetIds: string[] // IDs ordered by desired rank
   private iterations: number = 0
-  private maxIterations: number = 500000 // Safety limit to prevent browser hangs (tuned for 50 skirmishes max)
+  private maxIterations: number = SOLVER_LIMITS.MAX_ITERATIONS
 
   // Pre-calculated lookahead tables for pruning
   // maxSpreadRemaining[i] = The maximum points 1st place can gain over 3rd place from skirmish i to end

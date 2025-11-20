@@ -17,6 +17,7 @@ import {
   getActiveWindows,
   type PrimeTimeWindow,
 } from '@/lib/prime-time-windows'
+import { POLL_INTERVALS_MS } from '@/lib/game-constants'
 
 interface PrimeTimePerformanceProps {
   matchId: string
@@ -56,7 +57,7 @@ export function PrimeTimePerformance({ matchId, worlds, primeTimeStats }: PrimeT
   useEffect(() => {
     const interval = setInterval(() => {
       setActiveWindows(getActiveWindows())
-    }, 60000) // Update every minute
+    }, POLL_INTERVALS_MS.CHART_UPDATE)
 
     return () => clearInterval(interval)
   }, [])

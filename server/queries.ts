@@ -2,6 +2,12 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { unstable_cache } from 'next/cache';
 import { createCredentialsProvider } from './aws-credentials';
+import {
+  CACHE_DURATIONS,
+  DB_CONSTANTS,
+  HISTORY_SNAPSHOT_INTERVAL_MS,
+  SNAPSHOT_INTERVALS_PER_HOUR,
+} from '@/lib/game-constants';
 
 // Types
 export interface IWorld {
@@ -91,7 +97,7 @@ export const getMatches = unstable_cache(
         // Fallback to GW2 API
         const apiResponse = await fetch(
           `${process.env.ANET_MATCHES_ENDPOINT}?ids=all`,
-          { next: { revalidate: 60 } }
+          { next: { revalidate: CACHE_DURATIONS.MATCHES } }
         );
 
         if (!apiResponse.ok) {
@@ -109,7 +115,7 @@ export const getMatches = unstable_cache(
     }
   },
   ['matches-v2'],
-  { revalidate: 60, tags: ['matches'] }
+  { revalidate: CACHE_DURATIONS.MATCHES, tags: ['matches'] }
 );
 
 export const getWorlds = unstable_cache(
@@ -126,7 +132,7 @@ export const getWorlds = unstable_cache(
         // Fallback to GW2 API
         const apiResponse = await fetch(
           `${process.env.ANET_WORLDS_ENDPOINT}?ids=all`,
-          { next: { revalidate: 86400 } }
+          { next: { revalidate: CACHE_DURATIONS.WORLDS } }
         );
 
         if (!apiResponse.ok) {
@@ -144,7 +150,7 @@ export const getWorlds = unstable_cache(
     }
   },
   ['worlds-v2'],
-  { revalidate: 86400, tags: ['worlds'] }
+  { revalidate: CACHE_DURATIONS.WORLDS, tags: ['worlds'] }
 );
 
 export const getGuilds = unstable_cache(
@@ -153,7 +159,7 @@ export const getGuilds = unstable_cache(
       let allItems: any[] = [];
       let lastEvaluatedKey: Record<string, any> | undefined;
       let iterations = 0;
-      const maxIterations = 100; // Safety limit
+      const maxIterations = DB_CONSTANTS.MAX_QUERY_ITERATIONS;
 
       // Query primary table (type='guild') since guilds don't have 'interval' field
       do {
@@ -163,7 +169,7 @@ export const getGuilds = unstable_cache(
             TableName: process.env.TABLE_NAME,
             KeyConditionExpression: '#type = :type',
             ExpressionAttributeNames: { '#type': 'type' },
-            ExpressionAttributeValues: { ':type': 'guild' },
+            ExpressionAttributeValues: { ':type': DB_CONSTANTS.QUERY_TYPES.GUILD },
             ExclusiveStartKey: lastEvaluatedKey,
           })
         );
@@ -197,7 +203,7 @@ export const getGuilds = unstable_cache(
     }
   },
   ['guilds'],
-  { revalidate: 3600, tags: ['guilds'] } // Changed to 1 hour
+  { revalidate: CACHE_DURATIONS.GUILDS, tags: ['guilds'] }
 );
 
 export interface HistoricalSnapshot {
@@ -224,14 +230,14 @@ async function _getMatchHistory(options: MatchHistoryOptions = {}): Promise<Hist
     if (options.matchId && options.matchStartTime) {
       const matchStartMs = new Date(options.matchStartTime).getTime();
       // Calculate the 15-minute interval for match start
-      startInterval = Math.floor(matchStartMs / (1000 * 60 * 15));
+      startInterval = Math.floor(matchStartMs / HISTORY_SNAPSHOT_INTERVAL_MS);
       queryDescription = `match ${options.matchId} from ${options.matchStartTime}`;
     } else {
       // Legacy: query based on last N hours from now
       const hours = options.hours || 24;
       const now = Date.now();
-      const current15Min = Math.floor(now / (1000 * 60 * 15));
-      const intervalsToFetch = hours * 4; // 4 intervals per hour
+      const current15Min = Math.floor(now / HISTORY_SNAPSHOT_INTERVAL_MS);
+      const intervalsToFetch = hours * SNAPSHOT_INTERVALS_PER_HOUR;
       startInterval = current15Min - intervalsToFetch;
       queryDescription = `last ${hours} hours`;
     }
@@ -244,14 +250,14 @@ async function _getMatchHistory(options: MatchHistoryOptions = {}): Promise<Hist
       const response = await docClient.send(
         new QueryCommand({
           TableName: process.env.TABLE_NAME,
-          IndexName: 'type-interval-index',
+          IndexName: DB_CONSTANTS.INDEX_NAME,
           KeyConditionExpression: '#type = :type AND #interval >= :startInterval',
           ExpressionAttributeNames: {
             '#type': 'type',
             '#interval': 'interval',
           },
           ExpressionAttributeValues: {
-            ':type': 'match-history',
+            ':type': DB_CONSTANTS.QUERY_TYPES.MATCH_HISTORY,
             ':startInterval': startInterval,
           },
           ExclusiveStartKey: lastEvaluatedKey,
@@ -277,7 +283,7 @@ async function _getMatchHistory(options: MatchHistoryOptions = {}): Promise<Hist
 export const getMatchHistory = unstable_cache(
   _getMatchHistory,
   ['match-history'],
-  { revalidate: 120, tags: ['match-history'] }
+  { revalidate: CACHE_DURATIONS.MATCH_HISTORY, tags: ['match-history'] }
 );
 
 /**
@@ -288,7 +294,7 @@ async function _getPrimeTimeStats(matchId: string): Promise<any | null> {
     const response = await docClient.send(
       new GetCommand({
         TableName: process.env.TABLE_NAME,
-        Key: { type: 'prime-time-stats', id: matchId },
+        Key: { type: DB_CONSTANTS.QUERY_TYPES.PRIME_TIME_STATS, id: matchId },
       })
     );
 

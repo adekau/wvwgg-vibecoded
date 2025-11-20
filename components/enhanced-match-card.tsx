@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Trophy, TrendingUp, Activity, Swords, Skull } from 'lucide-react';
+import { ACTIVITY_THRESHOLDS } from '@/lib/game-constants';
 
 interface WorldData {
   name: string;
@@ -52,7 +53,7 @@ export function EnhancedMatchCard({ tier, worlds }: EnhancedMatchCardProps) {
 
   const getActivityLevel = (activity?: number) => {
     if (!activity) return 'Low';
-    if (activity > 30000) return 'Very High';
+    if (activity > ACTIVITY_THRESHOLDS.VERY_HIGH) return 'Very High';
     if (activity > 25000) return 'High';
     if (activity > 20000) return 'Medium';
     return 'Low';
@@ -60,7 +61,7 @@ export function EnhancedMatchCard({ tier, worlds }: EnhancedMatchCardProps) {
 
   const getActivityColor = (activity?: number) => {
     if (!activity) return 'text-muted-foreground';
-    if (activity > 30000) return 'text-green-500';
+    if (activity > ACTIVITY_THRESHOLDS.VERY_HIGH) return 'text-green-500';
     if (activity > 25000) return 'text-blue-500';
     if (activity > 20000) return 'text-yellow-500';
     return 'text-muted-foreground';

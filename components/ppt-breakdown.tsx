@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Zap } from 'lucide-react'
 import { useMemo } from 'react'
+import { PPT_VALUES, TIER_LABELS } from '@/lib/game-constants'
 
 interface PPTBreakdownProps {
   matchId: string
@@ -59,15 +60,14 @@ export function PPTBreakdown({ matchId, ppt, objectives: serverObjectives }: PPT
 
   const detailedPPT = useMemo(() => {
     try {
-      // Helper to infer tier from points_tick
+      // Helper to infer tier from points_tick using game constants
       const inferTier = (type: string, pointsTick: number): number => {
-        const tierMaps: { [key: string]: { [key: number]: number } } = {
-          Camp: { 2: 0, 3: 1, 4: 2, 5: 3 },
-          Tower: { 4: 0, 6: 1, 8: 2, 10: 3 },
-          Keep: { 8: 0, 12: 1, 16: 2, 20: 3 },
-          Castle: { 12: 0, 18: 1, 24: 2, 30: 3 },
-        }
-        return tierMaps[type]?.[pointsTick] ?? 0
+        const typeKey = type.toLowerCase() as keyof typeof PPT_VALUES;
+        const pptArray = PPT_VALUES[typeKey];
+        if (!pptArray) return 0;
+
+        const tier = (pptArray as readonly number[]).indexOf(pointsTick);
+        return tier !== -1 ? tier : 0;
       }
 
       // Initialize breakdown structure
@@ -150,14 +150,18 @@ export function PPTBreakdown({ matchId, ppt, objectives: serverObjectives }: PPT
     )
   }
 
+  // Helper to get PPT values string for an objective type
+  const getPPTValuesString = (objectiveType: keyof typeof PPT_VALUES): string => {
+    return PPT_VALUES[objectiveType].join('/');
+  };
+
   // Helper to render tier details
   const renderTierDetails = (tierData: TierBreakdown) => {
-    const tiers = [
-      { key: 'tier0', label: 'T0', data: tierData.tier0 },
-      { key: 'tier1', label: 'T1', data: tierData.tier1 },
-      { key: 'tier2', label: 'T2', data: tierData.tier2 },
-      { key: 'tier3', label: 'T3', data: tierData.tier3 },
-    ]
+    const tiers = TIER_LABELS.map((label, index) => ({
+      key: `tier${index}` as const,
+      label,
+      data: tierData[`tier${index}` as keyof TierBreakdown] as { count: number; ppt: number },
+    }))
 
     const nonZeroTiers = tiers.filter(t => t.data.count > 0)
 
@@ -199,7 +203,7 @@ export function PPTBreakdown({ matchId, ppt, objectives: serverObjectives }: PPT
               <tr className="border-b border-border/30">
                 <td className="py-3 px-2">
                   <div className="font-medium">Castles</div>
-                  <div className="text-xs text-muted-foreground">12/18/24/30</div>
+                  <div className="text-xs text-muted-foreground">{getPPTValuesString('castle')}</div>
                 </td>
                 <td className="py-3 px-2">
                   <div className={`flex flex-col h-full min-h-[60px] rounded ${detailedPPT.red.castles.total > 0 && detailedPPT.red.castles.total === getHighestForObjectiveType('castles') && getHighestForObjectiveType('castles') > 0 ? 'bg-amber-400/10 px-2 -mx-2' : ''}`}>
@@ -270,7 +274,7 @@ export function PPTBreakdown({ matchId, ppt, objectives: serverObjectives }: PPT
               <tr className="border-b border-border/30">
                 <td className="py-3 px-2">
                   <div className="font-medium">Keeps</div>
-                  <div className="text-xs text-muted-foreground">8/12/16/20</div>
+                  <div className="text-xs text-muted-foreground">{getPPTValuesString('keep')}</div>
                 </td>
                 <td className="py-3 px-2">
                   <div className={`flex flex-col h-full min-h-[60px] rounded ${detailedPPT.red.keeps.total > 0 && detailedPPT.red.keeps.total === getHighestForObjectiveType('keeps') && getHighestForObjectiveType('keeps') > 0 ? 'bg-amber-400/10 px-2 -mx-2' : ''}`}>
@@ -341,7 +345,7 @@ export function PPTBreakdown({ matchId, ppt, objectives: serverObjectives }: PPT
               <tr className="border-b border-border/30">
                 <td className="py-3 px-2">
                   <div className="font-medium">Towers</div>
-                  <div className="text-xs text-muted-foreground">4/6/8/10</div>
+                  <div className="text-xs text-muted-foreground">{getPPTValuesString('tower')}</div>
                 </td>
                 <td className="py-3 px-2">
                   <div className={`flex flex-col h-full min-h-[60px] rounded ${detailedPPT.red.towers.total > 0 && detailedPPT.red.towers.total === getHighestForObjectiveType('towers') && getHighestForObjectiveType('towers') > 0 ? 'bg-amber-400/10 px-2 -mx-2' : ''}`}>
@@ -412,7 +416,7 @@ export function PPTBreakdown({ matchId, ppt, objectives: serverObjectives }: PPT
               <tr className="border-b border-border/30">
                 <td className="py-3 px-2">
                   <div className="font-medium">Camps</div>
-                  <div className="text-xs text-muted-foreground">2/3/4/5</div>
+                  <div className="text-xs text-muted-foreground">{getPPTValuesString('camp')}</div>
                 </td>
                 <td className="py-3 px-2">
                   <div className={`flex flex-col h-full min-h-[60px] rounded ${detailedPPT.red.camps.total > 0 && detailedPPT.red.camps.total === getHighestForObjectiveType('camps') && getHighestForObjectiveType('camps') > 0 ? 'bg-amber-400/10 px-2 -mx-2' : ''}`}>

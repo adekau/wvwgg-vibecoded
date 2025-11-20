@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
-import { DynamoDBDocumentClient, UpdateCommand, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 import { createCredentialsProvider } from '@/server/aws-credentials'
-import { revalidateTag } from 'next/cache'
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
+import { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
+import { revalidateTag, updateTag } from 'next/cache'
+import { NextRequest, NextResponse } from 'next/server'
 
 const credentials = createCredentialsProvider()
 
@@ -107,10 +107,10 @@ export async function POST(request: NextRequest) {
       headers: { Authorization: `Bearer ${apiKey}` },
     }).then(res => res.json())
 
-    // Find the current user in the member list
-    const currentMember = members.find((m: any) => m.name === accountInfo.name)
+    const isMember = (accountInfo.guilds || []).includes(guildId);
+    const isGuildLeader = (accountInfo.guild_leader || []).includes(guildId);
 
-    if (!currentMember) {
+    if (!isMember) {
       return NextResponse.json(
         { error: 'You are not a member of this guild' },
         { status: 403 }
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify user is guild leader
-    if (currentMember.rank !== 'Leader') {
+    if (!isGuildLeader) {
       return NextResponse.json(
         { error: 'Only guild leaders can update guild information' },
         { status: 403 }
@@ -190,7 +190,7 @@ export async function POST(request: NextRequest) {
       console.log('[VERIFY] New guild added successfully')
 
       // Revalidate the guilds cache
-      revalidateTag('guilds')
+      updateTag('guilds')
 
       return NextResponse.json({
         success: true,
@@ -259,7 +259,7 @@ export async function POST(request: NextRequest) {
     console.log('[VERIFY] Guild updated successfully')
 
     // Revalidate the guilds cache
-    revalidateTag('guilds')
+    updateTag('guilds')
 
     return NextResponse.json({
       success: true,

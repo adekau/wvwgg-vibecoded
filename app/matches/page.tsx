@@ -2,6 +2,7 @@ import { MatchesHeader } from '@/components/matches-header'
 import { MatchesGrid } from '@/components/matches-grid'
 import { AutoRefresh } from '@/components/auto-refresh'
 import { getMatches, getWorlds } from '@/server/queries'
+import { TOTAL_SKIRMISHES_PER_MATCH, SKIRMISH_DURATION_MS } from '@/lib/game-constants'
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -27,10 +28,9 @@ export default async function MatchesPage() {
     const hoursRemaining = Math.floor((timeRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
 
     // Calculate skirmishes remaining (assuming 2-hour skirmishes)
-    const totalSkirmishes = 84; // 7 days * 12 skirmishes per day
     const elapsedTime = now.getTime() - startTime.getTime();
-    const elapsedSkirmishes = Math.floor(elapsedTime / (1000 * 60 * 60 * 2));
-    const skirmishesRemaining = Math.max(0, totalSkirmishes - elapsedSkirmishes);
+    const elapsedSkirmishes = Math.floor(elapsedTime / SKIRMISH_DURATION_MS);
+    const skirmishesRemaining = Math.max(0, TOTAL_SKIRMISHES_PER_MATCH - elapsedSkirmishes);
 
     // Format for tooltip using user's locale
     const startStr = startTime.toLocaleString(undefined, {
