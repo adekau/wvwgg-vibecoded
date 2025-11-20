@@ -268,7 +268,7 @@ export async function calculateScenario(input: ScenarioInput): Promise<ScenarioR
     const duration = performance.now() - startTime;
 
     solverAttempts.push({
-      name: 'DFS (Branch & Bound)',
+      name: 'Depth-First Search (DFS) Branch & Bound',
       attempted: true,
       success: dfsResult.isPossible,
       duration,
@@ -284,7 +284,7 @@ export async function calculateScenario(input: ScenarioInput): Promise<ScenarioR
   } catch (error) {
     console.error('[Solver] DFS solver error:', error);
     solverAttempts.push({
-      name: 'DFS (Branch & Bound)',
+      name: 'Depth-First Search (DFS) Branch & Bound',
       attempted: true,
       success: false,
       reason: error instanceof Error ? error.message : 'Unknown error',

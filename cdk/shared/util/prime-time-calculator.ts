@@ -103,11 +103,18 @@ export interface WindowStats {
 
 /**
  * Calculate stats for a prime time window
+ *
+ * IMPORTANT: We need to calculate deltas between consecutive snapshots within the window,
+ * not just first-to-last, because:
+ * 1. Off-hours spans multiple disconnected time ranges (0:00, 6:00-6:59, 12:00, etc.)
+ * 2. Match data is cumulative from match start
+ * 3. Using first-to-last would incorrectly include all intervening prime time activity
  */
 function calculateWindowStats(
   windowData: any[],
   windowId: PrimeTimeWindow,
-  windowName: string
+  windowName: string,
+  allHistoryData: any[] // Need full history to calculate consecutive deltas
 ): WindowStats {
   if (windowData.length === 0) {
     const emptyStats: TeamStats = {
@@ -129,31 +136,58 @@ function calculateWindowStats(
     };
   }
 
-  // Sort by timestamp
-  const sorted = [...windowData].sort((a, b) => {
+  // Sort ALL history by timestamp to find consecutive snapshots
+  const allSorted = [...allHistoryData].sort((a, b) => {
     const timeA = typeof a.timestamp === 'number' ? a.timestamp : new Date(a.timestamp).getTime();
     const timeB = typeof b.timestamp === 'number' ? b.timestamp : new Date(b.timestamp).getTime();
     return timeA - timeB;
   });
 
-  const firstPoint = sorted[0];
-  const lastPoint = sorted[sorted.length - 1];
+  // Create a Set of timestamps in this window for quick lookup
+  const windowTimestamps = new Set(
+    windowData.map(d => typeof d.timestamp === 'number' ? d.timestamp : new Date(d.timestamp).getTime())
+  );
 
-  // Calculate team stats
+  // Calculate team stats by summing deltas between consecutive snapshots in this window
   const calculateTeamStats = (color: 'red' | 'blue' | 'green'): TeamStats => {
-    const killsDelta = lastPoint[color].kills - firstPoint[color].kills;
-    const deathsDelta = lastPoint[color].deaths - firstPoint[color].deaths;
-    const vpDelta = lastPoint[color].victoryPoints - firstPoint[color].victoryPoints;
-    const scoreDelta = lastPoint[color].score - firstPoint[color].score;
+    let totalKills = 0;
+    let totalDeaths = 0;
+    let totalVP = 0;
+    let totalScore = 0;
 
-    const kdRatio = deathsDelta > 0 ? killsDelta / deathsDelta : killsDelta;
+    // Iterate through all sorted snapshots and calculate deltas
+    // Start from index 1 to skip the first snapshot (we can't attribute its cumulative data)
+    for (let i = 1; i < allSorted.length; i++) {
+      const current = allSorted[i];
+      const previous = allSorted[i - 1];
+
+      const currentTime = typeof current.timestamp === 'number'
+        ? current.timestamp
+        : new Date(current.timestamp).getTime();
+
+      // Only process snapshots in this window
+      if (windowTimestamps.has(currentTime)) {
+        // Calculate delta from previous snapshot (which may be in a different window)
+        const killsDelta = current[color].kills - previous[color].kills;
+        const deathsDelta = current[color].deaths - previous[color].deaths;
+        const vpDelta = current[color].victoryPoints - previous[color].victoryPoints;
+        const scoreDelta = current[color].score - previous[color].score;
+
+        totalKills += Math.max(0, killsDelta);
+        totalDeaths += Math.max(0, deathsDelta);
+        totalVP += Math.max(0, vpDelta);
+        totalScore += Math.max(0, scoreDelta);
+      }
+    }
+
+    const kdRatio = totalDeaths > 0 ? totalKills / totalDeaths : totalKills;
 
     return {
-      kills: Math.max(0, killsDelta),
-      deaths: Math.max(0, deathsDelta),
+      kills: totalKills,
+      deaths: totalDeaths,
       kdRatio: (Math.round(kdRatio * 100) / 100).toFixed(2),
-      victoryPoints: Math.max(0, vpDelta),
-      score: Math.max(0, scoreDelta),
+      victoryPoints: totalVP,
+      score: totalScore,
     };
   };
 
@@ -225,6 +259,6 @@ export function calculateMatchPrimeTimeStats(
 
   return allWindows.map(window => {
     const windowData = grouped[window.id];
-    return calculateWindowStats(windowData, window.id, window.name);
+    return calculateWindowStats(windowData, window.id, window.name, matchHistory);
   });
 }

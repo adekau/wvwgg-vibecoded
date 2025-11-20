@@ -438,6 +438,8 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
 
           // Calculate required PPT to win skirmish (if not catching up)
           let requiredPPT: number | null = null
+          let ticksRemaining = 0
+          let ticksNeeded: number | null = null
           if ((teamStatus.status === 'falling-behind' || teamStatus.status === 'maintaining-gap') && pointsBehind > 0) {
             // Calculate time remaining in current skirmish
             const matchStart = new Date(match.startDate)
@@ -447,6 +449,7 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
             const skirmishStartTime = new Date(matchStart.getTime() + (skirmishNumber * 120 * 60 * 1000))
             const skirmishElapsed = Math.floor((now.getTime() - skirmishStartTime.getTime()) / (1000 * 60))
             const minutesRemaining = Math.max(0, 120 - skirmishElapsed)
+            ticksRemaining = Math.ceil(minutesRemaining / 5) // Ticks are every 5 minutes
 
             requiredPPT = calculateRequiredPPTToOvertake(
               pointsBehind,
@@ -454,6 +457,14 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
               leaderPPT,
               minutesRemaining
             )
+
+            // Calculate how many ticks it would take to catch up with required PPT
+            if (requiredPPT !== null) {
+              const pptGain = requiredPPT - leaderPPT
+              if (pptGain > 0) {
+                ticksNeeded = Math.ceil(pointsBehind / pptGain)
+              }
+            }
           }
           const maxPossiblePPT = getMaximumPossiblePPT()
 
@@ -512,15 +523,21 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
                           {teamStatus.status === 'maintaining-gap' && 'Gap maintained'}
                           {teamStatus.status === 'falling-behind' && '🔻 Falling behind'}
                         </div>
-                        {(teamStatus.status === 'falling-behind' || teamStatus.status === 'maintaining-gap') && requiredPPT !== null && requiredPPT <= maxPossiblePPT && (
-                          <div className="text-muted-foreground">
-                            Need <span className="font-mono font-semibold text-orange-600 dark:text-orange-400">{requiredPPT} PPT</span> to win skirmish
-                          </div>
-                        )}
-                        {(teamStatus.status === 'falling-behind' || teamStatus.status === 'maintaining-gap') && requiredPPT !== null && requiredPPT > maxPossiblePPT && (
-                          <div className="text-muted-foreground">
-                            Can't win with current PPT (need {requiredPPT})
-                          </div>
+                        {(teamStatus.status === 'falling-behind' || teamStatus.status === 'maintaining-gap') && requiredPPT !== null && (
+                          <>
+                            {/* Check if it's achievable: PPT must be <= max AND ticks needed <= ticks remaining */}
+                            {requiredPPT <= maxPossiblePPT && (ticksNeeded === null || ticksNeeded <= ticksRemaining) && (
+                              <div className="text-muted-foreground">
+                                Need <span className="font-mono font-semibold text-orange-600 dark:text-orange-400">{requiredPPT} PPT</span> to win skirmish
+                              </div>
+                            )}
+                            {/* Show unwinnable if PPT exceeds max OR not enough ticks remaining */}
+                            {(requiredPPT > maxPossiblePPT || (ticksNeeded !== null && ticksNeeded > ticksRemaining)) && (
+                              <div className="text-muted-foreground">
+                                Can't win skirmish (need <span className="font-mono font-semibold text-red-600 dark:text-red-400">{requiredPPT} PPT</span>)
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     )}
