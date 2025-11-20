@@ -268,14 +268,14 @@ export function calculateRequiredPPTToOvertake(
 
   const ticksRemaining = Math.ceil(minutesRemaining / 5); // Ticks are every 5 minutes
 
-  // Points leader will gain
-  const leaderGain = leaderPPT * ticksRemaining;
+  // To overtake, we need to gain more points than the leader
+  // If leader gains L points and we gain W points, we need: W - L >= scoreDeficit + 1
+  // W = requiredPPT * ticks, L = leaderPPT * ticks
+  // So: requiredPPT * ticks - leaderPPT * ticks >= scoreDeficit + 1
+  // requiredPPT >= leaderPPT + (scoreDeficit + 1) / ticks
 
-  // Total points team needs to score to overtake (current deficit + what leader will gain + 1 to be ahead)
-  const pointsNeeded = scoreDeficit + leaderGain + 1;
-
-  // Required PPT
-  const requiredPPT = Math.ceil(pointsNeeded / ticksRemaining);
+  const pptDifferentialNeeded = Math.ceil((scoreDeficit + 1) / ticksRemaining);
+  const requiredPPT = leaderPPT + pptDifferentialNeeded;
 
   return requiredPPT;
 }
@@ -286,4 +286,72 @@ export function calculateRequiredPPTToOvertake(
  */
 export function getMaximumPossiblePPT(): number {
   return 156; // All objectives at tier 0
+}
+
+/**
+ * Calculate maximum achievable PPT for a team given current objective distribution
+ * This calculates: PPT from current objectives at their current tiers + PPT from capturable objectives (at T0)
+ *
+ * @param teamColor - The team color (red, blue, or green)
+ * @param detailedObjectives - Array of detailed objective data from GW2 API with tier info
+ * @returns Maximum PPT the team could achieve and a breakdown of current vs potential
+ */
+export function calculateMaxAchievablePPT(
+  teamColor: 'red' | 'blue' | 'green',
+  detailedObjectives: any[]
+): {
+  maxPPT: number;
+  currentPPT: number;
+  potentialGain: number;
+  breakdown: {
+    current: { camps: number; towers: number; keeps: number; castles: number };
+    capturable: { camps: number; towers: number; keeps: number; castles: number };
+  };
+} {
+  let currentPPT = 0;
+  let capturablePPT = 0;
+
+  const currentBreakdown = { camps: 0, towers: 0, keeps: 0, castles: 0 };
+  const capturableBreakdown = { camps: 0, towers: 0, keeps: 0, castles: 0 };
+
+  // Map objective types from API to our types
+  const typeMap: Record<string, ObjectiveType> = {
+    Camp: 'camp',
+    Tower: 'tower',
+    Keep: 'keep',
+    Castle: 'castle',
+  };
+
+  for (const obj of detailedObjectives) {
+    const objType = typeMap[obj.type];
+    if (!objType) continue; // Skip spawns, etc.
+
+    // Normalize owner to lowercase for comparison
+    const owner = obj.owner?.toLowerCase();
+    if (!owner || !['red', 'blue', 'green'].includes(owner)) continue;
+
+    // Use points_tick directly from the API - this is the actual PPT value for the objective
+    const pointsTick = obj.points_tick || 0;
+
+    if (owner === teamColor) {
+      // This team owns it - count at current PPT value
+      currentPPT += pointsTick;
+      currentBreakdown[`${objType}s` as keyof typeof currentBreakdown] += pointsTick;
+    } else {
+      // Another team owns it - we could capture it (at T0)
+      const t0Value = getPPTForObjective(objType, 0);
+      capturablePPT += t0Value;
+      capturableBreakdown[`${objType}s` as keyof typeof capturableBreakdown] += t0Value;
+    }
+  }
+
+  return {
+    maxPPT: currentPPT + capturablePPT,
+    currentPPT,
+    potentialGain: capturablePPT,
+    breakdown: {
+      current: currentBreakdown,
+      capturable: capturableBreakdown,
+    },
+  };
 }

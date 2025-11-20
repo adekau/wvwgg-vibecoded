@@ -108,8 +108,38 @@ export function getPrimeTimeWindow(timestamp: string | Date | number): PrimeTime
 }
 
 /**
+ * Get all currently active prime time windows (supports overlapping windows)
+ * @param timestamp - Optional timestamp, defaults to current time
+ * @returns Array of PrimeTimeWindow IDs that are active at the given time
+ */
+export function getActiveWindows(timestamp?: string | Date | number): PrimeTimeWindow[] {
+  let date: Date;
+  if (timestamp === undefined) {
+    date = new Date();
+  } else if (typeof timestamp === 'string') {
+    date = new Date(timestamp);
+  } else if (typeof timestamp === 'number') {
+    date = new Date(timestamp);
+  } else {
+    date = timestamp;
+  }
+
+  const utcHour = date.getUTCHours();
+  const activeWindows: PrimeTimeWindow[] = [];
+
+  for (const window of PRIME_TIME_WINDOWS) {
+    if (utcHour >= window.utcHourStart && utcHour < window.utcHourEnd) {
+      activeWindows.push(window.id);
+    }
+  }
+
+  return activeWindows.length > 0 ? activeWindows : ['off-hours'];
+}
+
+/**
  * Get the currently active prime time window
- * @returns PrimeTimeWindow ID for the current time
+ * @returns PrimeTimeWindow ID for the current time (first match if multiple)
+ * @deprecated Use getActiveWindows() instead to support overlapping windows
  */
 export function getCurrentActiveWindow(): PrimeTimeWindow {
   return getPrimeTimeWindow(new Date());

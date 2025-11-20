@@ -1,15 +1,13 @@
-import { MatchesHeader } from '@/components/matches-header'
-import { Button } from '@/components/ui/button'
 import { getGuilds, getWorlds } from '@/server/queries'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { GuildDetailPanel } from '@/components/guild-detail-panel'
+import { Card, CardContent } from '@/components/ui/card'
 
 interface PageProps {
   params: Promise<{ guildId: string }>
 }
 
-export default async function GuildDetailPage({ params }: PageProps) {
+export default async function GuildDetailSlot({ params }: PageProps) {
   const { guildId } = await params
   const [guilds, worldsData] = await Promise.all([getGuilds(), getWorlds()])
 
@@ -28,26 +26,15 @@ export default async function GuildDetailPage({ params }: PageProps) {
   }
 
   return (
-    <div className="min-h-screen">
-      <MatchesHeader />
-
-      <main className="container mx-auto px-4 py-8 space-y-8">
+    <Card className="panel-border inset-card flex-1 overflow-auto">
+      <CardContent className="p-6">
         <GuildDetailPanel
           guild={guild}
           allGuilds={guilds}
           worldMap={worldMap}
           isModal={false}
         />
-
-        {/* Back to Guilds */}
-        <div className="pt-4">
-          <Link href="/guilds">
-            <Button variant="outline">
-              ← Back to Guilds
-            </Button>
-          </Link>
-        </div>
-      </main>
-    </div>
+      </CardContent>
+    </Card>
   )
 }

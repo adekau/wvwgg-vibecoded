@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, startTransition } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -14,45 +14,48 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Search, Plus, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, SlidersHorizontal } from 'lucide-react'
+import { Search, Plus, SlidersHorizontal } from 'lucide-react'
 import { IGuild } from '@/server/queries'
 import Link from 'next/link'
 import { GuildSearchModal } from './guild-search-modal'
 import { GuildUpdateModal } from './guild-update-modal'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 
-interface GuildsListProps {
+interface GuildsListPanelProps {
   guilds: IGuild[]
   worldMap: Map<number, string>
 }
 
 type SortOption = 'name' | 'tag' | 'members' | 'world'
 
-export function GuildsList({ guilds, worldMap }: GuildsListProps) {
+export function GuildsListPanel({ guilds, worldMap }: GuildsListPanelProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedWorld, setSelectedWorld] = useState<string>('all')
   const [selectedRegion, setSelectedRegion] = useState<string>('all')
   const [selectedClassification, setSelectedClassification] = useState<string>('all')
   const [sortBy, setSortBy] = useState<SortOption>('name')
-  const [currentPage, setCurrentPage] = useState(1)
   const [searchModalOpen, setSearchModalOpen] = useState(false)
   const [updateModalOpen, setUpdateModalOpen] = useState(false)
   const [selectedGuildForAdd, setSelectedGuildForAdd] = useState<{ id: string; name: string; tag: string } | null>(null)
   const [showFilters, setShowFilters] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 50
+
+  // Extract selected guild ID from pathname
+  const selectedGuildId = pathname.match(/\/guilds\/([^/]+)/)?.[1]
 
   // Helper function to get region from world name
   const getRegion = (worldId: number): string => {
     const worldName = worldMap.get(worldId) || ''
-    // NA servers don't have language prefix, EU has [DE], [FR], [ES]
     if (worldName.includes('[DE]') || worldName.includes('[FR]') || worldName.includes('[ES]')) {
       return 'EU'
     }
     return 'NA'
   }
 
-  // Get unique worlds from guilds
+  // Get unique worlds and regions
   const availableWorlds = useMemo(() => {
     const worlds = new Map<number, string>()
     guilds.forEach(guild => {
@@ -64,7 +67,6 @@ export function GuildsList({ guilds, worldMap }: GuildsListProps) {
     return Array.from(worlds.entries()).sort((a, b) => a[1].localeCompare(b[1]))
   }, [guilds, worldMap])
 
-  // Get unique regions
   const availableRegions = useMemo(() => {
     const regions = new Set<string>()
     guilds.forEach(guild => {
@@ -77,22 +79,18 @@ export function GuildsList({ guilds, worldMap }: GuildsListProps) {
   const filteredGuilds = useMemo(() => {
     let filtered = [...guilds]
 
-    // Filter by region
     if (selectedRegion !== 'all') {
       filtered = filtered.filter(guild => getRegion(guild.worldId) === selectedRegion)
     }
 
-    // Filter by world
     if (selectedWorld !== 'all') {
       filtered = filtered.filter(guild => guild.worldId === parseInt(selectedWorld))
     }
 
-    // Filter by classification
     if (selectedClassification !== 'all') {
       filtered = filtered.filter(guild => guild.classification === selectedClassification)
     }
 
-    // Search by name or tag
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(
@@ -102,8 +100,10 @@ export function GuildsList({ guilds, worldMap }: GuildsListProps) {
       )
     }
 
-    // Sort
-    const sorted = filtered.sort((a, b) => {
+    // Reset to page 1 when filters change
+    setCurrentPage(1)
+
+    return filtered.sort((a, b) => {
       switch (sortBy) {
         case 'name':
           return a.name.localeCompare(b.name)
@@ -119,22 +119,17 @@ export function GuildsList({ guilds, worldMap }: GuildsListProps) {
           return 0
       }
     })
-
-    // Reset to page 1 when filters change
-    setCurrentPage(1)
-    return sorted
   }, [guilds, selectedWorld, selectedRegion, selectedClassification, searchQuery, sortBy, worldMap])
 
+  // Paginate results
+  const totalPages = Math.ceil(filteredGuilds.length / itemsPerPage)
   const paginatedGuilds = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage
     const endIndex = startIndex + itemsPerPage
     return filteredGuilds.slice(startIndex, endIndex)
   }, [filteredGuilds, currentPage, itemsPerPage])
 
-  const totalPages = Math.ceil(filteredGuilds.length / itemsPerPage)
-
   const handleGuildSelected = async (guildId: string) => {
-    // Fetch guild details to get name and tag for the modal
     try {
       const response = await fetch(`https://api.guildwars2.com/v2/guild/${guildId}`)
       if (response.ok) {
@@ -156,8 +151,8 @@ export function GuildsList({ guilds, worldMap }: GuildsListProps) {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Search Bar */}
+    <>
+      {/* Search and Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -277,204 +272,117 @@ export function GuildsList({ guilds, worldMap }: GuildsListProps) {
         </Card>
       )}
 
-      {/* Results Count */}
-      <div className="flex items-center justify-between">
+      {/* Guild Table */}
+      <Card className="panel-border inset-card flex-1 flex flex-col overflow-hidden">
+        <CardContent className="p-0 flex-1 overflow-auto">
+          <Table>
+            <TableHeader className="sticky top-0 bg-background z-10">
+              <TableRow>
+                <TableHead className="w-[100px]">Tag</TableHead>
+                <TableHead>Guild Name</TableHead>
+                <TableHead className="hidden md:table-cell">World</TableHead>
+                <TableHead className="hidden sm:table-cell">Region</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedGuilds.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                    No guilds found matching your search criteria.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                paginatedGuilds.map((guild) => {
+                  const allianceGuild = guild.allianceGuildId
+                    ? guilds.find(g => g.id === guild.allianceGuildId)
+                    : null
+                  const displayWorldId = allianceGuild ? allianceGuild.worldId : guild.worldId
+                  const region = getRegion(displayWorldId)
+                  const isSelected = selectedGuildId === guild.id
+
+                  return (
+                    <TableRow
+                      key={guild.id}
+                      className={`cursor-pointer ${isSelected ? 'bg-accent' : 'hover:bg-accent/50'}`}
+                    >
+                      <TableCell>
+                        <Link href={`/guilds/${guild.id}`} className="block">
+                          <Badge variant="outline" className="font-mono text-xs">
+                            {guild.tag}
+                          </Badge>
+                        </Link>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        <Link href={`/guilds/${guild.id}`} className="block">
+                          <div className="flex flex-col">
+                            <span>{guild.name}</span>
+                            <span className="text-xs text-muted-foreground sm:hidden">
+                              {region} • {worldMap.get(displayWorldId)?.split(' ')[0]}
+                            </span>
+                          </div>
+                        </Link>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <Link href={`/guilds/${guild.id}`} className="block">
+                          {worldMap.get(displayWorldId) || `Unknown (${displayWorldId})`}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        <Link href={`/guilds/${guild.id}`} className="block">
+                          <Badge variant="secondary" className="text-xs">
+                            {region}
+                          </Badge>
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Pagination Controls */}
+      <div className="flex items-center justify-between gap-4">
         <div className="text-sm text-muted-foreground">
-          {filteredGuilds.length === guilds.length ? (
-            <>Showing all {guilds.length.toLocaleString()} guilds</>
-          ) : (
-            <>Showing {filteredGuilds.length.toLocaleString()} of {guilds.length.toLocaleString()} guilds</>
-          )}
+          Showing {paginatedGuilds.length === 0 ? 0 : ((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filteredGuilds.length)} of {filteredGuilds.length.toLocaleString()} guilds
         </div>
+
         {totalPages > 1 && (
-          <div className="text-sm text-muted-foreground">
-            Page {currentPage} of {totalPages}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </Button>
+
+            <div className="text-sm text-muted-foreground">
+              Page {currentPage} of {totalPages}
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+            >
+              Next
+            </Button>
           </div>
         )}
       </div>
 
-      {/* Table View */}
-      <Card className="panel-border inset-card">
-        <CardContent className="p-0">
-          <div className="rounded-md border-0 overflow-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[100px]">Tag</TableHead>
-                  <TableHead>Guild Name</TableHead>
-                  <TableHead className="hidden md:table-cell">World</TableHead>
-                  <TableHead className="hidden sm:table-cell">Region</TableHead>
-                  {guilds[0]?.member_count !== undefined && (
-                    <TableHead className="text-right hidden lg:table-cell">Members</TableHead>
-                  )}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedGuilds.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                      No guilds found matching your search criteria.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  paginatedGuilds.map((guild) => {
-                    const allianceGuild = guild.allianceGuildId
-                      ? guilds.find(g => g.id === guild.allianceGuildId)
-                      : null
-                    const displayWorldId = allianceGuild ? allianceGuild.worldId : guild.worldId
-                    const region = getRegion(displayWorldId)
-
-                    return (
-                      <TableRow key={guild.id} className="hover:bg-accent/50 cursor-pointer">
-                        <TableCell>
-                          <Link href={`/guilds/${guild.id}`} className="block">
-                            <Badge variant="outline" className="font-mono text-xs">
-                              {guild.tag}
-                            </Badge>
-                          </Link>
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          <Link href={`/guilds/${guild.id}`} className="block">
-                            <div className="flex flex-col">
-                              <span>{guild.name}</span>
-                              <span className="text-xs text-muted-foreground sm:hidden">
-                                {region} • {worldMap.get(displayWorldId)?.split(' ')[0]}
-                              </span>
-                            </div>
-                          </Link>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          <Link href={`/guilds/${guild.id}`} className="block">
-                            {worldMap.get(displayWorldId) || `Unknown (${displayWorldId})`}
-                          </Link>
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell">
-                          <Link href={`/guilds/${guild.id}`} className="block">
-                            <Badge variant="secondary" className="text-xs">
-                              {region}
-                            </Badge>
-                          </Link>
-                        </TableCell>
-                        {guild.member_count !== undefined && (
-                          <TableCell className="text-right hidden lg:table-cell">
-                            <Link href={`/guilds/${guild.id}`} className="block font-mono">
-                              {guild.member_count}
-                            </Link>
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    )
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <Card className="panel-border inset-card">
-          <CardContent className="py-4">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="text-sm text-muted-foreground">
-                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredGuilds.length)} of {filteredGuilds.length.toLocaleString()} results
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => {
-                    setCurrentPage(1)
-                    window.scrollTo({ top: 0, behavior: 'smooth' })
-                  }}
-                  disabled={currentPage === 1}
-                  title="First page"
-                >
-                  <ChevronsLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setCurrentPage(p => Math.max(1, p - 1))
-                    window.scrollTo({ top: 0, behavior: 'smooth' })
-                  }}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="h-4 w-4 mr-1" />
-                  Previous
-                </Button>
-
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                    let pageNum: number
-                    if (totalPages <= 5) {
-                      pageNum = i + 1
-                    } else if (currentPage <= 3) {
-                      pageNum = i + 1
-                    } else if (currentPage >= totalPages - 2) {
-                      pageNum = totalPages - 4 + i
-                    } else {
-                      pageNum = currentPage - 2 + i
-                    }
-
-                    return (
-                      <Button
-                        key={pageNum}
-                        variant={currentPage === pageNum ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => {
-                          setCurrentPage(pageNum)
-                          window.scrollTo({ top: 0, behavior: 'smooth' })
-                        }}
-                        className="w-10 h-9"
-                      >
-                        {pageNum}
-                      </Button>
-                    )
-                  })}
-                </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setCurrentPage(p => Math.min(totalPages, p + 1))
-                    window.scrollTo({ top: 0, behavior: 'smooth' })
-                  }}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => {
-                    setCurrentPage(totalPages)
-                    window.scrollTo({ top: 0, behavior: 'smooth' })
-                  }}
-                  disabled={currentPage === totalPages}
-                  title="Last page"
-                >
-                  <ChevronsRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Guild Search Modal */}
+      {/* Modals */}
       <GuildSearchModal
         open={searchModalOpen}
         onOpenChange={setSearchModalOpen}
         onGuildSelected={handleGuildSelected}
       />
 
-      {/* Guild Update Modal (for adding new guild) */}
       {selectedGuildForAdd && (
         <GuildUpdateModal
           guild={selectedGuildForAdd}
@@ -488,6 +396,6 @@ export function GuildsList({ guilds, worldMap }: GuildsListProps) {
           addNew={true}
         />
       )}
-    </div>
+    </>
   )
 }

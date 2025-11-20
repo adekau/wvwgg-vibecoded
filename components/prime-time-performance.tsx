@@ -14,7 +14,7 @@ import {
   getAllTimeWindows,
   getLocalizedTimeRange,
   getOffHoursDescription,
-  getCurrentActiveWindow,
+  getActiveWindows,
   type PrimeTimeWindow,
 } from '@/lib/prime-time-windows'
 
@@ -47,15 +47,15 @@ const colorClasses = {
 
 export function PrimeTimePerformance({ matchId, worlds, primeTimeStats }: PrimeTimePerformanceProps) {
   // Use pre-computed stats from SSR (no client-side fetching needed!)
-  const [activeWindow, setActiveWindow] = useState<PrimeTimeWindow>(getCurrentActiveWindow())
+  const [activeWindows, setActiveWindows] = useState<PrimeTimeWindow[]>(getActiveWindows())
 
   // Window stats are either from SSR or empty array
   const windowStats = primeTimeStats || []
 
-  // Update active window every minute
+  // Update active windows every minute
   useEffect(() => {
     const interval = setInterval(() => {
-      setActiveWindow(getCurrentActiveWindow())
+      setActiveWindows(getActiveWindows())
     }, 60000) // Update every minute
 
     return () => clearInterval(interval)
@@ -127,7 +127,7 @@ export function PrimeTimePerformance({ matchId, worlds, primeTimeStats }: PrimeT
             <tbody>
               {windowStats.map((window) => {
                 const dominant = getDominantTeam(window)
-                const isActive = window.windowId === activeWindow
+                const isActive = activeWindows.includes(window.windowId)
 
                 // Calculate highest values for this window
                 const windowHighestScore = Math.max(...worlds.map(w => window[w.color].score))

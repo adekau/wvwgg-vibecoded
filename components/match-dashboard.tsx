@@ -3,7 +3,7 @@
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Trophy, Swords, Loader2 } from 'lucide-react'
+import { ArrowLeft, Trophy, Swords, Loader2, Info } from 'lucide-react'
 import Link from 'next/link'
 import { Progress } from '@/components/ui/progress'
 import { ObjectivesDisplay } from '@/components/objectives-display'
@@ -13,8 +13,9 @@ import { PrimeTimePerformance } from '@/components/prime-time-performance'
 import { VPScenarioPlanner } from '@/components/vp-scenario-planner'
 import { PPTBreakdown } from '@/components/ppt-breakdown'
 import { WorldAlliances } from '@/components/world-alliances'
+import { SkirmishWinScenarioModal } from '@/components/skirmish-win-scenario-modal'
 import { useState, useEffect } from 'react'
-import { calculateMatchPPT, getPPTTrend, calculateTicksBehind, ticksToTimeString, getTeamStatus, calculateRequiredPPTToOvertake, getMaximumPossiblePPT } from '@/lib/ppt-calculator'
+import { calculateMatchPPT, getPPTTrend, calculateTicksBehind, ticksToTimeString, getTeamStatus, calculateRequiredPPTToOvertake, calculateMaxAchievablePPT } from '@/lib/ppt-calculator'
 import { IGuild } from '@/server/queries'
 
 interface World {
@@ -151,6 +152,7 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
   const [selectedMap, setSelectedMap] = useState<string>('all')
   const [historyData, setHistoryData] = useState<HistoryPoint[]>([])
   const [historyLoading, setHistoryLoading] = useState(true)
+  const [openModalColor, setOpenModalColor] = useState<'red' | 'blue' | 'green' | null>(null)
 
   const skirmishes = match.skirmishes || []
   const maps = match.maps || []
@@ -393,6 +395,47 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
     return deaths > 0 ? kills / deaths : kills
   }))
 
+  // Calculate modal data for each team
+  const teamModalData = sortedWorlds.reduce((acc, world, idx) => {
+    const pointsBehind = idx > 0 ? highestScore - world.score : 0
+    const teamPPT = matchPPT[world.color]
+    const pptDifferential = teamPPT.total - leaderPPT
+    const teamStatus = getTeamStatus(pointsBehind, pptDifferential)
+
+    const maxAchievableData = calculateMaxAchievablePPT(world.color, detailedObjectives)
+
+    let requiredPPT: number | null = null
+    let ticksRemaining = 0
+    if ((teamStatus.status === 'falling-behind' || teamStatus.status === 'maintaining-gap') && pointsBehind > 0) {
+      const matchStart = new Date(match.startDate)
+      const now = new Date()
+      const elapsedMinutes = Math.floor((now.getTime() - matchStart.getTime()) / (1000 * 60))
+      const skirmishNumber = Math.floor(elapsedMinutes / 120)
+      const skirmishStartTime = new Date(matchStart.getTime() + (skirmishNumber * 120 * 60 * 1000))
+      const skirmishElapsed = Math.floor((now.getTime() - skirmishStartTime.getTime()) / (1000 * 60))
+      const minutesRemaining = Math.max(0, 120 - skirmishElapsed)
+      ticksRemaining = Math.ceil(minutesRemaining / 5)
+
+      requiredPPT = calculateRequiredPPTToOvertake(
+        pointsBehind,
+        teamPPT.total,
+        leaderPPT,
+        minutesRemaining
+      )
+    }
+
+    acc[world.color] = {
+      teamName: world.name,
+      requiredPPT,
+      currentPPT: teamPPT.total,
+      maxAchievablePPT: maxAchievableData.maxPPT,
+      pointsBehind,
+      ticksRemaining,
+      maxAchievableData,
+    }
+    return acc
+  }, {} as Record<string, any>)
+
   return (
     <div className="space-y-6">
       {/* Header with back button */}
@@ -436,6 +479,13 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
           const ticksTimeString = ticksBehind !== null ? ticksToTimeString(ticksBehind) : null
           const teamStatus = getTeamStatus(pointsBehind, pptDifferential)
 
+          // Calculate maximum achievable PPT for this team
+          const maxAchievableData = calculateMaxAchievablePPT(
+            world.color,
+            detailedObjectives
+          )
+          const maxAchievablePPT = maxAchievableData.maxPPT
+
           // Calculate required PPT to win skirmish (if not catching up)
           let requiredPPT: number | null = null
           let ticksRemaining = 0
@@ -466,7 +516,6 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
               }
             }
           }
-          const maxPossiblePPT = getMaximumPossiblePPT()
 
           return (
             <Card key={world.name} className={`panel-border relative overflow-hidden ${frostedClass}`} style={{ background: 'transparent' }}>
@@ -525,16 +574,45 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
                         </div>
                         {(teamStatus.status === 'falling-behind' || teamStatus.status === 'maintaining-gap') && requiredPPT !== null && (
                           <>
-                            {/* Check if it's achievable: PPT must be <= max AND ticks needed <= ticks remaining */}
-                            {requiredPPT <= maxPossiblePPT && (ticksNeeded === null || ticksNeeded <= ticksRemaining) && (
-                              <div className="text-muted-foreground">
-                                Need <span className="font-mono font-semibold text-orange-600 dark:text-orange-400">{requiredPPT} PPT</span> to win skirmish
+                            {/* Check if achievable: must have enough time AND enough objectives available */}
+                            {requiredPPT > maxAchievablePPT ? (
+                              <div className="flex items-center gap-1.5 text-muted-foreground">
+                                <span>
+                                  Can't win skirmish (need <span className="font-mono font-semibold text-red-600 dark:text-red-400">{requiredPPT} PPT</span>, max {maxAchievablePPT})
+                                </span>
+                                <button
+                                  onClick={() => setOpenModalColor(world.color)}
+                                  className="inline-flex items-center justify-center hover:bg-accent rounded p-0.5 transition-colors"
+                                  title="View detailed breakdown"
+                                >
+                                  <Info className="h-3.5 w-3.5" />
+                                </button>
                               </div>
-                            )}
-                            {/* Show unwinnable if PPT exceeds max OR not enough ticks remaining */}
-                            {(requiredPPT > maxPossiblePPT || (ticksNeeded !== null && ticksNeeded > ticksRemaining)) && (
-                              <div className="text-muted-foreground">
-                                Can't win skirmish (need <span className="font-mono font-semibold text-red-600 dark:text-red-400">{requiredPPT} PPT</span>)
+                            ) : (ticksNeeded !== null && ticksNeeded > ticksRemaining) ? (
+                              <div className="flex items-center gap-1.5 text-muted-foreground">
+                                <span>
+                                  Not enough time (need <span className="font-mono font-semibold text-red-600 dark:text-red-400">{requiredPPT} PPT</span>)
+                                </span>
+                                <button
+                                  onClick={() => setOpenModalColor(world.color)}
+                                  className="inline-flex items-center justify-center hover:bg-accent rounded p-0.5 transition-colors"
+                                  title="View detailed breakdown"
+                                >
+                                  <Info className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 text-muted-foreground">
+                                <span>
+                                  Need <span className="font-mono font-semibold text-orange-600 dark:text-orange-400">{requiredPPT} PPT</span> to win skirmish
+                                </span>
+                                <button
+                                  onClick={() => setOpenModalColor(world.color)}
+                                  className="inline-flex items-center justify-center hover:bg-accent rounded p-0.5 transition-colors"
+                                  title="View detailed breakdown"
+                                >
+                                  <Info className="h-3.5 w-3.5" />
+                                </button>
                               </div>
                             )}
                           </>
@@ -880,6 +958,28 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
 
       {/* VP Scenario Planner */}
       <VPScenarioPlanner matchId={matchId} match={match} />
+
+      {/* Skirmish Win Scenario Modals */}
+      {(['red', 'blue', 'green'] as const).map(color => {
+        const data = teamModalData[color]
+        if (!data) return null
+
+        return (
+          <SkirmishWinScenarioModal
+            key={color}
+            open={openModalColor === color}
+            onOpenChange={(open) => setOpenModalColor(open ? color : null)}
+            teamColor={color}
+            teamName={data.teamName}
+            requiredPPT={data.requiredPPT || 0}
+            currentPPT={data.currentPPT}
+            maxAchievablePPT={data.maxAchievablePPT}
+            pointsBehind={data.pointsBehind}
+            ticksRemaining={data.ticksRemaining}
+            maxAchievableData={data.maxAchievableData}
+          />
+        )
+      })}
     </div>
   )
 }
