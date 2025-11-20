@@ -4,7 +4,8 @@
  * Strategy Waterfall (in order of preference):
  * 1. DFS Solver (Deterministic with Branch & Bound) - Guarantees finding solution if it exists
  * 2. Random Search (Hybrid Solver) - Fast exploration, good for easy scenarios
- * 3. Greedy Solver (Hybrid Solver) - Fallback for when random fails
+ * 3. Greedy Solver (Hybrid Solver) - Deterministic greedy approach
+ * 4. Obvious Solver - Last resort, tries simple patterns (e.g., "1st wins all 1st place")
  *
  * Each solver is tried in sequence until one finds a solution.
  */
@@ -34,6 +35,15 @@ export interface ScenarioInput {
   minMargin?: number;
 }
 
+export interface SolverAttempt {
+  name: string;
+  attempted: boolean;
+  success: boolean;
+  iterations?: number;
+  duration?: number; // milliseconds
+  reason?: string;
+}
+
 export interface ScenarioResult {
   isPossible: boolean;
   requiredPlacements?: Array<{
@@ -44,7 +54,8 @@ export interface ScenarioResult {
   margin?: number;
   reason?: string;
   difficulty?: 'easy' | 'moderate' | 'hard' | 'very-hard';
-  solver?: 'dfs' | 'random' | 'greedy'; // Which solver method found the solution
+  solver?: 'obvious' | 'dfs' | 'random' | 'greedy'; // Which solver method found the solution
+  solverAttempts?: SolverAttempt[]; // Detailed information about all solver attempts
 }
 
 /**
@@ -118,7 +129,96 @@ function calculateDifficulty(
 }
 
 /**
- * Main solver entry point - tries solvers in order: DFS → Random → Greedy
+ * SOLVER 0: Obvious Patterns Solver
+ * Tries simple patterns like "1st wins all 1st place", "2nd wins all 2nd place", etc.
+ */
+function tryObviousSolver(
+  input: ScenarioInput,
+  currentVP: { red: number; blue: number; green: number },
+  remainingSkirmishes: Array<{
+    id: number;
+    startTime: Date;
+    endTime: Date;
+    vpAwards: { first: number; second: number; third: number };
+  }>,
+  desiredOrder: [WorldId, WorldId, WorldId]
+): { result: ScenarioResult | null; iterations: number; duration: number } {
+  const startTime = performance.now();
+
+  // Define obvious patterns to try
+  // Format: [desiredFirst gets rank X, desiredSecond gets rank Y, desiredThird gets rank Z]
+  const patterns = [
+    { name: '1st→1st, 2nd→2nd, 3rd→3rd', ranks: [1, 2, 3] as const },
+    { name: '1st→1st, 2nd→3rd, 3rd→2nd', ranks: [1, 3, 2] as const },
+    { name: '1st→2nd, 2nd→1st, 3rd→3rd', ranks: [2, 1, 3] as const },
+    { name: '1st→2nd, 2nd→3rd, 3rd→1st', ranks: [2, 3, 1] as const },
+    { name: '1st→3rd, 2nd→1st, 3rd→2nd', ranks: [3, 1, 2] as const },
+    { name: '1st→3rd, 2nd→2nd, 3rd→1st', ranks: [3, 2, 1] as const },
+  ];
+
+  for (const pattern of patterns) {
+    // Calculate final VP if we follow this pattern for all remaining skirmishes
+    const vp = { ...currentVP };
+
+    for (const skirmish of remainingSkirmishes) {
+      const awards = skirmish.vpAwards;
+      const vpByRank = [awards.first, awards.second, awards.third];
+
+      // Award VP based on pattern
+      vp[desiredOrder[0]] += vpByRank[pattern.ranks[0] - 1];
+      vp[desiredOrder[1]] += vpByRank[pattern.ranks[1] - 1];
+      vp[desiredOrder[2]] += vpByRank[pattern.ranks[2] - 1];
+    }
+
+    // Check if this achieves the desired outcome
+    if (vp[desiredOrder[0]] > vp[desiredOrder[1]] && vp[desiredOrder[1]] > vp[desiredOrder[2]]) {
+      console.log(`[Obvious Solver] Found solution with pattern: ${pattern.name}`);
+
+      // Build the placements array
+      const requiredPlacements = remainingSkirmishes.map((skirmish) => {
+        const placements: { red: 1 | 2 | 3; blue: 1 | 2 | 3; green: 1 | 2 | 3 } = {
+          red: 3,
+          blue: 3,
+          green: 3,
+        };
+
+        placements[desiredOrder[0]] = pattern.ranks[0];
+        placements[desiredOrder[1]] = pattern.ranks[1];
+        placements[desiredOrder[2]] = pattern.ranks[2];
+
+        return {
+          skirmishId: skirmish.id,
+          placements,
+        };
+      });
+
+      const difficulty = calculateDifficulty(requiredPlacements, input.desiredOutcome.first);
+      const margin = vp[desiredOrder[0]] - vp[desiredOrder[1]];
+
+      return {
+        result: {
+          isPossible: true,
+          requiredPlacements,
+          finalVP: vp,
+          margin,
+          difficulty,
+          solver: 'obvious',
+        },
+        iterations: patterns.indexOf(pattern) + 1,
+        duration: performance.now() - startTime,
+      };
+    }
+  }
+
+  return {
+    result: null,
+    iterations: patterns.length,
+    duration: performance.now() - startTime,
+  };
+}
+
+/**
+ * Main solver entry point - tries solvers in order: DFS → Random → Greedy → Obvious
  */
 export async function calculateScenario(input: ScenarioInput): Promise<ScenarioResult> {
   const { currentVP, remainingSkirmishes, desiredOutcome } = input;
@@ -157,53 +257,130 @@ export async function calculateScenario(input: ScenarioInput): Promise<ScenarioR
     desiredOutcome.third,
   ];
 
+  // Track all solver attempts
+  const solverAttempts: SolverAttempt[] = [];
+
   // SOLVER 1: Try DFS solver first (deterministic, guaranteed solution if exists)
   try {
     console.log('[Solver] Trying DFS solver (deterministic with branch & bound)...');
+    const startTime = performance.now();
     const dfsResult = tryDFSSolver(input, currentVP, remainingSkirmishes, desiredOrder, region);
+    const duration = performance.now() - startTime;
+
+    solverAttempts.push({
+      name: 'DFS (Branch & Bound)',
+      attempted: true,
+      success: dfsResult.isPossible,
+      duration,
+      reason: dfsResult.isPossible ? undefined : 'Proved mathematically impossible',
+    });
 
     if (dfsResult.isPossible) {
       console.log('[Solver] DFS solver found solution');
-      return dfsResult;
+      return { ...dfsResult, solverAttempts };
     }
     console.log('[Solver] DFS solver proved impossible, skipping other solvers');
-    return dfsResult; // If DFS says impossible, it's mathematically impossible
+    return { ...dfsResult, solverAttempts }; // If DFS says impossible, it's mathematically impossible
   } catch (error) {
     console.error('[Solver] DFS solver error:', error);
+    solverAttempts.push({
+      name: 'DFS (Branch & Bound)',
+      attempted: true,
+      success: false,
+      reason: error instanceof Error ? error.message : 'Unknown error',
+    });
   }
 
   // SOLVER 2: Try random search solver (fast, good for easy scenarios)
   try {
     console.log('[Solver] Trying random search solver...');
+    const startTime = performance.now();
     const randomResult = tryRandomSolver(input, currentVP, remainingSkirmishes, desiredOrder, region);
+    const duration = performance.now() - startTime;
+
+    solverAttempts.push({
+      name: 'Random Search',
+      attempted: true,
+      success: randomResult.isPossible,
+      duration,
+    });
 
     if (randomResult.isPossible) {
       console.log('[Solver] Random solver found solution');
-      return randomResult;
+      return { ...randomResult, solverAttempts };
     }
   } catch (error) {
     console.error('[Solver] Random solver error:', error);
+    solverAttempts.push({
+      name: 'Random Search',
+      attempted: true,
+      success: false,
+      reason: error instanceof Error ? error.message : 'Unknown error',
+    });
   }
 
-  // SOLVER 3: Try greedy solver as fallback
+  // SOLVER 3: Try greedy solver
   try {
     console.log('[Solver] Trying greedy solver...');
+    const startTime = performance.now();
     const greedyResult = tryGreedySolver(input, currentVP, remainingSkirmishes, desiredOrder, region);
+    const duration = performance.now() - startTime;
+
+    solverAttempts.push({
+      name: 'Greedy Deterministic',
+      attempted: true,
+      success: greedyResult.isPossible,
+      duration,
+    });
 
     if (greedyResult.isPossible) {
       console.log('[Solver] Greedy solver found solution');
-    } else {
-      console.log('[Solver] All solvers failed - no solution found');
+      return { ...greedyResult, solverAttempts };
     }
-
-    return greedyResult;
   } catch (error) {
     console.error('[Solver] Greedy solver error:', error);
-    return {
-      isPossible: false,
-      reason: `All solvers failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-    };
+    solverAttempts.push({
+      name: 'Greedy Deterministic',
+      attempted: true,
+      success: false,
+      reason: error instanceof Error ? error.message : 'Unknown error',
+    });
   }
+
+  // SOLVER 4: Try obvious patterns as last resort
+  try {
+    console.log('[Solver] Trying obvious patterns solver (last resort)...');
+    const { result, iterations, duration } = tryObviousSolver(input, currentVP, remainingSkirmishes, desiredOrder);
+
+    solverAttempts.push({
+      name: 'Obvious Patterns',
+      attempted: true,
+      success: result !== null,
+      iterations,
+      duration,
+    });
+
+    if (result) {
+      console.log('[Solver] Obvious patterns solver found solution');
+      return { ...result, solverAttempts };
+    }
+  } catch (error) {
+    console.error('[Solver] Obvious patterns solver error:', error);
+    solverAttempts.push({
+      name: 'Obvious Patterns',
+      attempted: true,
+      success: false,
+      reason: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+
+  // All solvers failed
+  console.log('[Solver] All solvers failed - no solution found');
+  return {
+    isPossible: false,
+    reason: 'All solvers failed to find a solution.',
+    solverAttempts,
+  };
 }
 
 /**

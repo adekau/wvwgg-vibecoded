@@ -65,6 +65,7 @@ export function VPScenarioPlanner({ matchId, match }: VPScenarioPlannerProps) {
   const [desiredThird, setDesiredThird] = useState<'red' | 'blue' | 'green'>('green')
   const [result, setResult] = useState<ScenarioResult | null>(null)
   const [isCalculating, setIsCalculating] = useState(false)
+  const [showSolverDetails, setShowSolverDetails] = useState(false)
 
   // Reset result when desired outcome changes
   const handleFirstChange = (value: 'red' | 'blue' | 'green') => {
@@ -306,11 +307,59 @@ export function VPScenarioPlanner({ matchId, match }: VPScenarioPlannerProps) {
                     <div>
                       <span className="text-sm text-muted-foreground">Solver: </span>
                       <Badge variant="outline">
-                        {result.solver === 'dfs' ? 'DFS (Optimal)' : result.solver === 'random' ? 'Random Search' : 'Greedy'}
+                        {result.solver === 'obvious'
+                          ? 'Obvious Pattern'
+                          : result.solver === 'dfs'
+                          ? 'DFS (Optimal)'
+                          : result.solver === 'random'
+                          ? 'Random Search'
+                          : 'Greedy'}
                       </Badge>
                     </div>
                   )}
+                  {result.solverAttempts && result.solverAttempts.length > 0 && (
+                    <div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowSolverDetails(!showSolverDetails)}
+                        className="h-7 text-xs"
+                      >
+                        {showSolverDetails ? 'Hide' : 'Show'} Solver Details
+                      </Button>
+                    </div>
+                  )}
                 </div>
+
+                {/* Solver Details Section */}
+                {showSolverDetails && result.solverAttempts && (
+                  <div className="mt-4 p-3 bg-muted/30 rounded-lg">
+                    <h4 className="text-sm font-medium mb-2">Solver Execution Details</h4>
+                    <div className="space-y-2">
+                      {result.solverAttempts.map((attempt, index) => (
+                        <div key={index} className="text-xs flex items-center justify-between py-1 border-b border-border/50 last:border-0">
+                          <div className="flex items-center gap-2">
+                            <span className={`inline-block w-2 h-2 rounded-full ${attempt.success ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                            <span className="font-medium">{attempt.name}</span>
+                          </div>
+                          <div className="flex items-center gap-3 text-muted-foreground">
+                            {attempt.duration !== undefined && (
+                              <span>{attempt.duration.toFixed(2)}ms</span>
+                            )}
+                            {attempt.iterations !== undefined && (
+                              <span>{attempt.iterations} iter</span>
+                            )}
+                            {attempt.reason && (
+                              <span className="max-w-[200px] truncate" title={attempt.reason}>
+                                {attempt.reason}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {result.finalVP && (
                   <div>
