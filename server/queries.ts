@@ -1,6 +1,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { unstable_cache } from 'next/cache';
+import { gunzipSync } from 'zlib';
 import { createCredentialsProvider } from './aws-credentials';
 import {
   CACHE_DURATIONS,
@@ -84,6 +85,20 @@ const docClient = DynamoDBDocumentClient.from(client, {
     removeUndefinedValues: true,
   },
 });
+
+/**
+ * Decompress data that was compressed with gzip
+ */
+const decompressData = (compressedData: string): any => {
+  try {
+    const buffer = Buffer.from(compressedData, 'base64');
+    const decompressed = gunzipSync(buffer);
+    return JSON.parse(decompressed.toString());
+  } catch (error) {
+    console.error('Error decompressing data:', error);
+    return null;
+  }
+};
 
 // Query Functions
 export const getMatches = unstable_cache(
@@ -222,7 +237,9 @@ export const getGuilds = unstable_cache(
 export interface HistoricalSnapshot {
   timestamp: number;
   interval: number; // 15-minute interval timestamp
-  data: Record<string, IFormattedMatch>;
+  data: Record<string, IFormattedMatch> | string; // Can be compressed (string) or uncompressed (object)
+  compressed?: boolean; // Flag indicating if data is compressed
+  matchId?: string; // Match ID for GSI queries
 }
 
 export interface MatchHistoryOptions {
@@ -265,9 +282,12 @@ async function _getMatchHistory(options: MatchHistoryOptions = {}): Promise<Hist
           TableName: process.env.TABLE_NAME,
           IndexName: DB_CONSTANTS.INDEX_NAME,
           KeyConditionExpression: '#type = :type AND #interval >= :startInterval',
+          ProjectionExpression: 'id, #interval, #timestamp, #data, compressed, matchId',
           ExpressionAttributeNames: {
             '#type': 'type',
             '#interval': 'interval',
+            '#timestamp': 'timestamp',
+            '#data': 'data',
           },
           ExpressionAttributeValues: {
             ':type': DB_CONSTANTS.QUERY_TYPES.MATCH_HISTORY,
@@ -283,8 +303,20 @@ async function _getMatchHistory(options: MatchHistoryOptions = {}): Promise<Hist
 
     console.log(`[HISTORY] Queried ${allSnapshots.length} snapshots for ${queryDescription} (intervals >= ${startInterval})`);
 
+    // Decompress data if compressed
+    const decompressedSnapshots = allSnapshots.map(snapshot => {
+      if (snapshot.compressed && typeof snapshot.data === 'string') {
+        const decompressed = decompressData(snapshot.data);
+        return {
+          ...snapshot,
+          data: decompressed || snapshot.data,
+        };
+      }
+      return snapshot;
+    });
+
     // Sort by timestamp ascending (oldest first)
-    return allSnapshots.sort((a, b) => a.timestamp - b.timestamp);
+    return decompressedSnapshots.sort((a, b) => a.timestamp - b.timestamp);
   } catch (error) {
     console.error('Error fetching match history:', error);
     return [];
