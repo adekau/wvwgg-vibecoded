@@ -15,9 +15,12 @@ import { WorldAlliances } from '@/components/world-alliances'
 import { SkirmishWinScenarioModal } from '@/components/skirmish-win-scenario-modal'
 import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react'
 
-// Lazy load VP Scenario Planner to reduce initial bundle size
+// Lazy load VP Scenario Planners to reduce initial bundle size
 const VPScenarioPlanner = lazy(() =>
   import('@/components/vp-scenario-planner').then(mod => ({ default: mod.VPScenarioPlanner }))
+)
+const InteractiveVPPlanner = lazy(() =>
+  import('@/components/interactive-vp-planner').then(mod => ({ default: mod.InteractiveVPPlanner }))
 )
 import { calculateMatchPPT, getPPTTrend, calculateTicksBehind, ticksToTimeString, getTeamStatus, calculateRequiredPPTToOvertake, calculateMaxAchievablePPT } from '@/lib/ppt-calculator'
 import { IGuild } from '@/server/queries'
@@ -993,6 +996,20 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
         }
       >
         <VPScenarioPlanner matchId={matchId} match={match} />
+      </Suspense>
+
+      {/* Interactive VP Planner (lazy loaded to reduce initial bundle size) */}
+      <Suspense
+        fallback={
+          <Card className="panel-border inset-card frosted-panel p-6" style={{ background: 'transparent' }}>
+            <div className="animate-pulse space-y-4">
+              <div className="h-6 bg-muted rounded w-1/3"></div>
+              <div className="h-48 bg-muted rounded"></div>
+            </div>
+          </Card>
+        }
+      >
+        <InteractiveVPPlanner matchId={matchId} match={match} />
       </Suspense>
 
       {/* Skirmish Win Scenario Modals */}

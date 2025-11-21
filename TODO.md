@@ -110,7 +110,22 @@ The new system was implemented to reward engagement during peak activity periods
 
 ---
 
-## ⚙️ 3. Victory Point Prediction & Scenario Planning Tool (Phase 1 COMPLETED)
+## ✅ 7. Guilds Page & Admin Panel (COMPLETED)
+
+### Overview
+Public guilds listing page with search and filtering capabilities, plus an invite-only admin panel for managing guild metadata and relationships.
+
+### Completed Features
+- Public guilds page with search and filtering
+- Invite-only admin panel with AWS Cognito authentication
+- Guild classification system (Alliance/Member/Independent)
+- Alliance and member guild relationship management
+- Admin audit logging
+- Bulk operations for guild management
+
+---
+
+## ⚙️ 3. Victory Point Prediction & Scenario Planning Tool (Phases 1 & 3 COMPLETED)
 
 ### Overview
 Interactive calculator that allows users to explore "what if" scenarios for match outcomes. Users can specify a desired final placement (e.g., Red 1st, Blue 2nd, Green 3rd) and the tool determines what placements each team needs in remaining skirmishes to achieve that goal, or if it's mathematically impossible.
@@ -242,22 +257,30 @@ Green: 3rd
 
 ### Implementation Phases
 
-**Phase 1: Basic Calculator**
-- Simple outcome input
-- Binary possible/impossible determination
-- Display one valid path if possible
+**Phase 1: Basic Calculator ✅ COMPLETED**
+- ✅ Simple outcome input
+- ✅ Binary possible/impossible determination
+- ✅ Display one valid path if possible
+- ✅ Multiple solver algorithms (DFS, greedy, random)
+- ✅ Difficulty rating
+- ✅ Solver execution details
 
-**Phase 2: Multiple Solutions**
+**Phase 2: Multiple Solutions** (PENDING)
 - Show 3-5 different valid paths
 - Rank by difficulty
 - Allow filtering (e.g., "show paths where Red never finishes 3rd")
 
-**Phase 3: Interactive Planning**
-- Manual skirmish-by-skirmish assignment
-- Real-time validation
-- Save/share scenarios
+**Phase 3: Interactive Planning ✅ COMPLETED**
+- ✅ Manual skirmish-by-skirmish assignment
+- ✅ Real-time VP calculation and validation
+- ✅ Visual feedback (on-track/off-track indicators)
+- ✅ Undo/Redo functionality with keyboard shortcuts
+- ✅ Auto-fill feature for quick scenario setup
+- ✅ Save/share scenarios via encoded URL
+- ✅ Live statistics showing VP gaps
+- ✅ Integrated into match dashboard
 
-**Phase 4: Probability Integration**
+**Phase 4: Probability Integration** (PENDING)
 - Historical performance analysis
 - Monte Carlo simulation
 - Confidence intervals
@@ -2151,33 +2174,6 @@ Building on Phase 1 prediction tool:
 - Feature #17 (Mobile PWA) - Broader audience reach
 
 
-## Optimizaitons
+## Optimizations
 
 - Scan commands expensive? Can we use queries instead?
-
-## Current Issues (11/18/2025)
-
-### Prime Time Performance
-
-- The currently active window always shows "24h of data" and because of that overtakes everything else in terms of activity so it becomes the Key Insights' most active for each server.
-- Still very slow to load (takes about 6s per refresh)
-
-### Match History
-
-- Still very slow to load (takes about 6s per refresh)
-
-### Match Statistics
-
-- Needs a loading spinner instead of showing "-" until match histories load when selecting a past skirmish on a specific map
-
-### Alliances by World
-
-- Not showing anything for Yohlon Haven despite me adding [bTd] as an alliance and it's on that world.
-
-### Top "Summary" cards (green, blue, red frosted cards)
-
-- "Cannot win this skirmish (need 277 PPT)" Not a big fan of this wording. It's more of a "can't win this skirmish with current PPT"
-
-### Guilds Page and Guilds Management Admin page
-
-- Guilds are not loading anymore. It appears to have randomly broken as this was loading last time I was on my computer a few hours ago. I can see guilds in dynamodb.
