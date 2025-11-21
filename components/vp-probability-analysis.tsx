@@ -329,81 +329,80 @@ export function VPProbabilityAnalysis({ matchId, match, remainingSkirmishes }: V
 
           {/* Skirmish Breakdown */}
           {showSkirmishBreakdown && (
-            <div className="mt-4 space-y-3">
-              <div className="text-xs text-muted-foreground mb-2">
+            <div className="mt-4">
+              <div className="text-xs text-muted-foreground mb-3">
                 Showing historical win rates for each remaining skirmish based on time window
               </div>
-              {remainingSkirmishes.map((skirmish, index) => {
-                const timeWindow = getTimeWindow(skirmish.startTime, region)
-                const timeWindowLabel = getTimeWindowLabel(timeWindow)
-                const completedSkirmishes = match.skirmishes?.length || 0
-
-                return (
-                  <div
-                    key={skirmish.id}
-                    className="rounded-lg border border-border bg-muted/20 p-3"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <div className="text-sm font-medium">
-                          Skirmish #{completedSkirmishes + index + 1}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {skirmish.startTime.toLocaleString('en-US', {
-                            weekday: 'short',
-                            month: 'short',
-                            day: 'numeric',
-                            hour: 'numeric',
-                            minute: '2-digit',
-                            timeZoneName: 'short',
-                          })}
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end gap-1">
-                        <Badge variant="outline" className="text-xs">
-                          {timeWindowLabel}
-                        </Badge>
-                        <div className="text-xs text-muted-foreground">
-                          VP: {skirmish.vpAwards.first}/{skirmish.vpAwards.second}/{skirmish.vpAwards.third}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-2 px-3 font-medium text-muted-foreground">Skirmish</th>
+                      <th className="text-left py-2 px-3 font-medium text-muted-foreground">Time</th>
+                      <th className="text-left py-2 px-3 font-medium text-muted-foreground">Window</th>
+                      <th className="text-center py-2 px-3 font-medium text-muted-foreground">VP</th>
                       {(['red', 'blue', 'green'] as const).map(color => {
-                        const stats = historicalStats[color]
                         const world = match.worlds.find(w => w.color === color)
-                        const windowProbs = stats.placementProbabilityByWindow[timeWindow]
-
                         return (
-                          <div
-                            key={color}
-                            className={`rounded p-2 border ${colorClasses[color].bg} ${colorClasses[color].border}`}
-                          >
-                            <div className="text-xs font-medium truncate mb-1" title={world?.name}>
+                          <th key={color} className="text-center py-2 px-3 font-medium">
+                            <div className={`truncate ${colorClasses[color].text}`} title={world?.name}>
                               {world?.name}
                             </div>
-                            <div className="grid grid-cols-3 gap-1 text-xs">
-                              <div className="text-center">
-                                <div className="text-muted-foreground text-[10px]">1st</div>
-                                <div className="font-bold">{(windowProbs.first * 100).toFixed(0)}%</div>
-                              </div>
-                              <div className="text-center">
-                                <div className="text-muted-foreground text-[10px]">2nd</div>
-                                <div className="font-bold">{(windowProbs.second * 100).toFixed(0)}%</div>
-                              </div>
-                              <div className="text-center">
-                                <div className="text-muted-foreground text-[10px]">3rd</div>
-                                <div className="font-bold">{(windowProbs.third * 100).toFixed(0)}%</div>
-                              </div>
+                            <div className="text-[10px] text-muted-foreground font-normal mt-1">
+                              1st / 2nd / 3rd
                             </div>
-                          </div>
+                          </th>
                         )
                       })}
-                    </div>
-                  </div>
-                )
-              })}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {remainingSkirmishes.map((skirmish, index) => {
+                      const timeWindow = getTimeWindow(skirmish.startTime, region)
+                      const timeWindowLabel = getTimeWindowLabel(timeWindow)
+                      const completedSkirmishes = match.skirmishes?.length || 0
+
+                      return (
+                        <tr key={skirmish.id} className="border-b border-border/50 hover:bg-muted/20">
+                          <td className="py-2 px-3 font-medium">
+                            #{completedSkirmishes + index + 1}
+                          </td>
+                          <td className="py-2 px-3 text-muted-foreground whitespace-nowrap">
+                            {skirmish.startTime.toLocaleString('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              timeZoneName: 'short',
+                            })}
+                          </td>
+                          <td className="py-2 px-3">
+                            <Badge variant="outline" className="text-[10px]">
+                              {timeWindowLabel}
+                            </Badge>
+                          </td>
+                          <td className="py-2 px-3 text-center text-muted-foreground font-mono">
+                            {skirmish.vpAwards.first}/{skirmish.vpAwards.second}/{skirmish.vpAwards.third}
+                          </td>
+                          {(['red', 'blue', 'green'] as const).map(color => {
+                            const stats = historicalStats[color]
+                            const windowProbs = stats.placementProbabilityByWindow[timeWindow]
+
+                            return (
+                              <td key={color} className="py-2 px-3 text-center">
+                                <div className={`font-medium ${colorClasses[color].text}`}>
+                                  {(windowProbs.first * 100).toFixed(0)}% / {(windowProbs.second * 100).toFixed(0)}% / {(windowProbs.third * 100).toFixed(0)}%
+                                </div>
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
