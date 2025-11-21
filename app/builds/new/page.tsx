@@ -184,7 +184,7 @@ export default function BuildEditorPage() {
   )?.id
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen">
       {/* Header */}
       <div className="border-b border-white/10 bg-black/20 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-3">
@@ -224,16 +224,8 @@ export default function BuildEditorPage() {
             )}
           </div>
 
-          {/* Center Column - Character Display & Skills/Traits */}
+          {/* Center Column - Skills/Traits */}
           <div className="col-span-7 flex flex-col gap-4 overflow-y-auto">
-            {/* Character Display Placeholder */}
-            <div className="flex-shrink-0 bg-black/30 backdrop-blur-md border border-white/10 rounded-lg p-4 h-[300px] flex items-center justify-center">
-              <div className="text-center space-y-2">
-                <div className="text-white/50 text-sm">Character Preview</div>
-                <div className="text-white/30 text-xs">Coming Soon</div>
-              </div>
-            </div>
-
             {/* Profession Selection */}
             <div className="flex-shrink-0 bg-black/30 backdrop-blur-md border border-white/10 rounded-lg p-4">
               <h2 className="text-sm font-semibold text-white/80 mb-3">Profession</h2>

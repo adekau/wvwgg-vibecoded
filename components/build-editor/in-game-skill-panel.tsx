@@ -190,17 +190,17 @@ export function InGameSkillPanel({
                         <button
                           key={spec.id}
                           onClick={() => handleSelectSpecialization(spec.id)}
-                          className="aspect-square bg-black/40 border border-white/10 rounded hover:border-amber-500/50 transition-all overflow-hidden group"
+                          className="w-12 h-12 bg-black/40 border border-white/10 rounded hover:border-amber-500/50 transition-all overflow-hidden group flex items-center justify-center"
                         >
                           <div
-                            className="w-full h-full bg-cover bg-center"
+                            className="w-full h-full bg-cover bg-center flex items-center justify-center"
                             style={{ backgroundImage: `url(${spec.background})` }}
                           >
                             {spec.icon && (
                               <img
                                 src={spec.icon}
                                 alt={spec.name}
-                                className="w-full h-full object-contain p-1 drop-shadow-lg"
+                                className="max-w-full max-h-full object-contain drop-shadow-lg"
                               />
                             )}
                           </div>
@@ -243,7 +243,7 @@ function SkillSlot({
     return (
       <button
         onClick={onClick}
-        className="w-12 h-12 bg-black/50 border-2 border-dashed border-white/20 rounded hover:border-amber-500/50 transition-all flex items-center justify-center"
+        className="w-10 h-10 bg-black/50 border-2 border-dashed border-white/20 rounded hover:border-amber-500/50 transition-all flex items-center justify-center"
       >
         <span className="text-white/30 text-xl">+</span>
       </button>
@@ -255,12 +255,12 @@ function SkillSlot({
       <HoverCardTrigger asChild>
         <button
           onClick={onClick}
-          className="w-12 h-12 bg-black/50 border-2 border-amber-500/30 rounded hover:border-amber-500 hover:scale-105 transition-all overflow-hidden"
+          className="w-10 h-10 bg-black/50 border-2 border-amber-500/30 rounded hover:border-amber-500 hover:scale-105 transition-all overflow-hidden flex items-center justify-center"
         >
           <img
             src={skill.icon}
             alt={skill.name}
-            className="w-full h-full object-cover"
+            className="max-w-full max-h-full object-contain"
           />
         </button>
       </HoverCardTrigger>
@@ -317,11 +317,11 @@ function TraitLineDisplay({
       {/* Header */}
       <div className="flex items-center gap-2 mb-3">
         <div
-          className="w-8 h-8 rounded bg-cover bg-center"
+          className="w-10 h-10 rounded bg-cover bg-center flex items-center justify-center"
           style={{ backgroundImage: `url(${specialization.background})` }}
         >
           {specialization.icon && (
-            <img src={specialization.icon} alt={specialization.name} className="w-full h-full object-contain" />
+            <img src={specialization.icon} alt={specialization.name} className="max-w-full max-h-full object-contain" />
           )}
         </div>
         <div className="flex-1 text-sm font-medium text-white">{specialization.name}</div>
@@ -377,14 +377,14 @@ function TraitTier({
             <button
               onClick={() => onSelect(trait.id)}
               className={cn(
-                'flex-1 aspect-square rounded border-2 transition-all',
+                'w-10 h-10 rounded border-2 transition-all flex items-center justify-center',
                 selectedId === trait.id
                   ? 'border-amber-500 bg-amber-500/10 scale-105'
                   : 'border-white/10 hover:border-white/30 bg-black/40'
               )}
             >
               {trait.icon && (
-                <img src={trait.icon} alt={trait.name} className="w-full h-full object-contain p-1" />
+                <img src={trait.icon} alt={trait.name} className="max-w-full max-h-full object-contain" />
               )}
             </button>
           </HoverCardTrigger>
