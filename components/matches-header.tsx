@@ -96,10 +96,10 @@ export function MatchesHeader() {
 
             <nav className="hidden md:flex items-center gap-1">
               {/* Matches link with dropdown */}
-              <div className="flex items-center">
+              <div className="flex items-center h-9">
                 <Link
                   href="/matches"
-                  className={`pl-4 pr-2 py-2 rounded-l-md text-sm font-medium transition-colors ${
+                  className={`pl-4 pr-2 h-full flex items-center rounded-l-md text-sm font-medium transition-colors ${
                     pathname === '/matches' || pathname?.startsWith('/matches/')
                       ? 'bg-primary text-primary-foreground'
                       : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
@@ -110,7 +110,7 @@ export function MatchesHeader() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
-                      className={`px-2 py-2 rounded-r-md text-sm font-medium transition-colors border-l border-primary-foreground/20 ${
+                      className={`px-2 h-full flex items-center rounded-r-md text-sm font-medium transition-colors border-l border-primary-foreground/20 ${
                         pathname === '/matches' || pathname?.startsWith('/matches/')
                           ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                           : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
@@ -121,7 +121,7 @@ export function MatchesHeader() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
                     align="start"
-                    className="w-[340px] bg-popover/70 backdrop-blur-sm border-border/40 shadow-xl rounded-xl"
+                    className="w-[340px] bg-popover/95 backdrop-blur-md border-border/40 shadow-xl rounded-xl"
                     sideOffset={8}
                   >
                     {sortedRegions.map((region) => (
@@ -139,10 +139,7 @@ export function MatchesHeader() {
                           >
                             <div className="flex flex-col gap-1 w-full">
                               <div className="flex items-center justify-between">
-                                <span className="font-semibold text-sm">{match.id}</span>
-                                <span className="text-xs text-muted-foreground/80 font-medium">
-                                  Tier {match.tier}
-                                </span>
+                                <span className="font-semibold text-sm">Tier {match.tier}</span>
                               </div>
                               <div className="text-xs flex items-center gap-1.5 flex-wrap">
                                 <span className="text-chart-1 font-medium">{match.worlds.red}</span>
