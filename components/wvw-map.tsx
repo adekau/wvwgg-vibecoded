@@ -287,8 +287,13 @@ export function WvWMap({ matchId, className = '' }: WvWMapProps) {
   // Update recapture immunity timers
   const updateTimers = useCallback(() => {
     if (!mapRef.current || !iconsRef.current) return;
+    if (!objectiveInfo || typeof objectiveInfo !== 'object') return;
 
-    Object.entries(objectiveInfo).forEach(([objId, objective]) => {
+    const entries = Object.entries(objectiveInfo);
+    if (!Array.isArray(entries)) return;
+
+    entries.forEach(([objId, objective]) => {
+      if (!objective || !objId) return;
       const marker = markersRef.current[objId];
       if (!marker) return;
 
@@ -333,9 +338,15 @@ export function WvWMap({ matchId, className = '' }: WvWMapProps) {
   // Update markers when objective info or map metadata changes
   useEffect(() => {
     if (!isMapReady || Object.keys(mapMetadata).length === 0) return;
+    if (!objectiveInfo || typeof objectiveInfo !== 'object') return;
 
-    Object.values(objectiveInfo).forEach((obj) => {
-      updateObjectiveMarker(obj, obj);
+    const values = Object.values(objectiveInfo);
+    if (!Array.isArray(values)) return;
+
+    values.forEach((obj) => {
+      if (obj && obj.id) {
+        updateObjectiveMarker(obj, obj);
+      }
     });
   }, [objectiveInfo, mapMetadata, isMapReady, updateObjectiveMarker]);
 
@@ -356,13 +367,18 @@ export function WvWMap({ matchId, className = '' }: WvWMapProps) {
         const data = await response.json();
 
         // Validate that we have valid data structures
-        if (!data.objectives || !Array.isArray(data.objectives)) {
-          console.error('Invalid objectives data received:', data);
+        if (!data || typeof data !== 'object') {
+          console.error('Invalid data received - not an object:', data);
           return;
         }
 
-        if (!data.mapMetadata || typeof data.mapMetadata !== 'object') {
-          console.error('Invalid map metadata received:', data);
+        if (!data.objectives || !Array.isArray(data.objectives)) {
+          console.error('Invalid objectives data received - not an array:', data.objectives);
+          return;
+        }
+
+        if (!data.mapMetadata || typeof data.mapMetadata !== 'object' || Array.isArray(data.mapMetadata)) {
+          console.error('Invalid map metadata received - not an object:', data.mapMetadata);
           return;
         }
 
@@ -377,9 +393,14 @@ export function WvWMap({ matchId, className = '' }: WvWMapProps) {
         // Create objective info map - markers will be updated in separate effect
         const objInfo: { [key: string]: GW2Objective } = {};
 
-        allObjectives.forEach((obj) => {
-          objInfo[obj.id] = obj;
-        });
+        // Safely iterate over objectives with additional validation
+        if (Array.isArray(allObjectives) && allObjectives.length > 0) {
+          allObjectives.forEach((obj) => {
+            if (obj && obj.id) {
+              objInfo[obj.id] = obj;
+            }
+          });
+        }
 
         setObjectiveInfo(objInfo);
       } catch (error) {
