@@ -121,10 +121,12 @@ export function WvWMap({ matchId, className = '' }: WvWMapProps) {
 
     // Create map with Simple CRS for GW2's coordinate system
     const map = L.map(mapContainerRef.current, {
-      minZoom: 0,
+      minZoom: 1,
       maxZoom: 6,
       crs: L.CRS.Simple,
-      maxBoundsViscosity: 1.0,
+      maxBoundsViscosity: 0.5,
+      dragging: true,
+      zoomControl: true,
     });
 
     // Set map bounds to GW2's map coordinate space
@@ -133,9 +135,9 @@ export function WvWMap({ matchId, className = '' }: WvWMapProps) {
     const bounds = L.latLngBounds(southWest, northEast);
     map.setMaxBounds(bounds);
 
-    // Center the map on the bounds with appropriate zoom level for overview
-    map.fitBounds(bounds);
-    map.setZoom(1); // Lower zoom level to see more of the map
+    // Center the map with appropriate zoom level for overview
+    const center = map.unproject([8192, 8192], map.getMaxZoom());
+    map.setView(center, 3);
 
     // Add GW2 tile layer
     L.tileLayer('https://{s}.guildwars2.com/2/1/{z}/{x}/{y}.jpg', {
