@@ -308,35 +308,169 @@ function TraitButton({
           )}
         </button>
       </HoverCardTrigger>
-      <HoverCardContent className="w-64" side="top">
-        <div className="space-y-1.5">
+      <HoverCardContent className="w-80" side="top">
+        <div className="space-y-2">
           <div className="flex items-start gap-2">
             {trait.icon && (
               <img
                 src={trait.icon}
                 alt={trait.name}
-                className="w-6 h-6 rounded border"
+                className="w-8 h-8 rounded border"
               />
             )}
-            <div>
+            <div className="flex-1">
               <div className="text-sm font-semibold">{trait.name}</div>
               <div className="text-[10px] text-muted-foreground">
                 {trait.tier === 1 ? 'Adept' : trait.tier === 2 ? 'Master' : 'Grandmaster'} Trait
               </div>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">{trait.description}</p>
+          <p className="text-xs text-foreground">{trait.description}</p>
           {trait.facts && trait.facts.length > 0 && (
-            <div className="pt-1.5 border-t space-y-0.5">
-              {trait.facts.slice(0, 3).map((fact, i) => (
-                <div key={i} className="text-[10px] text-muted-foreground">
-                  • {fact.text}
-                </div>
+            <div className="pt-2 border-t space-y-1">
+              {trait.facts.map((fact, i) => (
+                <TraitFactDisplay key={i} fact={fact} />
               ))}
             </div>
           )}
         </div>
       </HoverCardContent>
     </HoverCard>
+  )
+}
+
+/**
+ * Enhanced fact display component for traits showing detailed information
+ */
+function TraitFactDisplay({ fact }: { fact: any }) {
+  const renderFactValue = () => {
+    switch (fact.type) {
+      case 'Damage':
+        return (
+          <span className="font-medium text-orange-400">
+            {fact.hit_count ? `${fact.hit_count}x ` : ''}
+            Damage: {fact.damage || fact.dmg_multiplier ? `${fact.dmg_multiplier || 1}x` : '?'}
+          </span>
+        )
+
+      case 'Heal':
+      case 'HealingAdjust':
+        return (
+          <span className="font-medium text-green-400">
+            Healing: {fact.hit_count || '?'}
+          </span>
+        )
+
+      case 'Buff':
+      case 'PrefixedBuff':
+        return (
+          <span className="font-medium text-blue-400">
+            {fact.status || fact.description || fact.text}
+            {fact.duration ? ` (${fact.duration}s)` : ''}
+            {fact.apply_count ? ` x${fact.apply_count}` : ''}
+          </span>
+        )
+
+      case 'Duration':
+        return (
+          <span className="font-medium text-purple-400">
+            Duration: {fact.duration}s
+          </span>
+        )
+
+      case 'Distance':
+      case 'Range':
+        return (
+          <span className="font-medium text-cyan-400">
+            {fact.type}: {fact.distance}
+          </span>
+        )
+
+      case 'Radius':
+        return (
+          <span className="font-medium text-cyan-400">
+            Radius: {fact.distance}
+          </span>
+        )
+
+      case 'Recharge':
+        return (
+          <span className="font-medium text-gray-400">
+            Recharge: {fact.value}s
+          </span>
+        )
+
+      case 'Number':
+        return (
+          <span className="font-medium">
+            {fact.text}
+          </span>
+        )
+
+      case 'Percent':
+        return (
+          <span className="font-medium text-yellow-400">
+            {fact.text}: {fact.percent}%
+          </span>
+        )
+
+      case 'ComboField':
+        return (
+          <span className="font-medium text-indigo-400">
+            Combo Field: {fact.field_type}
+          </span>
+        )
+
+      case 'ComboFinisher':
+        return (
+          <span className="font-medium text-indigo-400">
+            Combo Finisher: {fact.finisher_type} ({fact.percent}%)
+          </span>
+        )
+
+      case 'StunBreak':
+        return (
+          <span className="font-medium text-red-400">
+            Breaks Stun
+          </span>
+        )
+
+      case 'Unblockable':
+        return (
+          <span className="font-medium text-red-400">
+            Unblockable
+          </span>
+        )
+
+      case 'AttributeAdjust':
+        return (
+          <span className="font-medium text-amber-400">
+            {fact.text}
+          </span>
+        )
+
+      case 'Time':
+        return (
+          <span className="font-medium">
+            {fact.text}: {fact.duration}s
+          </span>
+        )
+
+      default:
+        return (
+          <span className="text-muted-foreground">
+            {fact.text}
+          </span>
+        )
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      {fact.icon && (
+        <img src={fact.icon} alt="" className="w-4 h-4 flex-shrink-0" />
+      )}
+      {renderFactValue()}
+    </div>
   )
 }
