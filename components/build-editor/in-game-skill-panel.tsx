@@ -306,10 +306,21 @@ function TraitLineDisplay({
   onRemove: () => void
 }) {
   const specTraits = allTraits.filter((t) => t.specialization === specialization.id)
+
+  // Group traits by tier and slot type
   const traitsByTier = {
-    adept: specTraits.filter((t) => t.tier === 1 && t.slot === 'Major'),
-    master: specTraits.filter((t) => t.tier === 2 && t.slot === 'Major'),
-    grandmaster: specTraits.filter((t) => t.tier === 3 && t.slot === 'Major'),
+    adept: {
+      major: specTraits.filter((t) => t.tier === 1 && t.slot === 'Major'),
+      minor: specTraits.filter((t) => t.tier === 1 && t.slot === 'Minor'),
+    },
+    master: {
+      major: specTraits.filter((t) => t.tier === 2 && t.slot === 'Major'),
+      minor: specTraits.filter((t) => t.tier === 2 && t.slot === 'Minor'),
+    },
+    grandmaster: {
+      major: specTraits.filter((t) => t.tier === 3 && t.slot === 'Major'),
+      minor: specTraits.filter((t) => t.tier === 3 && t.slot === 'Minor'),
+    },
   }
 
   return (
@@ -335,20 +346,31 @@ function TraitLineDisplay({
         </Button>
       </div>
 
-      {/* Trait Tiers */}
-      <div className="space-y-2">
-        <TraitTier
-          traits={traitsByTier.adept}
+      {/* Trait Tiers - Vertical Layout */}
+      <div className="flex gap-1">
+        {/* Adept Tier */}
+        <TraitTierVertical
+          label="Adept"
+          traits={traitsByTier.adept.major}
+          minorTrait={traitsByTier.adept.minor[0]}
           selectedId={selection.traits[0]}
           onSelect={(id) => onSelectTrait(0, id)}
         />
-        <TraitTier
-          traits={traitsByTier.master}
+
+        {/* Master Tier */}
+        <TraitTierVertical
+          label="Master"
+          traits={traitsByTier.master.major}
+          minorTrait={traitsByTier.master.minor[0]}
           selectedId={selection.traits[1]}
           onSelect={(id) => onSelectTrait(1, id)}
         />
-        <TraitTier
-          traits={traitsByTier.grandmaster}
+
+        {/* Grandmaster Tier */}
+        <TraitTierVertical
+          label="Grandmaster"
+          traits={traitsByTier.grandmaster.major}
+          minorTrait={traitsByTier.grandmaster.minor[0]}
           selectedId={selection.traits[2]}
           onSelect={(id) => onSelectTrait(2, id)}
         />
@@ -358,53 +380,98 @@ function TraitLineDisplay({
 }
 
 /**
- * Trait tier with 3 selectable traits
+ * Vertical trait tier with 3 selectable traits and minor trait in middle
  */
-function TraitTier({
+function TraitTierVertical({
+  label,
   traits,
+  minorTrait,
   selectedId,
   onSelect,
 }: {
+  label: string
   traits: Trait[]
+  minorTrait?: Trait
   selectedId: number
   onSelect: (traitId: number) => void
 }) {
   return (
-    <div className="flex gap-2">
-      {traits.map((trait) => (
-        <HoverCard key={trait.id} openDelay={300}>
-          <HoverCardTrigger asChild>
-            <button
-              onClick={() => onSelect(trait.id)}
-              className={cn(
-                'w-10 h-10 rounded border-2 transition-all flex items-center justify-center',
-                selectedId === trait.id
-                  ? 'border-amber-500 bg-amber-500/10 scale-105'
-                  : 'border-white/10 hover:border-white/30 bg-black/40'
-              )}
-            >
-              {trait.icon && (
-                <img src={trait.icon} alt={trait.name} className="max-w-full max-h-full object-contain" />
-              )}
-            </button>
-          </HoverCardTrigger>
-          <HoverCardContent className="w-64 bg-slate-900 border-white/20">
-            <div className="space-y-2">
-              <div className="flex items-start gap-2">
-                {trait.icon && <img src={trait.icon} alt={trait.name} className="w-8 h-8 rounded" />}
-                <div>
-                  <div className="text-sm font-semibold text-white">{trait.name}</div>
-                  <div className="text-xs text-white/50">
-                    {trait.tier === 1 ? 'Adept' : trait.tier === 2 ? 'Master' : 'Grandmaster'}
-                  </div>
-                </div>
-              </div>
-              <p className="text-xs text-white/70">{trait.description}</p>
-            </div>
-          </HoverCardContent>
-        </HoverCard>
-      ))}
+    <div className="flex-1 flex flex-col items-center gap-1">
+      {/* Tier label */}
+      <div className="text-[9px] text-white/50 font-medium mb-1">{label}</div>
+
+      {/* Major traits stacked vertically */}
+      <div className="flex flex-col gap-1">
+        {traits.map((trait) => (
+          <TraitButton
+            key={trait.id}
+            trait={trait}
+            isSelected={trait.id === selectedId}
+            onSelect={() => onSelect(trait.id)}
+          />
+        ))}
+      </div>
+
+      {/* Minor trait */}
+      {minorTrait && (
+        <div className="mt-1">
+          <TraitButton trait={minorTrait} isSelected={false} onSelect={() => {}} isMinor />
+        </div>
+      )}
     </div>
+  )
+}
+
+/**
+ * Individual trait button with hover tooltip
+ */
+function TraitButton({
+  trait,
+  isSelected,
+  onSelect,
+  isMinor = false,
+}: {
+  trait: Trait
+  isSelected: boolean
+  onSelect: () => void
+  isMinor?: boolean
+}) {
+  return (
+    <HoverCard openDelay={300}>
+      <HoverCardTrigger asChild>
+        <button
+          onClick={onSelect}
+          disabled={isMinor}
+          className={cn(
+            'w-10 h-10 rounded border-2 transition-all flex items-center justify-center',
+            isMinor
+              ? 'border-white/20 bg-black/60 cursor-default opacity-70'
+              : isSelected
+              ? 'border-amber-500 bg-amber-500/10 scale-105'
+              : 'border-white/10 hover:border-white/30 bg-black/40 hover:scale-105'
+          )}
+        >
+          {trait.icon && (
+            <img src={trait.icon} alt={trait.name} className="max-w-full max-h-full object-contain" />
+          )}
+        </button>
+      </HoverCardTrigger>
+      <HoverCardContent className="w-64 bg-slate-900 border-white/20">
+        <div className="space-y-2">
+          <div className="flex items-start gap-2">
+            {trait.icon && <img src={trait.icon} alt={trait.name} className="w-8 h-8 rounded" />}
+            <div>
+              <div className="text-sm font-semibold text-white">{trait.name}</div>
+              <div className="text-xs text-white/50">
+                {trait.tier === 1 ? 'Adept' : trait.tier === 2 ? 'Master' : 'Grandmaster'}{' '}
+                {trait.slot === 'Minor' && '(Minor)'}
+              </div>
+            </div>
+          </div>
+          <p className="text-xs text-white/70">{trait.description}</p>
+        </div>
+      </HoverCardContent>
+    </HoverCard>
   )
 }
 

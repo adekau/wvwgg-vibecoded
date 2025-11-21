@@ -66,7 +66,7 @@ export function ProfessionSelector({
                 <img
                   src={profession.icon_big}
                   alt={profession.name}
-                  className="max-w-full max-h-full object-contain drop-shadow-lg"
+                  className="w-full h-full object-contain drop-shadow-lg"
                 />
               )}
             </div>
