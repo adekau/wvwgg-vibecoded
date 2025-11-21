@@ -38,7 +38,7 @@ export function SpecializationSelector({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-6 gap-2">
           {/* None option */}
           <button
             onClick={() => onSelect(null)}
@@ -52,7 +52,7 @@ export function SpecializationSelector({
             )}
           >
             <div className="aspect-square flex items-center justify-center bg-muted">
-              <span className="text-2xl text-muted-foreground">∅</span>
+              <span className="text-xl text-muted-foreground">∅</span>
             </div>
             <div
               className={cn(
@@ -91,7 +91,7 @@ export function SpecializationSelector({
                     <img
                       src={spec.icon}
                       alt={spec.name}
-                      className="w-full h-full object-contain p-2 drop-shadow-lg"
+                      className="w-full h-full object-contain p-1 drop-shadow-lg"
                     />
                   )}
                 </div>

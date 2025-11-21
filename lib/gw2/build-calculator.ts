@@ -112,6 +112,7 @@ export function calculateGearStats(
   addGearPieceStats(gear.accessory1.statId, 'trinket')
   addGearPieceStats(gear.accessory2.statId, 'trinket')
   addGearPieceStats(gear.backItem.statId, 'back')
+  addGearPieceStats(gear.relic.statId, 'trinket')
 
   // Weapons
   addGearPieceStats(gear.weaponSet1Main.statId, 'weapon')
@@ -247,6 +248,7 @@ function addInfusionStats(stats: BaseStats, gear: GearSelection, items: Map<numb
     gear.accessory1,
     gear.accessory2,
     gear.backItem,
+    gear.relic,
     gear.weaponSet1Main,
     gear.weaponSet1Off,
     gear.weaponSet2Main,

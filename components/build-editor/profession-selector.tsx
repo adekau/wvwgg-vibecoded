@@ -36,7 +36,7 @@ export function ProfessionSelector({
   onSelect,
 }: ProfessionSelectorProps) {
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="grid grid-cols-5 gap-2">
       {professions.map((profession) => {
         const isSelected = profession.id === selected
         const colorClass = PROFESSION_COLORS[profession.id]
@@ -56,7 +56,7 @@ export function ProfessionSelector({
           >
             <div
               className={cn(
-                'aspect-square p-4 bg-gradient-to-br',
+                'aspect-square p-2 bg-gradient-to-br',
                 colorClass,
                 !isSelected && 'opacity-60 hover:opacity-80'
               )}
@@ -74,7 +74,7 @@ export function ProfessionSelector({
             {/* Profession name */}
             <div
               className={cn(
-                'py-2 text-center text-sm font-semibold',
+                'py-1 text-center text-xs font-medium',
                 isSelected
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-card text-foreground'
@@ -85,7 +85,7 @@ export function ProfessionSelector({
 
             {/* Selected indicator */}
             {isSelected && (
-              <div className="absolute top-2 right-2 w-3 h-3 rounded-full bg-primary border-2 border-white shadow-lg" />
+              <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-primary border border-white shadow-lg" />
             )}
           </button>
         )

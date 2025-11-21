@@ -101,18 +101,33 @@ export default function BuildEditorPage() {
   }
 
   const handleSpecializationChange = (specId: number | null) => {
-    setBuild({
-      ...build,
-      // Add/update elite spec in specializations array
-      specializations: specId
-        ? [
-            {
-              id: specId,
-              traits: [0, 0, 0],
-            },
-          ]
-        : [],
+    // When selecting/deselecting elite spec, maintain 3 total specializations
+    // Remove any existing elite spec first
+    const nonEliteSpecs = build.specializations.filter((s) => {
+      const spec = specializations.find((spec) => spec.id === s.id)
+      return spec && !spec.elite
     })
+
+    if (specId) {
+      // Adding an elite spec - keep up to 2 non-elite specs
+      const specsToKeep = nonEliteSpecs.slice(0, 2)
+      setBuild({
+        ...build,
+        specializations: [
+          ...specsToKeep,
+          {
+            id: specId,
+            traits: [0, 0, 0],
+          },
+        ],
+      })
+    } else {
+      // Removing elite spec - keep all non-elite specs
+      setBuild({
+        ...build,
+        specializations: nonEliteSpecs,
+      })
+    }
   }
 
   const handleTraitLinesChange = (lines: SpecializationSelection[]) => {
@@ -436,6 +451,7 @@ function createDefaultBuild(): Build {
       accessory1: defaultGearPiece,
       accessory2: defaultGearPiece,
       backItem: defaultGearPiece,
+      relic: defaultGearPiece,
       weaponSet1Main: defaultWeaponPiece,
     },
     isPublic: false,

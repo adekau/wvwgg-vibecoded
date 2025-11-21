@@ -29,7 +29,7 @@ interface GearPanelProps {
   onUpdateGear: (gear: GearSelection) => void
 }
 
-type GearSlot = keyof Omit<GearSelection, 'weaponSet1Main' | 'weaponSet1Off' | 'weaponSet2Main' | 'weaponSet2Off' | 'aquaticWeapon'>
+type GearSlot = 'helm' | 'shoulders' | 'coat' | 'gloves' | 'leggings' | 'boots' | 'amulet' | 'ring1' | 'ring2' | 'accessory1' | 'accessory2' | 'backItem' | 'relic'
 type WeaponSlot = 'weaponSet1Main' | 'weaponSet1Off' | 'weaponSet2Main' | 'weaponSet2Off' | 'aquaticWeapon'
 
 /**
@@ -165,6 +165,12 @@ export function GearPanel({
               statName={getStatName(gear.backItem.statId)}
               rarity={gear.backItem.rarity}
               onClick={() => setEditingSlot('backItem')}
+            />
+            <GearSlotButton
+              label="Relic"
+              statName={getStatName(gear.relic.statId)}
+              rarity={gear.relic.rarity}
+              onClick={() => setEditingSlot('relic')}
             />
           </TabsContent>
 
