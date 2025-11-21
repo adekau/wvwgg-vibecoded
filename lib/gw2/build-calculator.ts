@@ -439,6 +439,105 @@ export function calculateBuildStats(
 }
 
 /**
+ * Weapon strength values for ascended weapons at level 80
+ * Average of min/max damage range
+ */
+const WEAPON_STRENGTH: Record<string, number> = {
+  // Two-handed weapons
+  Greatsword: 1100,
+  Hammer: 1100,
+  Longbow: 1100,
+  Rifle: 1100,
+  Shortbow: 1050,
+  Staff: 1100,
+
+  // One-handed weapons
+  Axe: 950,
+  Dagger: 950,
+  Mace: 950,
+  Pistol: 950,
+  Scepter: 950,
+  Sword: 950,
+
+  // Off-hand weapons
+  Focus: 950,
+  Shield: 950,
+  Torch: 950,
+  Warhorn: 950,
+
+  // Special
+  Harpoon: 1100,
+  Speargun: 1100,
+  Trident: 1100,
+}
+
+/**
+ * Reference armor for damage calculations at level 80
+ * This is the standard armor value used in GW2 damage tooltips
+ */
+const REFERENCE_ARMOR = 2597
+
+/**
+ * Calculate skill damage based on weapon, power, and skill coefficient
+ *
+ * Formula: Damage = (Weapon Strength × Power × Coefficient) / 2597
+ *
+ * For critical hits, multiply by critical damage multiplier
+ *
+ * @param weaponType - Type of weapon (e.g., "Greatsword")
+ * @param power - Player's power stat
+ * @param coefficient - Skill damage coefficient
+ * @param critDamage - Critical damage multiplier (optional, for crit damage calc)
+ * @returns Calculated skill damage
+ */
+export function calculateSkillDamage(
+  weaponType: string,
+  power: number,
+  coefficient: number,
+  critDamage?: number
+): {
+  normal: number
+  critical: number
+} {
+  const weaponStrength = WEAPON_STRENGTH[weaponType] || 1000
+
+  // Base damage formula
+  const baseDamage = (weaponStrength * power * coefficient) / REFERENCE_ARMOR
+
+  // Critical damage (if crit damage multiplier provided)
+  const criticalDamage = critDamage ? baseDamage * critDamage : baseDamage * 1.5
+
+  return {
+    normal: Math.round(baseDamage),
+    critical: Math.round(criticalDamage),
+  }
+}
+
+/**
+ * Calculate average skill damage accounting for critical chance
+ *
+ * @param weaponType - Type of weapon
+ * @param power - Player's power stat
+ * @param coefficient - Skill damage coefficient
+ * @param critChance - Critical hit chance (0-100)
+ * @param critDamage - Critical damage multiplier
+ * @returns Average damage per hit
+ */
+export function calculateAverageSkillDamage(
+  weaponType: string,
+  power: number,
+  coefficient: number,
+  critChance: number,
+  critDamage: number
+): number {
+  const { normal, critical } = calculateSkillDamage(weaponType, power, coefficient, critDamage)
+
+  // Average damage = normal * (1 - crit%) + critical * crit%
+  const critChanceDecimal = Math.min(100, critChance) / 100
+  return Math.round(normal * (1 - critChanceDecimal) + critical * critChanceDecimal)
+}
+
+/**
  * Estimate weapon DPS based on skill coefficients
  * This is a simplified calculation - real DPS depends on rotation, buffs, etc.
  */
@@ -447,13 +546,16 @@ function estimateWeaponDPS(
   stats: CalculatedStats,
   skills: Map<number, Skill>
 ): number {
-  // This is a placeholder - real implementation would need:
-  // 1. Skill damage coefficients from API
-  // 2. Skill cast times and cooldowns
-  // 3. Rotation assumptions
-  // 4. Weapon type and attack speed
+  // Get weapon type from build
+  const weaponType = build.gear.weaponSet1Main.weaponType || 'Greatsword'
 
-  // For now, return a basic estimate
+  // For now, use a rough DPS estimate based on effective power
+  // In a real implementation, this would:
+  // 1. Look up actual skill coefficients from API
+  // 2. Calculate damage for each skill in rotation
+  // 3. Account for cast times and cooldowns
+  // 4. Sum up damage over time
+
   return stats.effectivePower * 0.5 // Rough approximation
 }
 
