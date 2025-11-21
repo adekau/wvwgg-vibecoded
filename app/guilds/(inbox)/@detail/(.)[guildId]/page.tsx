@@ -27,7 +27,7 @@ export default async function GuildDetailSlot({ params }: PageProps) {
 
   return (
     <Card className="panel-border inset-card flex-1 overflow-auto">
-      <CardContent className="p-6">
+      <CardContent className="p-8">
         <GuildDetailPanel
           guild={guild}
           allGuilds={guilds}

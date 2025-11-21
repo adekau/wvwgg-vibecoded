@@ -16,7 +16,7 @@ export default function GuildsInboxLayout({
 
       <main className="container mx-auto px-4 py-8 space-y-6">
         {children}
-        <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-24rem)]">
+        <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-24rem)]">
           {/* Left Panel - Guild List */}
           <div className="flex flex-col gap-4 w-full lg:w-1/2">
             {list}

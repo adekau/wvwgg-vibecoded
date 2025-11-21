@@ -285,7 +285,7 @@ export function GuildsListPanel({ guilds, worldMap }: GuildsListPanelProps) {
 
       {/* Guild Table */}
       <Card className="panel-border inset-card flex-1 flex flex-col overflow-hidden">
-        <CardContent className="p-0 flex-1 overflow-auto">
+        <CardContent className="p-2 flex-1 overflow-auto">
           <Table>
             <TableHeader className="sticky top-0 bg-background z-10">
               <TableRow>
@@ -315,7 +315,7 @@ export function GuildsListPanel({ guilds, worldMap }: GuildsListPanelProps) {
                   return (
                     <TableRow
                       key={guild.id}
-                      className={`cursor-pointer ${isSelected ? 'bg-accent' : 'hover:bg-accent/50'}`}
+                      className={`cursor-pointer transition-colors ${isSelected ? 'bg-primary/8 hover:bg-primary/10 border-l-2 border-l-primary' : 'hover:bg-muted/50'}`}
                     >
                       <TableCell>
                         <Link href={`/guilds/${guild.id}`} className="block">
