@@ -92,7 +92,7 @@ export default async function MatchScenariosPage({ params }: PageProps) {
       <MatchesHeader />
       <MatchSubNav matchId={matchId} currentTab="scenarios" />
 
-      <main className="container mx-auto px-4 py-8 space-y-6">
+      <main className="container mx-auto px-3 sm:px-4 md:px-6 py-6 sm:py-8 space-y-4 sm:space-y-6">
         <div className="mb-4">
           <h1 className="text-2xl font-bold mb-2">Victory Point Scenarios</h1>
           <p className="text-muted-foreground text-sm">

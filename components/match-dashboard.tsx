@@ -460,7 +460,7 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
       </div>
 
       {/* Score Overview Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {sortedWorlds.map((world, idx) => {
           const scorePercentage = (world.score / highestScore) * 100
           const kdRatio = (world.kills / world.deaths).toFixed(2)
@@ -671,7 +671,7 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
       </div>
 
       {/* Match Statistics & Skirmish Performance */}
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <Card className="panel-border inset-card frosted-panel" style={{ background: 'transparent' }}>
           <div className="p-6">
             <div className="flex items-center justify-between mb-4">
@@ -824,7 +824,7 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {match.worlds.map((world) => {
                 const classes = colorClasses[world.color]
                 const totalSkirmishes = world.skirmishes.first + world.skirmishes.second + world.skirmishes.third
@@ -873,7 +873,7 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
       </div>
 
       {/* Map Performance & Map Objectives */}
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <Card className="panel-border inset-card frosted-panel" style={{ background: 'transparent' }}>
           <div className="p-6">
             <div className="flex items-center gap-2 mb-6">
@@ -908,7 +908,7 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
                 return (
                   <div key={map.type} className="rounded-md p-4 border border-border/50 bg-background/50">
                     <div className="font-medium text-sm mb-3">{mapName}</div>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       {match.worlds.map((world) => {
                         const classes = colorClasses[world.color]
                         const kills = map.kills[world.color]
