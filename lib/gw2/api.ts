@@ -193,32 +193,70 @@ export async function getItems(ids: number[]): Promise<Item[]> {
 }
 
 /**
- * Get all runes (upgrade components for armor)
+ * Get popular runes (upgrade components for armor)
+ * Using curated list to avoid fetching all items
  */
 export async function getAllRunes(): Promise<Item[]> {
-  // Note: This is a heavy operation. In production, we'd want to cache this.
-  const allIds = await getAllItemIds()
+  // Popular runes for WvW and PvE
+  const popularRuneIds = [
+    24836, // Superior Rune of the Scholar
+    24818, // Superior Rune of the Eagle
+    24688, // Superior Rune of Strength
+    24765, // Superior Rune of the Thief
+    24762, // Superior Rune of the Pack
+    83338, // Superior Rune of the Dragonhunter
+    84171, // Superior Rune of Durability
+    70600, // Superior Rune of the Chronomancer
+    72339, // Superior Rune of Leadership
+    24723, // Superior Rune of the Air
+    24815, // Superior Rune of the Ranger
+    24764, // Superior Rune of the Trapper
+    24754, // Superior Rune of the Fire
+    24842, // Superior Rune of Divinity
+    67339, // Superior Rune of the Deadeye
+    83284, // Superior Rune of the Firebrand
+    84191, // Superior Rune of the Scourge
+    91541, // Superior Rune of the Citadel
+    100916, // Superior Rune of the Tempest
+    70600,  // Superior Rune of the Chronomancer
+    86180,  // Superior Rune of the Herald
+  ]
 
-  // Fetch in batches and filter for runes
-  const items = await fetchBatch<Item>('/items', allIds)
-
-  return items.filter(item =>
-    item.type === 'UpgradeComponent' &&
-    item.details?.type === 'Rune'
-  )
+  return getItems(popularRuneIds)
 }
 
 /**
- * Get all sigils (upgrade components for weapons)
+ * Get popular sigils (upgrade components for weapons)
+ * Using curated list to avoid fetching all items
  */
 export async function getAllSigils(): Promise<Item[]> {
-  const allIds = await getAllItemIds()
-  const items = await fetchBatch<Item>('/items', allIds)
+  // Popular sigils for WvW and PvE
+  const popularSigilIds = [
+    24615, // Superior Sigil of Force
+    24868, // Superior Sigil of Accuracy
+    24554, // Superior Sigil of Air
+    24609, // Superior Sigil of Fire
+    24599, // Superior Sigil of Earth
+    24583, // Superior Sigil of Blood
+    24618, // Superior Sigil of Geomancy
+    24624, // Superior Sigil of Impact
+    48911, // Superior Sigil of Concentration
+    44944, // Superior Sigil of Agility
+    74326, // Superior Sigil of Bursting
+    24567, // Superior Sigil of Benevolence
+    24624, // Superior Sigil of Impact
+    24868, // Superior Sigil of Accuracy
+    44950, // Superior Sigil of Draining
+    24580, // Superior Sigil of Bloodlust
+    24648, // Superior Sigil of Perception
+    24582, // Superior Sigil of Centaur Slaying
+    24639, // Superior Sigil of Malice
+    84505, // Superior Sigil of Absorption
+    72339, // Superior Sigil of Energy
+    24661, // Superior Sigil of Stamina
+  ]
 
-  return items.filter(item =>
-    item.type === 'UpgradeComponent' &&
-    item.details?.type === 'Sigil'
-  )
+  return getItems(popularSigilIds)
 }
 
 /**
