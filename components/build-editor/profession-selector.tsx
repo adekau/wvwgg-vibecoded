@@ -56,7 +56,7 @@ export function ProfessionSelector({
           >
             <div
               className={cn(
-                'aspect-square p-2 bg-gradient-to-br',
+                'w-16 h-16 p-2 bg-gradient-to-br flex items-center justify-center',
                 colorClass,
                 !isSelected && 'opacity-60 hover:opacity-80'
               )}
@@ -66,7 +66,7 @@ export function ProfessionSelector({
                 <img
                   src={profession.icon_big}
                   alt={profession.name}
-                  className="w-full h-full object-contain drop-shadow-lg"
+                  className="max-w-full max-h-full object-contain drop-shadow-lg"
                 />
               )}
             </div>

@@ -30,15 +30,9 @@ export function SpecializationSelector({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Elite Specialization</CardTitle>
-        <CardDescription>
-          Optional: Select an elite specialization for advanced abilities
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-6 gap-2">
+    <div className="bg-black/30 backdrop-blur-md border border-white/10 rounded-lg p-4">
+      <h2 className="text-sm font-semibold text-white/80 mb-3">Elite Specialization</h2>
+      <div className="flex flex-wrap gap-2">
           {/* None option */}
           <button
             onClick={() => onSelect(null)}
@@ -51,7 +45,7 @@ export function SpecializationSelector({
                 : 'border-border hover:border-primary/50'
             )}
           >
-            <div className="aspect-square flex items-center justify-center bg-muted">
+            <div className="w-16 h-16 flex items-center justify-center bg-muted">
               <span className="text-xl text-muted-foreground">∅</span>
             </div>
             <div
@@ -84,14 +78,14 @@ export function SpecializationSelector({
                 )}
               >
                 <div
-                  className="aspect-square bg-cover bg-center"
+                  className="w-16 h-16 bg-cover bg-center flex items-center justify-center"
                   style={{ backgroundImage: `url(${spec.background})` }}
                 >
                   {spec.icon && (
                     <img
                       src={spec.icon}
                       alt={spec.name}
-                      className="w-full h-full object-contain p-1 drop-shadow-lg"
+                      className="max-w-full max-h-full object-contain p-1 drop-shadow-lg"
                     />
                   )}
                 </div>
@@ -113,9 +107,8 @@ export function SpecializationSelector({
               </button>
             )
           })}
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 
