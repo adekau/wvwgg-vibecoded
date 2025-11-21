@@ -56,7 +56,7 @@ export function ProfessionSelector({
           >
             <div
               className={cn(
-                'w-16 h-16 p-2 bg-gradient-to-br flex items-center justify-center',
+                'w-12 h-12 p-1.5 bg-gradient-to-br flex items-center justify-center',
                 colorClass,
                 !isSelected && 'opacity-60 hover:opacity-80'
               )}

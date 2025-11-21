@@ -45,8 +45,8 @@ export function SpecializationSelector({
                 : 'border-border hover:border-primary/50'
             )}
           >
-            <div className="w-16 h-16 flex items-center justify-center bg-muted">
-              <span className="text-xl text-muted-foreground">∅</span>
+            <div className="w-12 h-12 flex items-center justify-center bg-muted">
+              <span className="text-lg text-muted-foreground">∅</span>
             </div>
             <div
               className={cn(
@@ -78,14 +78,14 @@ export function SpecializationSelector({
                 )}
               >
                 <div
-                  className="w-16 h-16 bg-cover bg-center flex items-center justify-center"
+                  className="w-12 h-12 bg-cover bg-center flex items-center justify-center"
                   style={{ backgroundImage: `url(${spec.background})` }}
                 >
                   {spec.icon && (
                     <img
                       src={spec.icon}
                       alt={spec.name}
-                      className="max-w-full max-h-full object-contain p-1 drop-shadow-lg"
+                      className="max-w-full max-h-full object-contain p-0.5 drop-shadow-lg"
                     />
                   )}
                 </div>
