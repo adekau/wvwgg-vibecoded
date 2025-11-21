@@ -170,88 +170,87 @@ const calculateAndSavePrimeTimeStats = async (formattedMatches: any): Promise<vo
     matchesByRegion[region].push({ matchId, startInterval });
   }
 
-  // Process each region (query snapshots once per region)
+  // Process each region - query per match using matchId-interval-index
   for (const [region, matches] of Object.entries(matchesByRegion)) {
     try {
-      // All matches in a region share the same start time, so use the first one
-      const startInterval = matches[0].startInterval;
-      console.log(`[PRIME-TIME] Querying snapshots for ${region.toUpperCase()} region (${matches.length} matches) from interval ${startInterval}`);
+      console.log(`[PRIME-TIME] Processing ${region.toUpperCase()} region (${matches.length} matches)`);
 
-      // Query all snapshots for this region ONCE
-      let allSnapshots: any[] = [];
-      let lastEvaluatedKey: Record<string, any> | undefined;
+      // Query each match's snapshots individually using the matchId-interval-index GSI
+      // This is much more efficient than querying all matches and filtering
+      for (const { matchId, startInterval: matchStartInterval } of matches) {
+        try {
+          console.log(`[PRIME-TIME] Querying snapshots for match ${matchId} from interval ${matchStartInterval}`);
 
-      do {
-        const response = await dynamoDb.send(
-          new QueryCommand({
-            TableName: TABLE_NAME,
-            IndexName: 'type-interval-index',
-            KeyConditionExpression: '#type = :type AND #interval >= :startInterval',
-            ProjectionExpression: '#timestamp, #interval, #data, compressed, matchId',
-            ExpressionAttributeNames: {
-              '#type': 'type',
-              '#interval': 'interval',
-              '#timestamp': 'timestamp',
-              '#data': 'data',
-            },
-            ExpressionAttributeValues: {
-              ':type': 'match-history',
-              ':startInterval': startInterval,
-            },
-            ExclusiveStartKey: lastEvaluatedKey,
-          })
-        );
+          // Query snapshots for this specific match using matchId-interval-index
+          let allSnapshots: any[] = [];
+          let lastEvaluatedKey: Record<string, any> | undefined;
 
-        allSnapshots = allSnapshots.concat(response.Items || []);
-        lastEvaluatedKey = response.LastEvaluatedKey;
-      } while (lastEvaluatedKey);
+          do {
+            const response = await dynamoDb.send(
+              new QueryCommand({
+                TableName: TABLE_NAME,
+                IndexName: 'matchId-interval-index', // Use the new match-specific GSI
+                KeyConditionExpression: 'matchId = :matchId AND #interval >= :startInterval',
+                ProjectionExpression: '#timestamp, #interval, #data, compressed',
+                ExpressionAttributeNames: {
+                  '#interval': 'interval',
+                  '#timestamp': 'timestamp',
+                  '#data': 'data',
+                },
+                ExpressionAttributeValues: {
+                  ':matchId': matchId,
+                  ':startInterval': matchStartInterval,
+                },
+                ExclusiveStartKey: lastEvaluatedKey,
+              })
+            );
 
-      // Decompress snapshots if needed
-      const decompressedSnapshots = allSnapshots.map(snapshot => {
-        if (snapshot.compressed && typeof snapshot.data === 'string') {
-          const decompressed = decompressData(snapshot.data);
-          return {
-            ...snapshot,
-            data: decompressed || snapshot.data,
-          };
-        }
-        return snapshot;
-      });
+            allSnapshots = allSnapshots.concat(response.Items || []);
+            lastEvaluatedKey = response.LastEvaluatedKey;
+          } while (lastEvaluatedKey);
 
-      const snapshots = decompressedSnapshots.sort((a, b) => a.timestamp - b.timestamp);
-      console.log(`[PRIME-TIME] Retrieved ${snapshots.length} snapshots for ${region.toUpperCase()} region`);
+          console.log(`[PRIME-TIME] Retrieved ${allSnapshots.length} snapshots for match ${matchId}`);
 
-      if (snapshots.length === 0) {
-        console.log(`[PRIME-TIME] No snapshots found for ${region.toUpperCase()} region, skipping all matches`);
-        continue;
-      }
-
-      // Process all matches in this region in parallel for better performance
-      await Promise.all(
-        matches.map(async ({ matchId }) => {
-          try {
-            // Calculate prime time stats
-            const primeTimeStats = calculateMatchPrimeTimeStats(matchId, snapshots);
-
-            // Save to DynamoDB
-            await dynamoDb.put({
-              TableName: TABLE_NAME,
-              Item: {
-                type: 'prime-time-stats',
-                id: matchId,
-                stats: primeTimeStats,
-                updatedAt: Date.now(),
-                ttl: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7 days TTL
-              }
-            });
-
-            console.log(`[PRIME-TIME] Saved stats for ${matchId} (${primeTimeStats.length} windows, ${snapshots.length} snapshots)`);
-          } catch (err) {
-            console.error(`[PRIME-TIME] Failed to calculate stats for ${matchId}:`, err);
-            // Continue with other matches even if one fails
+          if (allSnapshots.length === 0) {
+            console.log(`[PRIME-TIME] No snapshots found for ${matchId}`);
+            continue;
           }
-        })
-      );
+
+          // Decompress snapshots if needed
+          const decompressedSnapshots = allSnapshots.map(snapshot => {
+            if (snapshot.compressed && typeof snapshot.data === 'string') {
+              const decompressed = decompressData(snapshot.data);
+              return {
+                ...snapshot,
+                data: decompressed || snapshot.data,
+              };
+            }
+            return snapshot;
+          });
+
+          const snapshots = decompressedSnapshots.sort((a, b) => a.timestamp - b.timestamp);
+
+          // Calculate prime time stats
+          const primeTimeStats = calculateMatchPrimeTimeStats(matchId, snapshots);
+
+          // Save to DynamoDB
+          await dynamoDb.put({
+            TableName: TABLE_NAME,
+            Item: {
+              type: 'prime-time-stats',
+              id: matchId,
+              stats: primeTimeStats,
+              updatedAt: Date.now(),
+              ttl: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7 days TTL
+            }
+          });
+
+          console.log(`[PRIME-TIME] Saved stats for ${matchId} (${primeTimeStats.length} windows, ${snapshots.length} snapshots)`);
+        } catch (err) {
+          console.error(`[PRIME-TIME] Failed to calculate stats for ${matchId}:`, err);
+          // Continue with other matches even if one fails
+        }
+      }
     } catch (err) {
       console.error(`[PRIME-TIME] Failed to process ${region.toUpperCase()} region:`, err);
     }
