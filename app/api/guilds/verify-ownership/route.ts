@@ -23,6 +23,7 @@ interface VerifyOwnershipRequest {
   description?: string
   contact_info?: string
   recruitment_status?: 'open' | 'closed' | 'by_application'
+  memberGuildIds?: string[]
   addNew?: boolean // Flag to indicate this is a new guild being added
 }
 
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
   try {
     const body: VerifyOwnershipRequest = await request.json()
     apiKey = body.apiKey
-    const { guildId, description, contact_info, recruitment_status, addNew } = body
+    const { guildId, description, contact_info, recruitment_status, memberGuildIds, addNew } = body
 
     if (!guildId || !apiKey) {
       return NextResponse.json(
@@ -42,20 +43,23 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if guild exists if not adding new
+    let existingGuild: any = null
     if (!addNew) {
-      const existingGuild = await docClient.send(
+      const existingGuildResponse = await docClient.send(
         new GetCommand({
           TableName: process.env.TABLE_NAME,
           Key: { type: 'guild', id: guildId },
         })
       )
 
-      if (!existingGuild.Item) {
+      if (!existingGuildResponse.Item) {
         return NextResponse.json(
           { error: 'Guild not found. Use "Add Guild" to add a new guild.' },
           { status: 404 }
         )
       }
+
+      existingGuild = existingGuildResponse.Item
     }
 
     // Step 1: Verify API key has correct permissions
@@ -237,6 +241,15 @@ export async function POST(request: NextRequest) {
       expressionAttributeNames['#recruitmentStatus'] = 'recruitment_status'
       expressionAttributeValues[':recruitmentStatus'] = recruitment_status || null
       changes.recruitment_status = { from: 'unknown', to: recruitment_status }
+    }
+
+    // Update memberGuildIds if provided AND guild is an alliance
+    if (memberGuildIds !== undefined && existingGuild?.classification === 'alliance') {
+      updateExpressions.push('#memberGuildIds = :memberGuildIds')
+      expressionAttributeNames['#memberGuildIds'] = 'memberGuildIds'
+      expressionAttributeValues[':memberGuildIds'] = memberGuildIds.length > 0 ? memberGuildIds : null
+      changes.memberGuildIds = { from: existingGuild?.memberGuildIds || [], to: memberGuildIds }
+      console.log('[VERIFY] Updating member guilds for alliance guild')
     }
 
     // Add audit log entry
