@@ -114,10 +114,13 @@ export default function AdminGuildsPage() {
       return matchesSearch && matchesWorld && matchesClassification && matchesReviewed
     })
 
-    // Reset to page 1 when filters change
-    setCurrentPage(1)
     return filtered
   }, [guilds, searchTerm, worldFilter, classificationFilter, reviewedFilter])
+
+  // Reset to page 1 when filters change - moved outside useMemo to fix performance
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, worldFilter, classificationFilter, reviewedFilter])
 
   const paginatedGuilds = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage

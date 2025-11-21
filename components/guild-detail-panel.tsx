@@ -23,10 +23,21 @@ export function GuildDetailPanel({ guild, allGuilds, worldMap, isModal = false }
     router.back()
   }, [router])
 
+  // Create a Map for O(1) guild lookups
+  const guildsById = useMemo(() => {
+    const map = new Map<string, IGuild>()
+    allGuilds.forEach(guild => {
+      map.set(guild.id, guild)
+    })
+    return map
+  }, [allGuilds])
+
   // Memoize expensive lookups
   const { allianceGuild, memberGuilds, displayWorldId, worldName } = useMemo(() => {
-    // Find alliance if this is a member guild
-    const allianceGuild = allGuilds.find(g => g.id === guild.allianceGuildId)
+    // Use Map for O(1) lookup instead of O(n) find
+    const allianceGuild = guild.allianceGuildId
+      ? guildsById.get(guild.allianceGuildId)
+      : undefined
 
     // Find member guilds if this is an alliance
     const memberGuilds = allGuilds.filter(g =>
@@ -38,7 +49,7 @@ export function GuildDetailPanel({ guild, allGuilds, worldMap, isModal = false }
     const worldName = worldMap.get(displayWorldId) || `Unknown (${displayWorldId})`
 
     return { allianceGuild, memberGuilds, displayWorldId, worldName }
-  }, [guild.id, guild.allianceGuildId, guild.memberGuildIds, guild.worldId, allGuilds, worldMap])
+  }, [guild.id, guild.allianceGuildId, guild.memberGuildIds, guild.worldId, allGuilds, guildsById, worldMap])
 
   return (
     <div className="space-y-6">

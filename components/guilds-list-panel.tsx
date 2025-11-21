@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, startTransition } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -47,13 +47,22 @@ export function GuildsListPanel({ guilds, worldMap }: GuildsListPanelProps) {
   const selectedGuildId = pathname.match(/\/guilds\/([^/]+)/)?.[1]
 
   // Helper function to get region from world name
-  const getRegion = (worldId: number): string => {
+  const getRegion = useCallback((worldId: number): string => {
     const worldName = worldMap.get(worldId) || ''
     if (worldName.includes('[DE]') || worldName.includes('[FR]') || worldName.includes('[ES]')) {
       return 'EU'
     }
     return 'NA'
-  }
+  }, [worldMap])
+
+  // Create a Map for O(1) guild lookups by ID
+  const guildsById = useMemo(() => {
+    const map = new Map<string, IGuild>()
+    guilds.forEach(guild => {
+      map.set(guild.id, guild)
+    })
+    return map
+  }, [guilds])
 
   // Get unique worlds and regions
   const availableWorlds = useMemo(() => {
@@ -73,7 +82,7 @@ export function GuildsListPanel({ guilds, worldMap }: GuildsListPanelProps) {
       regions.add(getRegion(guild.worldId))
     })
     return Array.from(regions).sort()
-  }, [guilds, worldMap])
+  }, [guilds, getRegion])
 
   // Filter and search guilds
   const filteredGuilds = useMemo(() => {
@@ -100,9 +109,6 @@ export function GuildsListPanel({ guilds, worldMap }: GuildsListPanelProps) {
       )
     }
 
-    // Reset to page 1 when filters change
-    setCurrentPage(1)
-
     return filtered.sort((a, b) => {
       switch (sortBy) {
         case 'name':
@@ -119,7 +125,12 @@ export function GuildsListPanel({ guilds, worldMap }: GuildsListPanelProps) {
           return 0
       }
     })
-  }, [guilds, selectedWorld, selectedRegion, selectedClassification, searchQuery, sortBy, worldMap])
+  }, [guilds, selectedWorld, selectedRegion, selectedClassification, searchQuery, sortBy, worldMap, getRegion])
+
+  // Reset to page 1 when filters change - moved outside useMemo to fix click issues
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [selectedWorld, selectedRegion, selectedClassification, searchQuery, sortBy])
 
   // Paginate results
   const totalPages = Math.ceil(filteredGuilds.length / itemsPerPage)
@@ -129,7 +140,7 @@ export function GuildsListPanel({ guilds, worldMap }: GuildsListPanelProps) {
     return filteredGuilds.slice(startIndex, endIndex)
   }, [filteredGuilds, currentPage, itemsPerPage])
 
-  const handleGuildSelected = async (guildId: string) => {
+  const handleGuildSelected = useCallback(async (guildId: string) => {
     try {
       const response = await fetch(`https://api.guildwars2.com/v2/guild/${guildId}`)
       if (response.ok) {
@@ -144,11 +155,11 @@ export function GuildsListPanel({ guilds, worldMap }: GuildsListPanelProps) {
     } catch (error) {
       console.error('Failed to fetch guild details:', error)
     }
-  }
+  }, [])
 
-  const handleUpdateSuccess = () => {
+  const handleUpdateSuccess = useCallback(() => {
     router.refresh()
-  }
+  }, [router])
 
   return (
     <>
@@ -293,8 +304,9 @@ export function GuildsListPanel({ guilds, worldMap }: GuildsListPanelProps) {
                 </TableRow>
               ) : (
                 paginatedGuilds.map((guild) => {
+                  // Use Map for O(1) lookup instead of O(n) find
                   const allianceGuild = guild.allianceGuildId
-                    ? guilds.find(g => g.id === guild.allianceGuildId)
+                    ? guildsById.get(guild.allianceGuildId)
                     : null
                   const displayWorldId = allianceGuild ? allianceGuild.worldId : guild.worldId
                   const region = getRegion(displayWorldId)
