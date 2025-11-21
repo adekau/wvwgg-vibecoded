@@ -10,12 +10,18 @@ import { ObjectivesDisplay } from '@/components/objectives-display'
 import { SkirmishTimer } from '@/components/skirmish-timer'
 import { AutoRefresh } from '@/components/auto-refresh'
 import { PrimeTimePerformance } from '@/components/prime-time-performance'
-import { VPScenarioPlanner } from '@/components/vp-scenario-planner'
-import { InteractiveVPPlanner } from '@/components/interactive-vp-planner'
 import { PPTBreakdown } from '@/components/ppt-breakdown'
 import { WorldAlliances } from '@/components/world-alliances'
 import { SkirmishWinScenarioModal } from '@/components/skirmish-win-scenario-modal'
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react'
+
+// Lazy load VP Scenario Planners to reduce initial bundle size
+const VPScenarioPlanner = lazy(() =>
+  import('@/components/vp-scenario-planner').then(mod => ({ default: mod.VPScenarioPlanner }))
+)
+const InteractiveVPPlanner = lazy(() =>
+  import('@/components/interactive-vp-planner').then(mod => ({ default: mod.InteractiveVPPlanner }))
+)
 import { calculateMatchPPT, getPPTTrend, calculateTicksBehind, ticksToTimeString, getTeamStatus, calculateRequiredPPTToOvertake, calculateMaxAchievablePPT } from '@/lib/ppt-calculator'
 import { IGuild } from '@/server/queries'
 import { SKIRMISH_DURATION_MS, POLL_INTERVALS_MS } from '@/lib/game-constants'
@@ -717,13 +723,7 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
                     <th className="text-right py-2 px-2 font-medium text-muted-foreground">Kills</th>
                     <th className="text-right py-2 px-2 font-medium text-muted-foreground">Deaths</th>
                     <th className="text-right py-2 px-2 font-medium text-muted-foreground">K/D</th>
-                    {selectedSkirmish === 'all' && (
-                      <>
-                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">1st</th>
-                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">2nd</th>
-                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">3rd</th>
-                      </>
-                    )}
+                    <th className="text-right py-2 px-2 font-medium text-muted-foreground">Activity</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -783,19 +783,13 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
                             </span>
                           ) : '-'}
                         </td>
-                        {selectedSkirmish === 'all' && (
-                          <>
-                            <td className="text-right py-3 px-2 font-mono text-yellow-600 dark:text-yellow-400">
-                              {world.skirmishes.first}
-                            </td>
-                            <td className="text-right py-3 px-2 font-mono text-gray-400 dark:text-gray-300">
-                              {world.skirmishes.second}
-                            </td>
-                            <td className="text-right py-3 px-2 font-mono text-orange-600 dark:text-orange-400">
-                              {world.skirmishes.third}
-                            </td>
-                          </>
-                        )}
+                        <td className="text-right py-3 px-2 font-mono">
+                          {historyLoading && (selectedSkirmish !== 'all' || selectedMap !== 'all') ? (
+                            <Loader2 className="h-4 w-4 animate-spin mx-auto text-muted-foreground" />
+                          ) : world.displayKills !== undefined && world.displayDeaths !== undefined ? (
+                            (kills + deaths).toLocaleString()
+                          ) : '-'}
+                        </td>
                       </tr>
                     )
                   })}
@@ -990,11 +984,33 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
         primeTimeStats={primeTimeStats}
       />
 
-      {/* VP Scenario Planner */}
-      <VPScenarioPlanner matchId={matchId} match={match} />
+      {/* VP Scenario Planner (lazy loaded to reduce initial bundle size) */}
+      <Suspense
+        fallback={
+          <Card className="panel-border inset-card frosted-panel p-6" style={{ background: 'transparent' }}>
+            <div className="animate-pulse space-y-4">
+              <div className="h-6 bg-muted rounded w-1/3"></div>
+              <div className="h-48 bg-muted rounded"></div>
+            </div>
+          </Card>
+        }
+      >
+        <VPScenarioPlanner matchId={matchId} match={match} />
+      </Suspense>
 
-      {/* Interactive VP Planner */}
-      <InteractiveVPPlanner matchId={matchId} match={match} />
+      {/* Interactive VP Planner (lazy loaded to reduce initial bundle size) */}
+      <Suspense
+        fallback={
+          <Card className="panel-border inset-card frosted-panel p-6" style={{ background: 'transparent' }}>
+            <div className="animate-pulse space-y-4">
+              <div className="h-6 bg-muted rounded w-1/3"></div>
+              <div className="h-48 bg-muted rounded"></div>
+            </div>
+          </Card>
+        }
+      >
+        <InteractiveVPPlanner matchId={matchId} match={match} />
+      </Suspense>
 
       {/* Skirmish Win Scenario Modals */}
       {(['red', 'blue', 'green'] as const).map(color => {

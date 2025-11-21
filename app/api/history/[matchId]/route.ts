@@ -46,6 +46,11 @@ export async function GET(
     // Extract data for specific match
     const matchHistory = history
       .map((snapshot) => {
+        // Type guard: data should be decompressed by now, but check to be safe
+        if (typeof snapshot.data === 'string') {
+          console.error('Snapshot data is still compressed');
+          return null;
+        }
         const matchData = snapshot.data[matchId];
         if (!matchData) return null;
 

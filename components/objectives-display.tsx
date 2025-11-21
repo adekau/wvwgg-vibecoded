@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { memo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Shield, Castle as CastleIcon, Home, Flag } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -40,31 +41,26 @@ const colorClasses = {
   },
 };
 
-export function ObjectivesDisplay({ matchId, worlds }: ObjectivesDisplayProps) {
-  const [objectives, setObjectives] = useState<ObjectivesData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchObjectives = async () => {
-      try {
-        const response = await fetch(`/api/objectives/${matchId}`);
-        if (response.ok) {
-          const data = await response.json();
-          setObjectives(data.objectives);
-        }
-      } catch (error) {
-        console.error('Failed to fetch objectives:', error);
-      } finally {
-        setIsLoading(false);
+// Memoized to prevent re-renders when parent re-renders with same props
+export const ObjectivesDisplay = memo(function ObjectivesDisplay({ matchId, worlds }: ObjectivesDisplayProps) {
+  // Fetch objectives with React Query (automatic caching, deduplication, and polling)
+  const { data, isLoading } = useQuery({
+    queryKey: ['objectives', matchId],
+    queryFn: async () => {
+      const response = await fetch(`/api/objectives/${matchId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch objectives');
       }
-    };
+      const data = await response.json();
+      return data.objectives as ObjectivesData;
+    },
+    // Poll every 30 seconds for real-time updates
+    refetchInterval: POLL_INTERVALS_MS.OBJECTIVES,
+    // Keep data fresh for 20 seconds
+    staleTime: 20 * 1000,
+  });
 
-    fetchObjectives();
-
-    // Refresh objectives every 30 seconds
-    const interval = setInterval(fetchObjectives, POLL_INTERVALS_MS.OBJECTIVES);
-    return () => clearInterval(interval);
-  }, [matchId]);
+  const objectives = data || null;
 
   if (isLoading) {
     return (
@@ -150,4 +146,4 @@ export function ObjectivesDisplay({ matchId, worlds }: ObjectivesDisplayProps) {
       </div>
     </Card>
   );
-}
+})
