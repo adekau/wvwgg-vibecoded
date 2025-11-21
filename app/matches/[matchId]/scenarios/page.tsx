@@ -1,5 +1,6 @@
 import { MatchesHeader } from '@/components/matches-header'
 import { MatchSubNav } from '@/components/match-sub-nav'
+import { MatchSelector } from '@/components/match-selector'
 import { notFound } from 'next/navigation'
 import { getMatches, getWorlds } from '@/server/queries'
 import { VPScenarioPlanner } from '@/components/vp-scenario-planner'
@@ -29,6 +30,21 @@ export default async function MatchScenariosPage({ params }: PageProps) {
   if (!matchData) {
     notFound()
   }
+
+  // Format all matches for the selector
+  const allMatches = Object.entries(matchesData).map(([id, data]: [string, any]) => {
+    const [regionCode, tier] = id.split('-')
+    return {
+      id,
+      tier,
+      region: regionCode === '1' ? 'North America' : 'Europe',
+      worlds: {
+        red: data.red?.world?.name || 'Unknown',
+        blue: data.blue?.world?.name || 'Unknown',
+        green: data.green?.world?.name || 'Unknown',
+      },
+    }
+  })
 
   const match = {
     tier: matchId,
@@ -89,6 +105,14 @@ export default async function MatchScenariosPage({ params }: PageProps) {
   return (
     <div className="min-h-screen">
       <MatchesHeader />
+
+      {/* Match selector with frosted glass effect */}
+      <div className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto px-3 sm:px-4 md:px-6 py-3 sm:py-4">
+          <MatchSelector currentMatchId={matchId} matches={allMatches} />
+        </div>
+      </div>
+
       <MatchSubNav matchId={matchId} currentTab="scenarios" />
 
       <main className="container mx-auto px-3 sm:px-4 md:px-6 py-6 sm:py-8 space-y-4 sm:space-y-6">
