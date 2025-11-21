@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { GearSelection, GearPiece, WeaponPiece, ItemStat, Item, ItemRarity, WeaponType } from '@/lib/gw2/types'
+import type { GearSelection, GearPiece, WeaponPiece, ItemStat, Item, ItemRarity, WeaponType, ProfessionId, Profession } from '@/lib/gw2/types'
 import { isTwoHandedWeapon, isOffHandOnly, TWO_HANDED_WEAPONS, MAIN_HAND_WEAPONS, OFF_HAND_ONLY_WEAPONS } from '@/lib/gw2/types'
 import {
   Dialog,
@@ -26,6 +26,8 @@ interface InGameGearPanelProps {
   itemStats: ItemStat[]
   runes: Item[]
   sigils: Item[]
+  profession: ProfessionId
+  professions: Profession[]
   onUpdateGear: (gear: GearSelection) => void
 }
 
@@ -40,6 +42,8 @@ export function InGameGearPanel({
   itemStats,
   runes,
   sigils,
+  profession,
+  professions,
   onUpdateGear,
 }: InGameGearPanelProps) {
   const [editingSlot, setEditingSlot] = useState<GearSlot | WeaponSlot | null>(null)
@@ -190,6 +194,8 @@ export function InGameGearPanel({
           piece={gear[editingSlot] as GearPiece}
           itemStats={itemStats}
           upgrades={editingSlot.includes('weapon') ? sigils : runes}
+          profession={profession}
+          professions={professions}
           onSave={(piece) => handleUpdatePiece(editingSlot, piece)}
         />
       )}
@@ -207,6 +213,8 @@ function InGameGearEditor({
   piece,
   itemStats,
   upgrades,
+  profession,
+  professions,
   onSave,
 }: {
   open: boolean
@@ -215,6 +223,8 @@ function InGameGearEditor({
   piece: GearPiece | WeaponPiece
   itemStats: ItemStat[]
   upgrades: Item[]
+  profession: ProfessionId
+  professions: Profession[]
   onSave: (piece: GearPiece | WeaponPiece) => void
 }) {
   const isWeapon = slot.includes('weapon')
@@ -232,11 +242,41 @@ function InGameGearEditor({
   const currentStats = itemStats.find(s => s.id === piece.statId)
   const newStats = itemStats.find(s => s.id === selectedStat)
 
-  // Get available weapon types based on slot
-  const availableWeaponTypes = isWeapon
-    ? isOffHand
-      ? [...MAIN_HAND_WEAPONS, ...OFF_HAND_ONLY_WEAPONS] // Off-hand can use one-handed or off-hand only
-      : [...TWO_HANDED_WEAPONS, ...MAIN_HAND_WEAPONS] // Main-hand can use two-handed or one-handed
+  // Get current profession data
+  const professionData = professions.find(p => p.id === profession)
+
+  // Get available weapon types based on slot and profession
+  const availableWeaponTypes: WeaponType[] = isWeapon && professionData
+    ? Object.keys(professionData.weapons)
+        .filter(weaponName => {
+          const weapon = professionData.weapons[weaponName]
+          if (!weapon) return false
+
+          const flags = weapon.flags
+          const isTwoHand = flags.includes('TwoHand')
+          const isMainhand = flags.includes('Mainhand')
+          const isOffhand = flags.includes('Offhand')
+          const isAquatic = flags.includes('Aquatic')
+
+          // Skip aquatic weapons for now
+          if (isAquatic) return false
+
+          if (isOffHand) {
+            // Off-hand slot can use weapons flagged as Offhand or Mainhand (one-handed weapons)
+            return isOffhand || isMainhand
+          } else {
+            // Main-hand slot can use two-handed weapons or one-handed weapons
+            return isTwoHand || isMainhand
+          }
+        })
+        .filter((weaponName): weaponName is WeaponType => {
+          // Type guard to ensure weapon name is a valid WeaponType
+          return (
+            TWO_HANDED_WEAPONS.includes(weaponName as WeaponType) ||
+            MAIN_HAND_WEAPONS.includes(weaponName as WeaponType) ||
+            OFF_HAND_ONLY_WEAPONS.includes(weaponName as WeaponType)
+          )
+        })
     : []
 
   const handleSave = () => {

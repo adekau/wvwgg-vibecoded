@@ -213,12 +213,14 @@ export default function BuildEditorPage() {
         <div className="grid grid-cols-12 gap-4 h-full">
           {/* Left Column - Equipment Slots */}
           <div className="col-span-2">
-            {itemStats && runes && sigils && (
+            {itemStats && runes && sigils && professions && (
               <InGameGearPanel
                 gear={build.gear}
                 itemStats={itemStats}
                 runes={runes}
                 sigils={sigils}
+                profession={build.profession}
+                professions={professions}
                 onUpdateGear={handleGearChange}
               />
             )}
