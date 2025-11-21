@@ -18,6 +18,7 @@ import {
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { getVPTierForTime, getRegionFromMatchId } from '@/lib/vp-tiers'
 import { TOTAL_SKIRMISHES_PER_MATCH } from '@/lib/game-constants'
+import { calculateScenario, type ScenarioInput } from '@/lib/vp-scenario-solver-greedy'
 
 interface InteractiveVPPlannerProps {
   matchId: string
@@ -136,6 +137,8 @@ export function InteractiveVPPlanner({ matchId, match }: InteractiveVPPlannerPro
     second: TeamColor
     third: TeamColor
   }>({ first: 'red', second: 'blue', third: 'green' })
+  const [isAutoFilling, setIsAutoFilling] = useState(false)
+  const [autoFillMessage, setAutoFillMessage] = useState<string | null>(null)
 
   // Calculate projected VP based on current assignments
   const projectedVP = useMemo(() => {
@@ -259,26 +262,91 @@ export function InteractiveVPPlanner({ matchId, match }: InteractiveVPPlannerPro
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleUndo, handleRedo])
 
-  // Auto-fill handler (try to achieve desired outcome)
-  const handleAutoFill = useCallback(() => {
-    // Simple greedy strategy: assign desired placements
-    const newAssignments = new Map<number, SkirmishAssignment>()
+  // Auto-fill handler (use solver solution)
+  const handleAutoFill = useCallback(async () => {
+    setIsAutoFilling(true)
+    setAutoFillMessage('Running solver...')
 
-    remainingSkirmishes.forEach(skirmish => {
-      newAssignments.set(skirmish.id, {
-        skirmishId: skirmish.id,
-        placements: {
-          [desiredOutcome.first]: 1,
-          [desiredOutcome.second]: 2,
-          [desiredOutcome.third]: 3,
-        } as any
+    try {
+      // Prepare input for solver
+      const solverInput: ScenarioInput = {
+        currentVP,
+        remainingSkirmishes: remainingSkirmishes.map(s => ({
+          id: s.id,
+          startTime: s.startTime,
+          endTime: s.endTime,
+          vpAwards: s.vpAwards,
+        })),
+        desiredOutcome,
+        minMargin: 0,
+      }
+
+      // Call the solver
+      const result = await calculateScenario(solverInput)
+
+      const newAssignments = new Map<number, SkirmishAssignment>()
+
+      if (result.isPossible && result.requiredPlacements) {
+        // Use solver's solution
+        result.requiredPlacements.forEach(placement => {
+          newAssignments.set(placement.skirmishId, {
+            skirmishId: placement.skirmishId,
+            placements: placement.placements,
+          })
+        })
+
+        setAutoFillMessage(
+          `Solution found using ${result.solver || 'solver'}! ` +
+          `Difficulty: ${result.difficulty || 'unknown'}. ` +
+          `Final margin: ${result.margin || 0} VP.`
+        )
+      } else {
+        // Fallback to simple greedy strategy if solver couldn't find a solution
+        remainingSkirmishes.forEach(skirmish => {
+          newAssignments.set(skirmish.id, {
+            skirmishId: skirmish.id,
+            placements: {
+              [desiredOutcome.first]: 1,
+              [desiredOutcome.second]: 2,
+              [desiredOutcome.third]: 3,
+            } as any
+          })
+        })
+
+        setAutoFillMessage(
+          `Solver could not find a solution. Using simple greedy strategy instead. ` +
+          `Reason: ${result.reason || 'Unknown'}`
+        )
+      }
+
+      setAssignments(newAssignments)
+      setHistory([...history, newAssignments])
+      setHistoryIndex(history.length)
+    } catch (error) {
+      // Fallback to simple greedy strategy on error
+      const newAssignments = new Map<number, SkirmishAssignment>()
+
+      remainingSkirmishes.forEach(skirmish => {
+        newAssignments.set(skirmish.id, {
+          skirmishId: skirmish.id,
+          placements: {
+            [desiredOutcome.first]: 1,
+            [desiredOutcome.second]: 2,
+            [desiredOutcome.third]: 3,
+          } as any
+        })
       })
-    })
 
-    setAssignments(newAssignments)
-    setHistory([...history, newAssignments])
-    setHistoryIndex(history.length)
-  }, [remainingSkirmishes, desiredOutcome, history])
+      setAssignments(newAssignments)
+      setHistory([...history, newAssignments])
+      setHistoryIndex(history.length)
+      setAutoFillMessage('Error running solver. Using simple greedy strategy.')
+    } finally {
+      setIsAutoFilling(false)
+      // Clear message after 5 seconds
+      setTimeout(() => setAutoFillMessage(null), 5000)
+    }
+  }, [remainingSkirmishes, desiredOutcome, history, currentVP])
 
   if (remainingCount === 0) {
     return (
@@ -350,12 +418,18 @@ export function InteractiveVPPlanner({ matchId, match }: InteractiveVPPlannerPro
               variant="outline"
               size="sm"
               onClick={handleAutoFill}
+              disabled={isAutoFilling}
               className="text-xs"
             >
               <Lightbulb className="h-3 w-3 mr-1" />
-              Auto-fill
+              {isAutoFilling ? 'Solving...' : 'Auto-fill'}
             </Button>
           </div>
+          {autoFillMessage && (
+            <div className="mb-3 p-2 rounded bg-blue-500/10 border border-blue-500/30 text-xs text-blue-700 dark:text-blue-300">
+              {autoFillMessage}
+            </div>
+          )}
           <div className="grid grid-cols-3 gap-3">
             {(['first', 'second', 'third'] as const).map((place, index) => (
               <div key={place}>
