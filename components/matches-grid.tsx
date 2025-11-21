@@ -14,6 +14,7 @@ interface World {
 
 interface Match {
   tier: string
+  region: string
   worlds: World[]
 }
 
@@ -25,7 +26,7 @@ export function MatchesGrid({ matches }: MatchesGridProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       {matches.map((match) => (
-        <EnhancedMatchCard key={match.tier} tier={match.tier} worlds={match.worlds} />
+        <EnhancedMatchCard key={match.tier} tier={match.tier} region={match.region} worlds={match.worlds} />
       ))}
     </div>
   )
