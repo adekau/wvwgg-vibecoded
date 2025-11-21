@@ -121,28 +121,29 @@ export function WvWMap({ matchId, className = '' }: WvWMapProps) {
 
     // Create map with Simple CRS for GW2's coordinate system
     const map = L.map(mapContainerRef.current, {
-      minZoom: 1,
-      maxZoom: 6,
+      minZoom: 0,
+      maxZoom: 7,
       crs: L.CRS.Simple,
       maxBoundsViscosity: 0.5,
       dragging: true,
       zoomControl: true,
     });
 
-    // Set map bounds to GW2's map coordinate space
+    // Set map bounds to GW2's map coordinate space for The Mists continent
+    // Using [y, x] format as required by Leaflet's CRS.Simple
     const southWest = map.unproject([0, 16384], map.getMaxZoom());
-    const northEast = map.unproject([16384, 8192], map.getMaxZoom());
+    const northEast = map.unproject([16384, 0], map.getMaxZoom());
     const bounds = L.latLngBounds(southWest, northEast);
     map.setMaxBounds(bounds);
 
     // Center the map with appropriate zoom level for overview
     const center = map.unproject([8192, 8192], map.getMaxZoom());
-    map.setView(center, 3);
+    map.setView(center, 1);
 
-    // Add GW2 tile layer
+    // Add GW2 tile layer for The Mists (continent 2, floor 1)
     L.tileLayer('https://{s}.guildwars2.com/2/1/{z}/{x}/{y}.jpg', {
       minZoom: 0,
-      maxZoom: 6,
+      maxZoom: 7,
       subdomains: ['tiles', 'tiles1', 'tiles2', 'tiles3', 'tiles4'],
     }).addTo(map);
 
