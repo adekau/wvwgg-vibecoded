@@ -354,6 +354,18 @@ export function WvWMap({ matchId, className = '' }: WvWMapProps) {
         }
 
         const data = await response.json();
+
+        // Validate that we have valid data structures
+        if (!data.objectives || !Array.isArray(data.objectives)) {
+          console.error('Invalid objectives data received:', data);
+          return;
+        }
+
+        if (!data.mapMetadata || typeof data.mapMetadata !== 'object') {
+          console.error('Invalid map metadata received:', data);
+          return;
+        }
+
         const allObjectives = data.objectives as GW2Objective[];
         const fetchedMapMetadata = data.mapMetadata as { [key: number]: MapMetadata };
 

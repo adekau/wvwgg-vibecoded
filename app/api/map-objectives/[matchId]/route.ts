@@ -85,10 +85,13 @@ async function fetchMapMetadata(mapIds: number[]): Promise<Map<number, MapMetada
       throw new Error('Failed to fetch map metadata');
     }
 
-    const maps = await response.json() as MapMetadata[];
+    const mapsData = await response.json();
+
+    // Ensure we have an array (API might return single object or array)
+    const maps = Array.isArray(mapsData) ? mapsData : [mapsData];
 
     // Update cache with new maps
-    maps.forEach((map) => {
+    maps.forEach((map: MapMetadata) => {
       mapMetadataCache.set(map.id, map);
     });
 
@@ -159,9 +162,11 @@ export async function GET(
 
     // Convert map metadata to plain object for JSON serialization
     const mapMetadataObj: { [key: number]: MapMetadata } = {};
-    mapMetadata.forEach((metadata, mapId) => {
-      mapMetadataObj[mapId] = metadata;
-    });
+    if (mapMetadata && mapMetadata instanceof Map) {
+      mapMetadata.forEach((metadata, mapId) => {
+        mapMetadataObj[mapId] = metadata;
+      });
+    }
 
     return NextResponse.json({
       objectives,
