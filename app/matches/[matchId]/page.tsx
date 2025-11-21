@@ -2,7 +2,6 @@ import { MatchesHeader } from '@/components/matches-header'
 import { MatchSubNav } from '@/components/match-sub-nav'
 import { MatchDashboard } from '@/components/match-dashboard'
 import { MatchHistoryChart } from '@/components/match-history-chart'
-import { MatchSelector } from '@/components/match-selector'
 import { notFound } from 'next/navigation'
 import { getMatches, getWorlds, getGuilds, getPrimeTimeStats } from '@/server/queries'
 
@@ -157,21 +156,6 @@ export default async function MatchDetailPage({ params }: PageProps) {
 
   // Match history is now fetched client-side to avoid SSR payload issues
 
-  // Format all matches for the selector
-  const allMatches = Object.entries(matchesData).map(([id, data]: [string, any]) => {
-    const [regionCode, tier] = id.split('-')
-    return {
-      id,
-      tier,
-      region: regionCode === '1' ? 'North America' : 'Europe',
-      worlds: {
-        red: data.red?.world?.name || 'Unknown',
-        blue: data.blue?.world?.name || 'Unknown',
-        green: data.green?.world?.name || 'Unknown',
-      },
-    }
-  })
-
   const match = {
     tier: matchId,
     region: regionName,
@@ -218,13 +202,6 @@ export default async function MatchDetailPage({ params }: PageProps) {
   return (
     <div className="min-h-screen">
       <MatchesHeader />
-
-      {/* Match selector with frosted glass effect */}
-      <div className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-3 sm:px-4 md:px-6 py-3 sm:py-4">
-          <MatchSelector currentMatchId={matchId} matches={allMatches} />
-        </div>
-      </div>
 
       <MatchSubNav matchId={matchId} currentTab="overview" />
 
