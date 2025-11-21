@@ -439,6 +439,11 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
     const deaths = w.displayDeaths ?? 0
     return deaths > 0 ? kills / deaths : kills
   })), [displayData])
+  const highestDisplayActivity = useMemo(() => Math.max(...displayData.map(w => {
+    const kills = w.displayKills ?? 0
+    const deaths = w.displayDeaths ?? 0
+    return kills + deaths
+  })), [displayData])
 
   // Calculate modal data for each team
   const teamModalData = useMemo(() => sortedWorlds.reduce((acc, world, idx) => {
@@ -825,7 +830,9 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
                           {historyLoading && (selectedSkirmish !== 'all' || selectedMap !== 'all') ? (
                             <Loader2 className="h-4 w-4 animate-spin mx-auto text-muted-foreground" />
                           ) : world.displayKills !== undefined && world.displayDeaths !== undefined ? (
-                            (kills + deaths).toLocaleString()
+                            <span className={(kills + deaths) === highestDisplayActivity && highestDisplayActivity > 0 ? 'bg-yellow-500/20 px-1.5 py-0.5 rounded' : ''}>
+                              {(kills + deaths).toLocaleString()}
+                            </span>
                           ) : '-'}
                         </td>
                       </tr>
