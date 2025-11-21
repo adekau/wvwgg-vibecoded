@@ -117,7 +117,7 @@ export function MatchesHeader() {
                         : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
                     }`}
                   >
-                    <ChevronDown className="h-4 w-4" />
+                    <ChevronDown className="h-5 w-5" />
                   </button>
                   <DropdownMenuContent
                     align="start"

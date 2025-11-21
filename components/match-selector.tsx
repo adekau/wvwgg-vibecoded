@@ -79,12 +79,10 @@ export function MatchSelector({ currentMatchId, matches, className }: MatchSelec
       >
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground font-normal">Match</span>
-          <SelectValue>
-            <span className="font-semibold">{currentMatch?.id}</span>
-            <span className="text-muted-foreground ml-2 hidden sm:inline">
-              Tier {currentMatch?.tier}
-            </span>
-          </SelectValue>
+          <span className="font-semibold">{currentMatch?.id}</span>
+          <span className="text-muted-foreground ml-2 hidden sm:inline">
+            Tier {currentMatch?.tier}
+          </span>
         </div>
       </SelectTrigger>
       <SelectContent
