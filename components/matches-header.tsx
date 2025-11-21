@@ -9,11 +9,11 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
 
 interface Match {
   id: string
@@ -30,7 +30,6 @@ export function MatchesHeader() {
   const { theme, setTheme } = useTheme()
   const pathname = usePathname()
   const router = useRouter()
-  const [isMatchesDropdownOpen, setIsMatchesDropdownOpen] = useState(false)
 
   // Fetch matches for the dropdown
   const { data: matches = [] } = useQuery<Match[]>({
@@ -108,17 +107,18 @@ export function MatchesHeader() {
                 >
                   Matches
                 </Link>
-                <DropdownMenu open={isMatchesDropdownOpen} onOpenChange={setIsMatchesDropdownOpen}>
-                  <button
-                    onClick={() => setIsMatchesDropdownOpen(!isMatchesDropdownOpen)}
-                    className={`pr-3 pl-1 py-2 rounded-r-md text-sm font-medium transition-colors border-l border-primary-foreground/20 ${
-                      pathname === '/matches' || pathname?.startsWith('/matches/')
-                        ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
-                    }`}
-                  >
-                    <ChevronDown className="h-5 w-5" />
-                  </button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className={`px-2 py-2 rounded-r-md text-sm font-medium transition-colors border-l border-primary-foreground/20 ${
+                        pathname === '/matches' || pathname?.startsWith('/matches/')
+                          ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                      }`}
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </button>
+                  </DropdownMenuTrigger>
                   <DropdownMenuContent
                     align="start"
                     className="w-[340px] bg-popover/70 backdrop-blur-sm border-border/40 shadow-xl rounded-xl"
@@ -134,7 +134,6 @@ export function MatchesHeader() {
                             key={match.id}
                             onClick={() => {
                               router.push(`/matches/${match.id}`)
-                              setIsMatchesDropdownOpen(false)
                             }}
                             className="cursor-pointer py-2.5 px-4 mx-1.5 mb-1 rounded-lg focus:bg-accent/40 hover:bg-accent/30 transition-colors"
                           >
