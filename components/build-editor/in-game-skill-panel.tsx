@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type {
   Skill,
   Trait,
@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/hover-card'
 import { cn } from '@/lib/utils'
 import { Search, X, Repeat } from 'lucide-react'
+import { extractDominantColor, rgbToOklch, type RGB } from '@/lib/color-extractor'
 
 interface InGameSkillPanelProps {
   skills: Skill[]
@@ -407,7 +408,7 @@ function SkillTooltip({ skill }: { skill: Skill }) {
 }
 
 /**
- * Trait line display
+ * Trait line display with dynamic frosted card color
  */
 function TraitLineDisplay({
   specialization,
@@ -422,6 +423,23 @@ function TraitLineDisplay({
   onSelectTrait: (tierIndex: number, traitId: number) => void
   onRemove: () => void
 }) {
+  const [oklchColor, setOklchColor] = useState<string>('')
+
+  // Extract dominant color from specialization icon
+  useEffect(() => {
+    if (specialization.icon) {
+      extractDominantColor(specialization.icon, 3)
+        .then((color) => {
+          setOklchColor(rgbToOklch(color))
+        })
+        .catch((err) => {
+          console.error('Failed to extract color from specialization icon:', err)
+          // Fallback to a default color
+          setOklchColor('0.60 0.18 230') // Default blue
+        })
+    }
+  }, [specialization.icon])
+
   const specTraits = allTraits.filter((t) => t.specialization === specialization.id)
 
   // Group traits by tier and slot type
@@ -440,10 +458,83 @@ function TraitLineDisplay({
     },
   }
 
+  // Generate dynamic frosted card styles
+  const getFrostedCardStyle = () => {
+    if (!oklchColor) return {}
+
+    return {
+      position: 'relative' as const,
+      overflow: 'hidden' as const,
+      backdropFilter: 'blur(6px) saturate(180%)',
+      boxShadow: `
+        0 1px 2px 0 rgb(0 0 0 / 0.08),
+        0 2px 4px 0 rgb(0 0 0 / 0.06),
+        0 4px 8px 0 rgb(0 0 0 / 0.05),
+        0 0 0 1px rgb(0 0 0 / 0.03)
+      `,
+      border: `1px solid oklch(${oklchColor} / 0.25)`,
+    }
+  }
+
   return (
-    <div className="bg-black/50 border border-white/10 rounded-lg p-3">
+    <div
+      className="rounded-lg p-3 frosted-spec-card"
+      style={getFrostedCardStyle()}
+    >
+      {/* Blurred background layer */}
+      <div
+        className="absolute inset-0 -z-2 frosted-spec-bg"
+        style={{
+          borderRadius: 'inherit',
+          backgroundImage: `
+            radial-gradient(circle at 15% 25%, rgba(0, 0, 0, 0.20), transparent 30%),
+            radial-gradient(circle at 85% 15%, rgba(0, 0, 0, 0.15), transparent 25%),
+            radial-gradient(circle at 50% 80%, rgba(0, 0, 0, 0.25), transparent 35%),
+            radial-gradient(circle at 75% 60%, rgba(0, 0, 0, 0.12), transparent 20%),
+            repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.03) 2px, rgba(0, 0, 0, 0.03) 4px),
+            repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0, 0, 0, 0.03) 2px, rgba(0, 0, 0, 0.03) 4px),
+            repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(0, 0, 0, 0.02) 3px, rgba(0, 0, 0, 0.02) 6px),
+            radial-gradient(circle at 20% 30%, rgba(0, 0, 0, 0.04) 0%, transparent 3%),
+            radial-gradient(circle at 60% 70%, rgba(0, 0, 0, 0.03) 0%, transparent 4%),
+            radial-gradient(circle at 80% 20%, rgba(0, 0, 0, 0.04) 0%, transparent 2%)
+          `,
+          backgroundColor: 'rgba(255 255 255 / 0.4)',
+          filter: 'blur(3px)',
+          pointerEvents: 'none' as const,
+        }}
+      />
+
+      {/* Color overlay - light mode */}
+      {oklchColor && (
+        <>
+          <div
+            className="absolute inset-0 -z-1 dark:hidden"
+            style={{
+              backgroundImage: `
+                repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(255, 255, 255, 0.02) 1px, rgba(255, 255, 255, 0.02) 2px),
+                repeating-linear-gradient(90deg, transparent, transparent 1px, rgba(255, 255, 255, 0.02) 1px, rgba(255, 255, 255, 0.02) 2px)
+              `,
+              backgroundColor: `oklch(${oklchColor} / 0.10)`,
+              pointerEvents: 'none' as const,
+            }}
+          />
+          {/* Color overlay - dark mode */}
+          <div
+            className="absolute inset-0 -z-1 hidden dark:block"
+            style={{
+              backgroundImage: `
+                repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(0, 0, 0, 0.03) 1px, rgba(0, 0, 0, 0.03) 2px),
+                repeating-linear-gradient(90deg, transparent, transparent 1px, rgba(0, 0, 0, 0.03) 1px, rgba(0, 0, 0, 0.03) 2px)
+              `,
+              backgroundColor: `oklch(${oklchColor} / 0.08)`,
+              pointerEvents: 'none' as const,
+            }}
+          />
+        </>
+      )}
+
       {/* Header */}
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-2 mb-3 relative z-10">
         <div
           className="w-10 h-10 rounded bg-cover bg-center flex items-center justify-center"
           style={{ backgroundImage: `url(${specialization.background})` }}
@@ -464,7 +555,7 @@ function TraitLineDisplay({
       </div>
 
       {/* Trait Tiers - Vertical Layout with centered minor traits */}
-      <div className="flex gap-1 items-center">
+      <div className="flex gap-1 items-center relative z-10">
         {/* Adept Tier */}
         <TraitTierVerticalMajorOnly
           label="Adept"
