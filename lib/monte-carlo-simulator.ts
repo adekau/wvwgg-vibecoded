@@ -196,25 +196,10 @@ function percentile(sorted: number[], p: number): number {
 }
 
 /**
- * Runs Monte Carlo simulation
+ * Analyzes completed simulations and calculates statistics
  */
-export function runMonteCarloSimulation(
-  currentVP: { red: number; blue: number; green: number },
-  remainingSkirmishes: SkirmishInfo[],
-  historicalStats: {
-    red: TeamHistoricalStats
-    blue: TeamHistoricalStats
-    green: TeamHistoricalStats
-  },
-  region: 'na' | 'eu',
-  iterations: number = 10000
-): MonteCarloResult {
-  const simulations: SimulationResult[] = []
-
-  // Run simulations
-  for (let i = 0; i < iterations; i++) {
-    simulations.push(runSingleSimulation(currentVP, remainingSkirmishes, historicalStats, region))
-  }
+export function analyzeSimulations(simulations: SimulationResult[]): MonteCarloResult {
+  const iterations = simulations.length
 
   // Count outcomes
   const outcomeMap = new Map<string, number>()
@@ -298,6 +283,30 @@ export function runMonteCarloSimulation(
     teamPositionProbabilities,
     averageFinalVP,
   }
+}
+
+/**
+ * Runs Monte Carlo simulation
+ */
+export function runMonteCarloSimulation(
+  currentVP: { red: number; blue: number; green: number },
+  remainingSkirmishes: SkirmishInfo[],
+  historicalStats: {
+    red: TeamHistoricalStats
+    blue: TeamHistoricalStats
+    green: TeamHistoricalStats
+  },
+  region: 'na' | 'eu',
+  iterations: number = 10000
+): MonteCarloResult {
+  const simulations: SimulationResult[] = []
+
+  // Run simulations
+  for (let i = 0; i < iterations; i++) {
+    simulations.push(runSingleSimulation(currentVP, remainingSkirmishes, historicalStats, region))
+  }
+
+  return analyzeSimulations(simulations)
 }
 
 /**

@@ -16,9 +16,11 @@ import {
 } from '@/lib/historical-performance'
 import {
   runMonteCarloSimulation,
+  analyzeSimulations,
   calculateRiskAssessment,
   type MonteCarloResult,
   type SkirmishInfo,
+  type SimulationResult,
 } from '@/lib/monte-carlo-simulator'
 
 interface VPProbabilityAnalysisProps {
@@ -130,16 +132,48 @@ export function VPProbabilityAnalysis({ matchId, match, remainingSkirmishes }: V
 
     setIsCalculating(true)
     try {
-      // Run in a setTimeout to allow UI to update
-      await new Promise(resolve => setTimeout(resolve, 100))
+      // Run simulation in chunks to avoid blocking UI
+      const chunkSize = 1000 // Process 1000 simulations at a time
+      const totalChunks = Math.ceil(iterations / chunkSize)
 
-      const result = runMonteCarloSimulation(
-        currentVP,
-        remainingSkirmishes,
-        historicalStats,
-        region,
-        iterations
-      )
+      // Run first chunk immediately
+      await new Promise(resolve => setTimeout(resolve, 50))
+
+      const result = await new Promise<MonteCarloResult>((resolve) => {
+        let currentChunk = 0
+        const allSimulations: SimulationResult[] = []
+
+        function processChunk() {
+          currentChunk++
+          const isLastChunk = currentChunk >= totalChunks
+          const chunkIterations = isLastChunk ?
+            (iterations - (currentChunk - 1) * chunkSize) :
+            chunkSize
+
+          // Run simulations for this chunk
+          const chunkResult = runMonteCarloSimulation(
+            currentVP,
+            remainingSkirmishes,
+            historicalStats,
+            region,
+            chunkIterations
+          )
+
+          // Accumulate simulations
+          allSimulations.push(...chunkResult.simulations)
+
+          if (isLastChunk) {
+            // Analyze all accumulated simulations
+            const finalResult = analyzeSimulations(allSimulations)
+            resolve(finalResult)
+          } else {
+            // Schedule next chunk after a brief pause for UI updates
+            setTimeout(processChunk, 10)
+          }
+        }
+
+        processChunk()
+      })
 
       setMonteCarloResult(result)
     } finally {

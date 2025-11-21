@@ -1,4 +1,5 @@
 import { MatchesHeader } from '@/components/matches-header'
+import { MatchSubNav } from '@/components/match-sub-nav'
 import { MatchDashboard } from '@/components/match-dashboard'
 import { MatchHistoryChart } from '@/components/match-history-chart'
 import { notFound } from 'next/navigation'
@@ -201,6 +202,7 @@ export default async function MatchDetailPage({ params }: PageProps) {
   return (
     <div className="min-h-screen">
       <MatchesHeader />
+      <MatchSubNav matchId={matchId} currentTab="overview" />
 
       <main className="container mx-auto px-4 py-8 space-y-6">
         <MatchDashboard

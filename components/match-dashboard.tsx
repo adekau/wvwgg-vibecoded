@@ -13,18 +13,7 @@ import { PrimeTimePerformance } from '@/components/prime-time-performance'
 import { PPTBreakdown } from '@/components/ppt-breakdown'
 import { WorldAlliances } from '@/components/world-alliances'
 import { SkirmishWinScenarioModal } from '@/components/skirmish-win-scenario-modal'
-import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react'
-
-// Lazy load VP Scenario Planners to reduce initial bundle size
-const VPScenarioPlanner = lazy(() =>
-  import('@/components/vp-scenario-planner').then(mod => ({ default: mod.VPScenarioPlanner }))
-)
-const InteractiveVPPlanner = lazy(() =>
-  import('@/components/interactive-vp-planner').then(mod => ({ default: mod.InteractiveVPPlanner }))
-)
-const VPProbabilityAnalysis = lazy(() =>
-  import('@/components/vp-probability-analysis').then(mod => ({ default: mod.VPProbabilityAnalysis }))
-)
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { calculateMatchPPT, getPPTTrend, calculateTicksBehind, ticksToTimeString, getTeamStatus, calculateRequiredPPTToOvertake, calculateMaxAchievablePPT } from '@/lib/ppt-calculator'
 import { IGuild } from '@/server/queries'
 import { SKIRMISH_DURATION_MS, POLL_INTERVALS_MS } from '@/lib/game-constants'
@@ -986,87 +975,6 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
         worlds={match.worlds.map(w => ({ name: w.name, color: w.color }))}
         primeTimeStats={primeTimeStats}
       />
-
-      {/* VP Scenario Planner (lazy loaded to reduce initial bundle size) */}
-      <Suspense
-        fallback={
-          <Card className="panel-border inset-card frosted-panel p-6" style={{ background: 'transparent' }}>
-            <div className="animate-pulse space-y-4">
-              <div className="h-6 bg-muted rounded w-1/3"></div>
-              <div className="h-48 bg-muted rounded"></div>
-            </div>
-          </Card>
-        }
-      >
-        <VPScenarioPlanner matchId={matchId} match={match} />
-      </Suspense>
-
-      {/* Interactive VP Planner (lazy loaded to reduce initial bundle size) */}
-      <Suspense
-        fallback={
-          <Card className="panel-border inset-card frosted-panel p-6" style={{ background: 'transparent' }}>
-            <div className="animate-pulse space-y-4">
-              <div className="h-6 bg-muted rounded w-1/3"></div>
-              <div className="h-48 bg-muted rounded"></div>
-            </div>
-          </Card>
-        }
-      >
-        <InteractiveVPPlanner matchId={matchId} match={match} />
-      </Suspense>
-
-      {/* VP Probability Analysis (lazy loaded to reduce initial bundle size) */}
-      <Suspense
-        fallback={
-          <Card className="panel-border inset-card frosted-panel p-6" style={{ background: 'transparent' }}>
-            <div className="animate-pulse space-y-4">
-              <div className="h-6 bg-muted rounded w-1/3"></div>
-              <div className="h-48 bg-muted rounded"></div>
-            </div>
-          </Card>
-        }
-      >
-        <VPProbabilityAnalysis
-          matchId={matchId}
-          match={match}
-          remainingSkirmishes={(() => {
-            const completedSkirmishes = match.skirmishes?.length || 0
-            const totalSkirmishes = 84 // TOTAL_SKIRMISHES_PER_MATCH
-            const remainingCount = totalSkirmishes - completedSkirmishes
-            const currentSkirmishId = completedSkirmishes - 1
-            const matchStartDate = new Date(match.startDate)
-            const skirmishes = []
-
-            for (let i = 1; i <= remainingCount; i++) {
-              const skirmishId = currentSkirmishId + i
-              const hoursFromStart = skirmishId * 2
-              const startTime = new Date(matchStartDate.getTime() + hoursFromStart * 60 * 60 * 1000)
-              const endTime = new Date(startTime.getTime() + 2 * 60 * 60 * 1000)
-
-              // Get VP tier from lib
-              const region = matchId.startsWith('1') ? 'na' : 'eu'
-              const vpTier = (() => {
-                // Import inline to avoid circular dependency
-                const { getVPTierForTime } = require('@/lib/vp-tiers')
-                return getVPTierForTime(startTime, region)
-              })()
-
-              skirmishes.push({
-                id: skirmishId,
-                startTime,
-                endTime: endTime,
-                vpAwards: {
-                  first: vpTier.first,
-                  second: vpTier.second,
-                  third: vpTier.third,
-                },
-              })
-            }
-
-            return skirmishes
-          })()}
-        />
-      </Suspense>
 
       {/* Skirmish Win Scenario Modals */}
       {(['red', 'blue', 'green'] as const).map(color => {
