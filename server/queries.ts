@@ -145,18 +145,14 @@ export const getMatches = unstable_cache(
       );
 
       if (!response.Item?.data) {
-        // Fallback to GW2 API
-        const apiResponse = await fetch(
-          `${process.env.ANET_MATCHES_ENDPOINT}?ids=all`,
-          { next: { revalidate: CACHE_DURATIONS.MATCHES } }
-        );
+        console.warn('No matches data found in DynamoDB. GW2 API fallback not implemented (requires formatting).');
+        return null;
+      }
 
-        if (!apiResponse.ok) {
-          console.error('Failed to fetch matches from GW2 API:', apiResponse.statusText);
-          return null;
-        }
-
-        return await apiResponse.json();
+      // Validate that the data is an object (Record) and not an array
+      if (typeof response.Item.data !== 'object' || Array.isArray(response.Item.data)) {
+        console.error('Invalid matches data format in DynamoDB - expected object, got:', typeof response.Item.data);
+        return null;
       }
 
       return response.Item.data;
