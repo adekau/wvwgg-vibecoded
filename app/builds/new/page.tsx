@@ -296,9 +296,24 @@ function createDefaultBuild(): Build {
     infusions: [],
   }
 
-  const defaultWeaponPiece = {
+  const defaultWeaponSet1Main = {
     ...defaultGearPiece,
-    weaponType: 'Greatsword',
+    weaponType: 'Greatsword' as const,
+  }
+
+  const defaultWeaponSet1Off = {
+    ...defaultGearPiece,
+    weaponType: 'Shield' as const,
+  }
+
+  const defaultWeaponSet2Main = {
+    ...defaultGearPiece,
+    weaponType: 'Sword' as const,
+  }
+
+  const defaultWeaponSet2Off = {
+    ...defaultGearPiece,
+    weaponType: 'Warhorn' as const,
   }
 
   return {
@@ -329,7 +344,10 @@ function createDefaultBuild(): Build {
       accessory2: defaultGearPiece,
       backItem: defaultGearPiece,
       relic: defaultGearPiece,
-      weaponSet1Main: defaultWeaponPiece,
+      weaponSet1Main: defaultWeaponSet1Main,
+      weaponSet1Off: defaultWeaponSet1Off,
+      weaponSet2Main: defaultWeaponSet2Main,
+      weaponSet2Off: defaultWeaponSet2Off,
     },
     isPublic: false,
     tags: [],

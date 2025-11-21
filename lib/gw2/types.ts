@@ -409,7 +409,7 @@ export interface GearPiece {
 }
 
 export interface WeaponPiece extends GearPiece {
-  weaponType: string            // 'Sword', 'Axe', 'Staff', etc.
+  weaponType: WeaponType        // Weapon type (Sword, Axe, Staff, etc.)
   upgradeId?: number            // Sigil ID (can have 2 for two-handed)
   upgrade2Id?: number           // Second sigil for two-handed weapons
 }
@@ -552,6 +552,71 @@ export const PROFESSION_BASE_STATS: Record<ProfessionId, ProfessionBaseStats> = 
     baseToughness: 1000,
     baseVitality: 1000,
   },
+}
+
+// ============================================================================
+// WEAPONS
+// ============================================================================
+
+export type WeaponType =
+  // Two-handed weapons
+  | 'Greatsword'
+  | 'Hammer'
+  | 'Longbow'
+  | 'Rifle'
+  | 'Shortbow'
+  | 'Staff'
+  // One-handed weapons
+  | 'Axe'
+  | 'Dagger'
+  | 'Mace'
+  | 'Pistol'
+  | 'Scepter'
+  | 'Sword'
+  // Off-hand only
+  | 'Focus'
+  | 'Shield'
+  | 'Torch'
+  | 'Warhorn'
+  // Aquatic weapons
+  | 'Harpoon Gun'
+  | 'Spear'
+  | 'Trident'
+
+export const TWO_HANDED_WEAPONS: WeaponType[] = [
+  'Greatsword',
+  'Hammer',
+  'Longbow',
+  'Rifle',
+  'Shortbow',
+  'Staff',
+  'Harpoon Gun',
+  'Spear',
+  'Trident',
+]
+
+export const OFF_HAND_ONLY_WEAPONS: WeaponType[] = [
+  'Focus',
+  'Shield',
+  'Torch',
+  'Warhorn',
+]
+
+export const MAIN_HAND_WEAPONS: WeaponType[] = [
+  'Axe',
+  'Dagger',
+  'Mace',
+  'Pistol',
+  'Scepter',
+  'Sword',
+]
+
+export function isTwoHandedWeapon(weaponType: string): boolean {
+  return TWO_HANDED_WEAPONS.includes(weaponType as WeaponType)
+}
+
+export function isOffHandOnly(weaponType: string): boolean {
+  return OFF_HAND_ONLY_WEAPONS.includes(weaponType as WeaponType)
 }
 
 // ============================================================================

@@ -13,6 +13,7 @@ import type {
   ProfessionId,
   GearPiece,
   WeaponPiece,
+  WeaponType,
 } from '../lib/gw2/types'
 import { optimizeGear, getOptimizationPresets } from '../lib/gw2/gear-optimizer'
 
@@ -152,7 +153,7 @@ function createGearPiece(statId: number): GearPiece {
   }
 }
 
-function createWeaponPiece(statId: number, weaponType: string): WeaponPiece {
+function createWeaponPiece(statId: number, weaponType: WeaponType): WeaponPiece {
   return {
     statId,
     rarity: 'Ascended',
