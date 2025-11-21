@@ -258,9 +258,14 @@ export default function BuildEditorPage() {
                 skills={skills}
                 traits={traits}
                 profession={build.profession}
+                professionData={professions?.find(p => p.id === build.profession)}
                 skillSelection={build.skills}
                 specializations={availableSpecs}
                 selectedLines={build.specializations}
+                weaponSet1Main={build.gear.weaponSet1Main}
+                weaponSet1Off={build.gear.weaponSet1Off}
+                weaponSet2Main={build.gear.weaponSet2Main}
+                weaponSet2Off={build.gear.weaponSet2Off}
                 onUpdateSkills={handleSkillsChange}
                 onUpdateTraitLines={handleTraitLinesChange}
               />

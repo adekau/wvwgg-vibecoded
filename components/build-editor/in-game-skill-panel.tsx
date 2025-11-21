@@ -9,6 +9,8 @@ import type {
   Specialization,
   ProfessionId,
   SkillSlot,
+  Profession,
+  WeaponPiece,
 } from '@/lib/gw2/types'
 import {
   Dialog,
@@ -24,15 +26,20 @@ import {
   HoverCardTrigger,
 } from '@/components/ui/hover-card'
 import { cn } from '@/lib/utils'
-import { Search, X } from 'lucide-react'
+import { Search, X, Repeat } from 'lucide-react'
 
 interface InGameSkillPanelProps {
   skills: Skill[]
   traits: Trait[]
   profession: ProfessionId
+  professionData?: Profession
   skillSelection: SkillSelection
   specializations: Specialization[]
   selectedLines: SpecializationSelection[]
+  weaponSet1Main?: WeaponPiece
+  weaponSet1Off?: WeaponPiece
+  weaponSet2Main?: WeaponPiece
+  weaponSet2Off?: WeaponPiece
   onUpdateSkills: (selection: SkillSelection) => void
   onUpdateTraitLines: (lines: SpecializationSelection[]) => void
 }
@@ -46,14 +53,20 @@ export function InGameSkillPanel({
   skills,
   traits,
   profession,
+  professionData,
   skillSelection,
   specializations,
   selectedLines,
+  weaponSet1Main,
+  weaponSet1Off,
+  weaponSet2Main,
+  weaponSet2Off,
   onUpdateSkills,
   onUpdateTraitLines,
 }: InGameSkillPanelProps) {
   const [selectingSkill, setSelectingSkill] = useState<SkillSlotType | null>(null)
   const [selectingLine, setSelectingLine] = useState<number | null>(null)
+  const [activeWeaponSet, setActiveWeaponSet] = useState<1 | 2>(1)
 
   const handleSelectSkill = (slot: SkillSlotType, skillId: number) => {
     onUpdateSkills({
@@ -92,22 +105,84 @@ export function InGameSkillPanel({
 
   const getSkillById = (id: number) => skills.find((s) => s.id === id)
 
+  // Get weapon skills for the active weapon set
+  const getWeaponSkills = (): Skill[] => {
+    if (!professionData) return []
+
+    const activeMain = activeWeaponSet === 1 ? weaponSet1Main : weaponSet2Main
+    const activeOff = activeWeaponSet === 1 ? weaponSet1Off : weaponSet2Off
+
+    if (!activeMain) return []
+
+    const mainWeaponType = activeMain.weaponType
+    const offWeaponType = activeOff?.weaponType
+
+    // Get weapon skills from profession data
+    const mainWeapon = professionData.weapons[mainWeaponType]
+    if (!mainWeapon) return []
+
+    const weaponSkillIds: number[] = []
+
+    // Add main hand skills (usually slots 1-3 for one-handed, 1-5 for two-handed)
+    for (const weaponSkill of mainWeapon.skills) {
+      // If offhand specified, only include skills that match
+      if (weaponSkill.offhand && offWeaponType) {
+        if (weaponSkill.offhand === offWeaponType) {
+          weaponSkillIds.push(weaponSkill.id)
+        }
+      } else if (!weaponSkill.offhand) {
+        weaponSkillIds.push(weaponSkill.id)
+      }
+    }
+
+    // Add offhand skills (usually slots 4-5)
+    if (offWeaponType && professionData.weapons[offWeaponType]) {
+      const offWeapon = professionData.weapons[offWeaponType]
+      for (const weaponSkill of offWeapon.skills) {
+        weaponSkillIds.push(weaponSkill.id)
+      }
+    }
+
+    // Get the actual skill objects
+    return weaponSkillIds.map(id => getSkillById(id)).filter((s): s is Skill => s !== undefined)
+  }
+
+  const weaponSkills = getWeaponSkills()
+
+  // Check if weapon set 2 is equipped
+  const hasWeaponSet2 = !!(weaponSet2Main)
+
   return (
     <div className="bg-black/30 backdrop-blur-md border border-white/10 rounded-lg p-4 space-y-6">
       {/* Skills Bar */}
       <div>
-        <div className="text-sm font-semibold text-white/80 mb-3">Skills</div>
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-sm font-semibold text-white/80">Skills</div>
+          {hasWeaponSet2 && (
+            <Button
+              onClick={() => setActiveWeaponSet(activeWeaponSet === 1 ? 2 : 1)}
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs text-white/60 hover:text-white hover:bg-white/10"
+            >
+              <Repeat className="w-3 h-3 mr-1" />
+              Swap Weapons
+            </Button>
+          )}
+        </div>
         <div className="flex gap-2">
-          {/* Weapon Skills Placeholder (1-5) */}
+          {/* Weapon Skills (1-5) */}
           <div className="flex gap-1 flex-1">
-            {[1, 2, 3, 4, 5].map((num) => (
-              <div
-                key={num}
-                className="flex-1 aspect-square bg-black/50 border border-white/10 rounded flex items-center justify-center"
-              >
-                <span className="text-white/30 text-xs">{num}</span>
-              </div>
-            ))}
+            {[0, 1, 2, 3, 4].map((index) => {
+              const skill = weaponSkills[index]
+              return (
+                <WeaponSkillSlot
+                  key={index}
+                  skill={skill}
+                  slotNumber={index + 1}
+                />
+              )
+            })}
           </div>
 
           {/* Utility Skills (Heal + 3 Utility + Elite) */}
@@ -134,7 +209,10 @@ export function InGameSkillPanel({
             />
           </div>
         </div>
-        <div className="text-xs text-white/40 mt-2">Weapon skills (1-5) are determined by equipped weapons</div>
+        <div className="text-xs text-white/40 mt-2">
+          Weapon skills (1-5) are determined by equipped weapons
+          {hasWeaponSet2 && ` • Active: Weapon Set ${activeWeaponSet}`}
+        </div>
       </div>
 
       {/* Trait Lines */}
@@ -226,6 +304,45 @@ export function InGameSkillPanel({
         />
       )}
     </div>
+  )
+}
+
+/**
+ * Weapon skill slot (non-clickable, determined by equipped weapons)
+ */
+function WeaponSkillSlot({
+  skill,
+  slotNumber,
+}: {
+  skill?: Skill
+  slotNumber: number
+}) {
+  if (!skill) {
+    return (
+      <div className="flex-1 aspect-square bg-black/50 border border-white/10 rounded flex items-center justify-center">
+        <span className="text-white/30 text-xs">{slotNumber}</span>
+      </div>
+    )
+  }
+
+  return (
+    <HoverCard openDelay={200}>
+      <HoverCardTrigger asChild>
+        <div className="flex-1 aspect-square bg-black/50 border-2 border-amber-500/30 rounded overflow-hidden flex items-center justify-center relative">
+          <img
+            src={skill.icon}
+            alt={skill.name}
+            className="max-w-full max-h-full object-contain"
+          />
+          <span className="absolute bottom-0 right-0 text-[8px] text-white/60 bg-black/70 px-1 rounded-tl">
+            {slotNumber}
+          </span>
+        </div>
+      </HoverCardTrigger>
+      <HoverCardContent className="w-80 bg-slate-900 border-white/20">
+        <SkillTooltip skill={skill} />
+      </HoverCardContent>
+    </HoverCard>
   )
 }
 
@@ -346,52 +463,68 @@ function TraitLineDisplay({
         </Button>
       </div>
 
-      {/* Trait Tiers - Vertical Layout */}
-      <div className="flex gap-1">
+      {/* Trait Tiers - Vertical Layout with centered minor traits */}
+      <div className="flex gap-1 items-center">
         {/* Adept Tier */}
-        <TraitTierVertical
+        <TraitTierVerticalMajorOnly
           label="Adept"
           traits={traitsByTier.adept.major}
-          minorTrait={traitsByTier.adept.minor[0]}
           selectedId={selection.traits[0]}
           onSelect={(id) => onSelectTrait(0, id)}
         />
 
+        {/* Adept Minor Trait (centered) */}
+        {traitsByTier.adept.minor[0] && (
+          <div className="flex items-center justify-center px-1">
+            <TraitButton trait={traitsByTier.adept.minor[0]} isSelected={false} onSelect={() => {}} isMinor />
+          </div>
+        )}
+
         {/* Master Tier */}
-        <TraitTierVertical
+        <TraitTierVerticalMajorOnly
           label="Master"
           traits={traitsByTier.master.major}
-          minorTrait={traitsByTier.master.minor[0]}
           selectedId={selection.traits[1]}
           onSelect={(id) => onSelectTrait(1, id)}
         />
 
+        {/* Master Minor Trait (centered) */}
+        {traitsByTier.master.minor[0] && (
+          <div className="flex items-center justify-center px-1">
+            <TraitButton trait={traitsByTier.master.minor[0]} isSelected={false} onSelect={() => {}} isMinor />
+          </div>
+        )}
+
         {/* Grandmaster Tier */}
-        <TraitTierVertical
+        <TraitTierVerticalMajorOnly
           label="Grandmaster"
           traits={traitsByTier.grandmaster.major}
-          minorTrait={traitsByTier.grandmaster.minor[0]}
           selectedId={selection.traits[2]}
           onSelect={(id) => onSelectTrait(2, id)}
         />
+
+        {/* Grandmaster Minor Trait (centered) */}
+        {traitsByTier.grandmaster.minor[0] && (
+          <div className="flex items-center justify-center px-1">
+            <TraitButton trait={traitsByTier.grandmaster.minor[0]} isSelected={false} onSelect={() => {}} isMinor />
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
 /**
- * Vertical trait tier with 3 selectable traits and minor trait in middle
+ * Vertical trait tier with only major traits (no minor)
  */
-function TraitTierVertical({
+function TraitTierVerticalMajorOnly({
   label,
   traits,
-  minorTrait,
   selectedId,
   onSelect,
 }: {
   label: string
   traits: Trait[]
-  minorTrait?: Trait
   selectedId: number
   onSelect: (traitId: number) => void
 }) {
@@ -411,13 +544,6 @@ function TraitTierVertical({
           />
         ))}
       </div>
-
-      {/* Minor trait */}
-      {minorTrait && (
-        <div className="mt-1">
-          <TraitButton trait={minorTrait} isSelected={false} onSelect={() => {}} isMinor />
-        </div>
-      )}
     </div>
   )
 }
