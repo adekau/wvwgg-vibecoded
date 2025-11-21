@@ -35,6 +35,9 @@ interface AdminGuild extends IGuild {
   classification?: 'alliance' | 'member' | 'independent'
   allianceGuildId?: string
   memberGuildIds?: string[]
+  description?: string
+  contact_info?: string
+  recruitment_status?: 'open' | 'closed' | 'by_application'
   notes?: string
   reviewed?: boolean
   reviewedAt?: number
@@ -54,6 +57,9 @@ export function GuildEditModal({ guild, allGuilds, open, onClose, onSave }: Guil
   const [classification, setClassification] = useState<string>(guild?.classification || 'unclassified')
   const [allianceGuildId, setAllianceGuildId] = useState<string>(guild?.allianceGuildId || '')
   const [memberGuildIds, setMemberGuildIds] = useState<string[]>(guild?.memberGuildIds || [])
+  const [description, setDescription] = useState(guild?.description || '')
+  const [contactInfo, setContactInfo] = useState(guild?.contact_info || '')
+  const [recruitmentStatus, setRecruitmentStatus] = useState<'open' | 'closed' | 'by_application'>(guild?.recruitment_status || 'closed')
   const [notes, setNotes] = useState(guild?.notes || '')
   const [allianceSearch, setAllianceSearch] = useState('')
   const [memberSearch, setMemberSearch] = useState('')
@@ -64,6 +70,9 @@ export function GuildEditModal({ guild, allGuilds, open, onClose, onSave }: Guil
       setClassification(guild.classification || 'unclassified')
       setAllianceGuildId(guild.allianceGuildId || '')
       setMemberGuildIds(guild.memberGuildIds || [])
+      setDescription(guild.description || '')
+      setContactInfo(guild.contact_info || '')
+      setRecruitmentStatus(guild.recruitment_status || 'closed')
       setNotes(guild.notes || '')
       setAllianceSearch('')
       setMemberSearch('')
@@ -101,6 +110,9 @@ export function GuildEditModal({ guild, allGuilds, open, onClose, onSave }: Guil
         classification: classification === 'unclassified' ? undefined : classification as any,
         allianceGuildId: classification === 'member' ? allianceGuildId || undefined : undefined,
         memberGuildIds: classification === 'alliance' ? memberGuildIds : undefined,
+        description: description || undefined,
+        contact_info: contactInfo || undefined,
+        recruitment_status: recruitmentStatus || undefined,
         notes: notes || undefined,
       }
 
@@ -258,12 +270,59 @@ export function GuildEditModal({ guild, allGuilds, open, onClose, onSave }: Guil
             </div>
           )}
 
+          {/* Guild Description */}
+          <div className="space-y-2">
+            <Label htmlFor="description">Guild Description</Label>
+            <Textarea
+              id="description"
+              placeholder="Enter a description for the guild..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={4}
+              maxLength={500}
+            />
+            <p className="text-xs text-muted-foreground">
+              {description.length}/500 characters
+            </p>
+          </div>
+
+          {/* Contact Info */}
+          <div className="space-y-2">
+            <Label htmlFor="contactInfo">Contact Information</Label>
+            <Input
+              id="contactInfo"
+              type="text"
+              placeholder="Discord server, website, or other contact info..."
+              value={contactInfo}
+              onChange={(e) => setContactInfo(e.target.value)}
+              maxLength={200}
+            />
+            <p className="text-xs text-muted-foreground">
+              e.g., Discord invite link, website URL, or in-game contact name
+            </p>
+          </div>
+
+          {/* Recruitment Status */}
+          <div className="space-y-2">
+            <Label htmlFor="recruitmentStatus">Recruitment Status</Label>
+            <Select value={recruitmentStatus} onValueChange={(value: 'open' | 'closed' | 'by_application') => setRecruitmentStatus(value)}>
+              <SelectTrigger id="recruitmentStatus">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="open">Open - Accepting all new members</SelectItem>
+                <SelectItem value="by_application">By Application - Reviewing applications</SelectItem>
+                <SelectItem value="closed">Closed - Not recruiting</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Notes */}
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
+            <Label htmlFor="notes">Admin Notes</Label>
             <Textarea
               id="notes"
-              placeholder="Add any notes about this guild..."
+              placeholder="Add any admin notes about this guild..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={4}

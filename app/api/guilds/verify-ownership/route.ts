@@ -20,7 +20,9 @@ const docClient = DynamoDBDocumentClient.from(client, {
 interface VerifyOwnershipRequest {
   guildId: string
   apiKey: string
-  allianceGuildId?: string
+  description?: string
+  contact_info?: string
+  recruitment_status?: 'open' | 'closed' | 'by_application'
   addNew?: boolean // Flag to indicate this is a new guild being added
 }
 
@@ -30,7 +32,7 @@ export async function POST(request: NextRequest) {
   try {
     const body: VerifyOwnershipRequest = await request.json()
     apiKey = body.apiKey
-    const { guildId, allianceGuildId, addNew } = body
+    const { guildId, description, contact_info, recruitment_status, addNew } = body
 
     if (!guildId || !apiKey) {
       return NextResponse.json(
@@ -166,8 +168,9 @@ export async function POST(request: NextRequest) {
             },
             member_count: memberCount,
             level: guildDetails.level,
-            classification: allianceGuildId ? 'member' : undefined,
-            allianceGuildId: allianceGuildId || undefined,
+            description: description || undefined,
+            contact_info: contact_info || undefined,
+            recruitment_status: recruitment_status || undefined,
             updatedAt: now,
             auditLog: [
               {
@@ -177,9 +180,9 @@ export async function POST(request: NextRequest) {
                 changes: {
                   created: { from: null, to: true },
                   member_count: { from: null, to: memberCount },
-                  ...(allianceGuildId && {
-                    allianceGuildId: { from: null, to: allianceGuildId }
-                  })
+                  ...(description && { description: { from: null, to: description } }),
+                  ...(contact_info && { contact_info: { from: null, to: contact_info } }),
+                  ...(recruitment_status && { recruitment_status: { from: null, to: recruitment_status } }),
                 },
               },
             ],
@@ -204,21 +207,36 @@ export async function POST(request: NextRequest) {
     const updateExpressions: string[] = []
     const expressionAttributeNames: Record<string, string> = {}
     const expressionAttributeValues: Record<string, any> = {}
+    const changes: Record<string, any> = {}
 
     // Always update member count
     updateExpressions.push('#memberCount = :memberCount')
     expressionAttributeNames['#memberCount'] = 'member_count'
     expressionAttributeValues[':memberCount'] = memberCount
+    changes.member_count = { from: 'unknown', to: memberCount }
 
-    // Update alliance if provided
-    if (allianceGuildId !== undefined) {
-      updateExpressions.push('#classification = :classification')
-      expressionAttributeNames['#classification'] = 'classification'
-      expressionAttributeValues[':classification'] = 'member'
+    // Update description if provided
+    if (description !== undefined) {
+      updateExpressions.push('#description = :description')
+      expressionAttributeNames['#description'] = 'description'
+      expressionAttributeValues[':description'] = description || null
+      changes.description = { from: 'unknown', to: description }
+    }
 
-      updateExpressions.push('#allianceGuildId = :allianceGuildId')
-      expressionAttributeNames['#allianceGuildId'] = 'allianceGuildId'
-      expressionAttributeValues[':allianceGuildId'] = allianceGuildId || null
+    // Update contact_info if provided
+    if (contact_info !== undefined) {
+      updateExpressions.push('#contactInfo = :contactInfo')
+      expressionAttributeNames['#contactInfo'] = 'contact_info'
+      expressionAttributeValues[':contactInfo'] = contact_info || null
+      changes.contact_info = { from: 'unknown', to: contact_info }
+    }
+
+    // Update recruitment_status if provided
+    if (recruitment_status !== undefined) {
+      updateExpressions.push('#recruitmentStatus = :recruitmentStatus')
+      expressionAttributeNames['#recruitmentStatus'] = 'recruitment_status'
+      expressionAttributeValues[':recruitmentStatus'] = recruitment_status || null
+      changes.recruitment_status = { from: 'unknown', to: recruitment_status }
     }
 
     // Add audit log entry
@@ -226,12 +244,7 @@ export async function POST(request: NextRequest) {
       timestamp: Date.now(),
       actor: accountInfo.name,
       action: 'public-update',
-      changes: {
-        member_count: { from: 'unknown', to: memberCount },
-        ...(allianceGuildId !== undefined && {
-          allianceGuildId: { from: 'unknown', to: allianceGuildId }
-        })
-      },
+      changes,
     }
 
     updateExpressions.push('#auditLog = list_append(if_not_exists(#auditLog, :emptyList), :auditEntry)')
