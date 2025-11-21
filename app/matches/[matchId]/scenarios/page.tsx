@@ -3,7 +3,6 @@ import { MatchSubNav } from '@/components/match-sub-nav'
 import { notFound } from 'next/navigation'
 import { getMatches, getWorlds } from '@/server/queries'
 import { VPScenarioPlanner } from '@/components/vp-scenario-planner'
-import { InteractiveVPPlanner } from '@/components/interactive-vp-planner'
 import { VPProbabilityAnalysis } from '@/components/vp-probability-analysis'
 import { getVPTierForTime } from '@/lib/vp-tiers'
 import { TOTAL_SKIRMISHES_PER_MATCH } from '@/lib/game-constants'
@@ -102,9 +101,6 @@ export default async function MatchScenariosPage({ params }: PageProps) {
 
         {/* VP Scenario Planner */}
         <VPScenarioPlanner matchId={matchId} match={match} />
-
-        {/* Interactive VP Planner */}
-        <InteractiveVPPlanner matchId={matchId} match={match} />
 
         {/* VP Probability Analysis */}
         <VPProbabilityAnalysis
