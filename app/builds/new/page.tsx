@@ -30,6 +30,9 @@ import {
   GearOptimizer,
   SkillDamageDisplay,
 } from '@/components/build-editor'
+import { InGameGearPanel } from '@/components/build-editor/in-game-gear-panel'
+import { InGameStatsPanel } from '@/components/build-editor/in-game-stats-panel'
+import { InGameSkillPanel } from '@/components/build-editor/in-game-skill-panel'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -181,41 +184,59 @@ export default function BuildEditorPage() {
   )?.id
 
   return (
-    <div className="container mx-auto p-4 md:p-8 max-w-[1600px]">
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <h1 className="text-3xl md:text-4xl font-bold">Build Editor</h1>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled>
-              <Save className="w-4 h-4 mr-2" />
-              Save
-            </Button>
-            <Button variant="outline" size="sm" disabled>
-              <Share2 className="w-4 h-4 mr-2" />
-              Share
-            </Button>
-            <Button size="sm" onClick={() => setOptimizerOpen(true)}>
-              <Sparkles className="w-4 h-4 mr-2" />
-              Optimize
-            </Button>
+      <div className="border-b border-white/10 bg-black/20 backdrop-blur-sm">
+        <div className="container mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-white drop-shadow-lg">Build Editor</h1>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" disabled className="bg-black/30 border-white/20 hover:bg-black/50">
+                <Save className="w-4 h-4 mr-2" />
+                Save
+              </Button>
+              <Button variant="outline" size="sm" disabled className="bg-black/30 border-white/20 hover:bg-black/50">
+                <Share2 className="w-4 h-4 mr-2" />
+                Share
+              </Button>
+              <Button size="sm" onClick={() => setOptimizerOpen(true)} className="bg-amber-600 hover:bg-amber-700">
+                <Sparkles className="w-4 h-4 mr-2" />
+                Optimize
+              </Button>
+            </div>
           </div>
         </div>
-        <p className="text-muted-foreground">
-          Create and optimize your Guild Wars 2 build with advanced stat calculations
-        </p>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-        {/* Left Panel - Build Configuration */}
-        <div className="xl:col-span-8 space-y-6">
-          {/* Profession Selection */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Profession</CardTitle>
-              <CardDescription>Select your profession</CardDescription>
-            </CardHeader>
-            <CardContent>
+      {/* Main Content - 3 Column Layout */}
+      <div className="container mx-auto p-4 h-[calc(100vh-80px)]">
+        <div className="grid grid-cols-12 gap-4 h-full">
+          {/* Left Column - Equipment Slots */}
+          <div className="col-span-2">
+            {itemStats && runes && sigils && (
+              <InGameGearPanel
+                gear={build.gear}
+                itemStats={itemStats}
+                runes={runes}
+                sigils={sigils}
+                onUpdateGear={handleGearChange}
+              />
+            )}
+          </div>
+
+          {/* Center Column - Character Display & Skills/Traits */}
+          <div className="col-span-7 flex flex-col gap-4 overflow-y-auto">
+            {/* Character Display Placeholder */}
+            <div className="flex-shrink-0 bg-black/30 backdrop-blur-md border border-white/10 rounded-lg p-4 h-[300px] flex items-center justify-center">
+              <div className="text-center space-y-2">
+                <div className="text-white/50 text-sm">Character Preview</div>
+                <div className="text-white/30 text-xs">Coming Soon</div>
+              </div>
+            </div>
+
+            {/* Profession Selection */}
+            <div className="flex-shrink-0 bg-black/30 backdrop-blur-md border border-white/10 rounded-lg p-4">
+              <h2 className="text-sm font-semibold text-white/80 mb-3">Profession</h2>
               {professions && (
                 <ProfessionSelector
                   professions={professions}
@@ -223,186 +244,39 @@ export default function BuildEditorPage() {
                   onSelect={handleProfessionChange}
                 />
               )}
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* Elite Specialization */}
-          {specializations.length > 0 && (
-            <SpecializationSelector
-              specializations={specializations}
-              professionId={build.profession}
-              selected={eliteSpecId || null}
-              onSelect={handleSpecializationChange}
-            />
-          )}
+            {/* Elite Specialization */}
+            {specializations.length > 0 && (
+              <div className="flex-shrink-0">
+                <SpecializationSelector
+                  specializations={specializations}
+                  professionId={build.profession}
+                  selected={eliteSpecId || null}
+                  onSelect={handleSpecializationChange}
+                />
+              </div>
+            )}
 
-          {/* Trait Lines */}
-          {specializations.length > 0 && traits && (
-            <TraitLineSelector
-              availableSpecializations={availableSpecs}
-              selectedLines={build.specializations}
-              allTraits={traits}
-              onUpdateLines={handleTraitLinesChange}
-            />
-          )}
+            {/* Skills & Traits */}
+            {skills && traits && specializations.length > 0 && (
+              <InGameSkillPanel
+                skills={skills}
+                traits={traits}
+                profession={build.profession}
+                skillSelection={build.skills}
+                specializations={availableSpecs}
+                selectedLines={build.specializations}
+                onUpdateSkills={handleSkillsChange}
+                onUpdateTraitLines={handleTraitLinesChange}
+              />
+            )}
+          </div>
 
-          {/* Skills */}
-          {skills && (
-            <SkillBar
-              skills={skills}
-              profession={build.profession}
-              selection={build.skills}
-              onUpdateSelection={handleSkillsChange}
-            />
-          )}
-
-          {/* Gear */}
-          {itemStats && runes && sigils && (
-            <GearPanel
-              gear={build.gear}
-              itemStats={itemStats}
-              runes={runes}
-              sigils={sigils}
-              onUpdateGear={handleGearChange}
-            />
-          )}
-        </div>
-
-        {/* Right Panel - Stats Display */}
-        <div className="xl:col-span-4 space-y-6">
-          {/* Base Stats */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Base Stats</CardTitle>
-              <CardDescription>Stats from gear</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {stats && (
-                <>
-                  <StatRow label="Power" value={stats.power} />
-                  <StatRow label="Precision" value={stats.precision} />
-                  <StatRow label="Ferocity" value={stats.ferocity} />
-                  <Separator className="my-2" />
-                  <StatRow label="Toughness" value={stats.toughness} />
-                  <StatRow label="Vitality" value={stats.vitality} />
-                  <Separator className="my-2" />
-                  <StatRow label="Condition Damage" value={stats.conditionDamage} />
-                  <StatRow label="Expertise" value={stats.expertise} />
-                  <StatRow label="Concentration" value={stats.concentration} />
-                  <StatRow label="Healing Power" value={stats.healingPower} />
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Derived Stats */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Derived Stats</CardTitle>
-              <CardDescription>Calculated from base stats</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {stats && (
-                <>
-                  <StatRow
-                    label="Crit Chance"
-                    value={`${stats.critChance.toFixed(1)}%`}
-                  />
-                  <StatRow
-                    label="Crit Damage"
-                    value={`${(stats.critDamage * 100).toFixed(0)}%`}
-                  />
-                  <Separator className="my-2" />
-                  <StatRow label="Health" value={stats.health.toLocaleString()} />
-                  <StatRow label="Armor" value={stats.armor.toLocaleString()} />
-                  <Separator className="my-2" />
-                  <StatRow
-                    label="Boon Duration"
-                    value={`${stats.boonDuration.toFixed(1)}%`}
-                  />
-                  <StatRow
-                    label="Condition Duration"
-                    value={`${stats.conditionDuration.toFixed(1)}%`}
-                  />
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Effective Metrics */}
-          <Card className="border-2 border-primary">
-            <CardHeader>
-              <CardTitle className="text-primary">Effective Metrics</CardTitle>
-              <CardDescription>
-                Advanced calculations for WvW optimization
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {stats && (
-                <>
-                  <div className="space-y-1">
-                    <StatRow
-                      label="Effective Power (EP)"
-                      value={stats.effectivePower.toLocaleString(undefined, {
-                        maximumFractionDigits: 0,
-                      })}
-                      highlight
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Average damage accounting for crits
-                    </p>
-                  </div>
-
-                  <div className="space-y-1">
-                    <StatRow
-                      label="Effective Health (EH)"
-                      value={stats.effectiveHealth.toLocaleString(undefined, {
-                        maximumFractionDigits: 0,
-                      })}
-                      highlight
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Tankiness from health + armor
-                    </p>
-                  </div>
-
-                  <div className="space-y-1">
-                    <StatRow
-                      label="EH × EP (Bruiser Score)"
-                      value={(stats.effectiveHealthPower / 1_000_000).toFixed(1) + 'M'}
-                      highlight
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Combined damage + survivability
-                    </p>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Formula Reference */}
-          <Card className="bg-muted/50">
-            <CardHeader>
-              <CardTitle className="text-sm">Formula Reference</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-xs font-mono">
-              <p>EP = Power × (1 + CC% × (CD - 1))</p>
-              <p>EH = Health × (Armor / 1000)</p>
-              <p>CC% = (Precision - 895) / 21</p>
-              <p>CD = 1.5 + (Ferocity / 1500)</p>
-            </CardContent>
-          </Card>
-
-          {/* Skill Damage Calculator */}
-          {stats && (
-            <SkillDamageDisplay
-              weaponType={build.gear.weaponSet1Main.weaponType || 'Greatsword'}
-              power={stats.power}
-              critChance={stats.critChance}
-              critDamage={stats.critDamage}
-            />
-          )}
+          {/* Right Column - Stats Panel */}
+          <div className="col-span-3">
+            <InGameStatsPanel stats={stats} />
+          </div>
         </div>
       </div>
 
