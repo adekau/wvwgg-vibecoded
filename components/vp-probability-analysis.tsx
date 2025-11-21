@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { Sparkles, TrendingUp, AlertTriangle, Info, RefreshCcw } from 'lucide-react'
+import { Sparkles, TrendingUp, AlertTriangle, Info, RefreshCcw, ChevronDown, ChevronUp } from 'lucide-react'
 import { useState, useEffect, useMemo } from 'react'
 import { getRegionFromMatchId } from '@/lib/vp-tiers'
 import { TOTAL_SKIRMISHES_PER_MATCH } from '@/lib/game-constants'
@@ -12,7 +12,9 @@ import {
   analyzeHistoricalPerformance,
   convertMatchSkirmishesToResults,
   calculateRequiredPerformance,
+  getTimeWindow,
   type TeamHistoricalStats,
+  type TimeWindow,
 } from '@/lib/historical-performance'
 import {
   runMonteCarloSimulation,
@@ -81,6 +83,7 @@ export function VPProbabilityAnalysis({ matchId, match, remainingSkirmishes }: V
     green: TeamHistoricalStats
   } | null>(null)
   const [iterations, setIterations] = useState(10000)
+  const [showSkirmishBreakdown, setShowSkirmishBreakdown] = useState(false)
 
   const currentVP = useMemo(() => ({
     red: match.worlds.find(w => w.color === 'red')?.victoryPoints || 0,
@@ -89,6 +92,20 @@ export function VPProbabilityAnalysis({ matchId, match, remainingSkirmishes }: V
   }), [match.worlds])
 
   const region = getRegionFromMatchId(matchId)
+
+  // Helper function to get time window label
+  const getTimeWindowLabel = (window: TimeWindow): string => {
+    switch (window) {
+      case 'naPrime':
+        return 'NA Prime Time'
+      case 'euPrime':
+        return 'EU Prime Time'
+      case 'ocx':
+        return 'OCX/SEA'
+      case 'offHours':
+        return 'Off Hours'
+    }
+  }
 
   // Calculate historical stats from completed skirmishes
   useEffect(() => {
@@ -287,6 +304,108 @@ export function VPProbabilityAnalysis({ matchId, match, remainingSkirmishes }: V
               )
             })}
           </div>
+
+          {/* Show More Button */}
+          <div className="mt-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowSkirmishBreakdown(!showSkirmishBreakdown)}
+              className="w-full"
+            >
+              {showSkirmishBreakdown ? (
+                <>
+                  <ChevronUp className="h-4 w-4 mr-2" />
+                  Hide Skirmish Breakdown
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-4 w-4 mr-2" />
+                  Show Skirmish Breakdown
+                </>
+              )}
+            </Button>
+          </div>
+
+          {/* Skirmish Breakdown */}
+          {showSkirmishBreakdown && (
+            <div className="mt-4 space-y-3">
+              <div className="text-xs text-muted-foreground mb-2">
+                Showing historical win rates for each remaining skirmish based on time window
+              </div>
+              {remainingSkirmishes.map((skirmish, index) => {
+                const timeWindow = getTimeWindow(skirmish.startTime, region)
+                const timeWindowLabel = getTimeWindowLabel(timeWindow)
+                const completedSkirmishes = match.skirmishes?.length || 0
+
+                return (
+                  <div
+                    key={skirmish.id}
+                    className="rounded-lg border border-border bg-muted/20 p-3"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <div className="text-sm font-medium">
+                          Skirmish #{completedSkirmishes + index + 1}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {skirmish.startTime.toLocaleString('en-US', {
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            timeZoneName: 'short',
+                          })}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <Badge variant="outline" className="text-xs">
+                          {timeWindowLabel}
+                        </Badge>
+                        <div className="text-xs text-muted-foreground">
+                          VP: {skirmish.vpAwards.first}/{skirmish.vpAwards.second}/{skirmish.vpAwards.third}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2">
+                      {(['red', 'blue', 'green'] as const).map(color => {
+                        const stats = historicalStats[color]
+                        const world = match.worlds.find(w => w.color === color)
+                        const windowProbs = stats.placementProbabilityByWindow[timeWindow]
+
+                        return (
+                          <div
+                            key={color}
+                            className={`rounded p-2 border ${colorClasses[color].bg} ${colorClasses[color].border}`}
+                          >
+                            <div className="text-xs font-medium truncate mb-1" title={world?.name}>
+                              {world?.name}
+                            </div>
+                            <div className="grid grid-cols-3 gap-1 text-xs">
+                              <div className="text-center">
+                                <div className="text-muted-foreground text-[10px]">1st</div>
+                                <div className="font-bold">{(windowProbs.first * 100).toFixed(0)}%</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-muted-foreground text-[10px]">2nd</div>
+                                <div className="font-bold">{(windowProbs.second * 100).toFixed(0)}%</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-muted-foreground text-[10px]">3rd</div>
+                                <div className="font-bold">{(windowProbs.third * 100).toFixed(0)}%</div>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         {/* Monte Carlo Results */}
