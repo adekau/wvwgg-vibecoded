@@ -19,29 +19,31 @@ export async function GET(
   const hoursParam = searchParams.get('hours');
 
   try {
-    let history;
+    // Get match data to determine start time
+    const matchesData = await getMatches();
+    const matchData = matchesData?.[matchId];
 
-    // If hours parameter is provided, use legacy time-based query
-    if (hoursParam) {
-      const hours = parseInt(hoursParam, 10);
-      history = await getMatchHistory({ hours });
-    } else {
-      // Otherwise, fetch match-specific history from match start to now
-      const matchesData = await getMatches();
-      const matchData = matchesData?.[matchId];
-
-      if (!matchData?.start_time) {
-        // Fallback to 24 hours if we can't find match start time
-        console.warn(`[HISTORY API] Could not find start_time for match ${matchId}, falling back to 24h`);
-        history = await getMatchHistory({ hours: 24 });
-      } else {
-        // Query from match start time to now
-        history = await getMatchHistory({
-          matchId,
-          matchStartTime: matchData.start_time,
-        });
-      }
+    if (!matchData?.start_time) {
+      console.warn(`[HISTORY API] Could not find start_time for match ${matchId}`);
+      return NextResponse.json(
+        { error: 'Match not found' },
+        { status: 404 }
+      );
     }
+
+    // Build query options
+    const queryOptions: any = {
+      matchId,
+      matchStartTime: matchData.start_time,
+    };
+
+    // Add optional time filter
+    if (hoursParam) {
+      queryOptions.hours = parseInt(hoursParam, 10);
+    }
+
+    // Query history using the new match-specific index
+    const history = await getMatchHistory(queryOptions);
 
     // Extract data for specific match
     const matchHistory = history
@@ -51,30 +53,30 @@ export async function GET(
           console.error('Snapshot data is still compressed');
           return null;
         }
-        const matchData = snapshot.data[matchId];
-        if (!matchData) return null;
+        const matchDataSnapshot = snapshot.data[matchId];
+        if (!matchDataSnapshot) return null;
 
         return {
           timestamp: snapshot.timestamp,
           red: {
-            score: matchData.red?.totalScore || 0,
-            kills: matchData.red?.kills || 0,
-            deaths: matchData.red?.deaths || 0,
-            victoryPoints: matchData.red?.victoryPoints || 0,
+            score: matchDataSnapshot.red?.totalScore || 0,
+            kills: matchDataSnapshot.red?.kills || 0,
+            deaths: matchDataSnapshot.red?.deaths || 0,
+            victoryPoints: matchDataSnapshot.red?.victoryPoints || 0,
           },
           blue: {
-            score: matchData.blue?.totalScore || 0,
-            kills: matchData.blue?.kills || 0,
-            deaths: matchData.blue?.deaths || 0,
-            victoryPoints: matchData.blue?.victoryPoints || 0,
+            score: matchDataSnapshot.blue?.totalScore || 0,
+            kills: matchDataSnapshot.blue?.kills || 0,
+            deaths: matchDataSnapshot.blue?.deaths || 0,
+            victoryPoints: matchDataSnapshot.blue?.victoryPoints || 0,
           },
           green: {
-            score: matchData.green?.totalScore || 0,
-            kills: matchData.green?.kills || 0,
-            deaths: matchData.green?.deaths || 0,
-            victoryPoints: matchData.green?.victoryPoints || 0,
+            score: matchDataSnapshot.green?.totalScore || 0,
+            kills: matchDataSnapshot.green?.kills || 0,
+            deaths: matchDataSnapshot.green?.deaths || 0,
+            victoryPoints: matchDataSnapshot.green?.victoryPoints || 0,
           },
-          maps: matchData.maps || [],
+          maps: matchDataSnapshot.maps || [],
         };
       })
       .filter(Boolean);

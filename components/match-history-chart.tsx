@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { TrendingUp, Clock } from 'lucide-react';
+import { TrendingUp, Clock, Calendar } from 'lucide-react';
 
 interface HistoryDataPoint {
   timestamp: number;
@@ -36,20 +36,34 @@ const colorClasses = {
   },
 };
 
+type TimeRangeMode = 'preset' | 'custom';
+
 export function MatchHistoryChart({ matchId }: MatchHistoryChartProps) {
   const [metric, setMetric] = useState<'score' | 'kills' | 'deaths' | 'kd' | 'victoryPoints'>('score');
-  const [timeRange, setTimeRange] = useState<6 | 12 | 24 | 48>(24);
+  const [timeRangeMode, setTimeRangeMode] = useState<TimeRangeMode>('preset');
+  const [timeRange, setTimeRange] = useState<6 | 12 | 24 | 48 | 'all'>(24);
+  const [customStartTime, setCustomStartTime] = useState<string>('');
+  const [customEndTime, setCustomEndTime] = useState<string>('');
 
   // Fetch history data with React Query (automatic caching, deduplication, and refetching)
   const { data, isLoading, isPending } = useQuery({
-    queryKey: ['match-history', matchId, timeRange],
+    queryKey: ['match-history', matchId, timeRangeMode, timeRange, customStartTime, customEndTime],
     queryFn: async () => {
-      const response = await fetch(`/api/match-history?matchId=${matchId}&hours=${timeRange}`);
+      let url = `/api/match-history?matchId=${matchId}`;
+
+      if (timeRangeMode === 'custom' && customStartTime && customEndTime) {
+        url += `&startTime=${encodeURIComponent(customStartTime)}&endTime=${encodeURIComponent(customEndTime)}`;
+      } else if (timeRange !== 'all') {
+        url += `&hours=${timeRange}`;
+      }
+      // If timeRange is 'all', don't pass hours parameter to get full match history
+
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error('Failed to fetch match history');
       }
-      const data = await response.json();
-      return data.history || [];
+      const responseData = await response.json();
+      return responseData;
     },
     // Refetch every 2 minutes to stay in sync with server cache
     refetchInterval: 2 * 60 * 1000,
@@ -57,7 +71,9 @@ export function MatchHistoryChart({ matchId }: MatchHistoryChartProps) {
     staleTime: 60 * 1000,
   });
 
-  const history = data || [];
+  const history = data?.history || [];
+  const matchStartTime = data?.matchStartTime;
+  const matchEndTime = data?.matchEndTime;
 
   // Transform data for chart (memoized to prevent expensive recalculations)
   // Must be called before any conditional returns (Rules of Hooks)
@@ -173,21 +189,72 @@ export function MatchHistoryChart({ matchId }: MatchHistoryChartProps) {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Time Range Selector */}
+            {/* Time Range Mode Toggle */}
             <div className="flex items-center gap-1">
-              <Clock className="h-3 w-3 text-muted-foreground" />
-              {([6, 12, 24, 48] as const).map((hours) => (
-                <Button
-                  key={hours}
-                  variant={timeRange === hours ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setTimeRange(hours)}
-                  className="h-7 text-xs"
-                >
-                  {hours}h
-                </Button>
-              ))}
+              <Button
+                variant={timeRangeMode === 'preset' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setTimeRangeMode('preset')}
+                className="h-7 text-xs"
+              >
+                <Clock className="h-3 w-3 mr-1" />
+                Preset
+              </Button>
+              <Button
+                variant={timeRangeMode === 'custom' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setTimeRangeMode('custom')}
+                className="h-7 text-xs"
+              >
+                <Calendar className="h-3 w-3 mr-1" />
+                Custom
+              </Button>
             </div>
+
+            {/* Time Range Selector (Preset Mode) */}
+            {timeRangeMode === 'preset' && (
+              <div className="flex items-center gap-1">
+                {([6, 12, 24, 48, 'all'] as const).map((hours) => (
+                  <Button
+                    key={hours}
+                    variant={timeRange === hours ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setTimeRange(hours)}
+                    className="h-7 text-xs"
+                  >
+                    {hours === 'all' ? 'All' : `${hours}h`}
+                  </Button>
+                ))}
+              </div>
+            )}
+
+            {/* Custom Date/Time Selector */}
+            {timeRangeMode === 'custom' && (
+              <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-muted-foreground">Start</label>
+                  <input
+                    type="datetime-local"
+                    className="text-xs border rounded px-2 py-1 bg-background h-7"
+                    value={customStartTime}
+                    onChange={(e) => setCustomStartTime(e.target.value)}
+                    min={matchStartTime ? new Date(matchStartTime).toISOString().slice(0, 16) : undefined}
+                    max={matchEndTime ? new Date(matchEndTime).toISOString().slice(0, 16) : undefined}
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-muted-foreground">End</label>
+                  <input
+                    type="datetime-local"
+                    className="text-xs border rounded px-2 py-1 bg-background h-7"
+                    value={customEndTime}
+                    onChange={(e) => setCustomEndTime(e.target.value)}
+                    min={customStartTime || (matchStartTime ? new Date(matchStartTime).toISOString().slice(0, 16) : undefined)}
+                    max={matchEndTime ? new Date(matchEndTime).toISOString().slice(0, 16) : undefined}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Metric Selector */}
             <select
