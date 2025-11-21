@@ -73,7 +73,7 @@ export function EnhancedMatchCard({ tier, worlds }: EnhancedMatchCardProps) {
       onClick={() => router.push(`/matches/${tier}`)}
       style={{ background: 'transparent' }}
     >
-      <div className="p-4 space-y-4">
+      <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-lg group-hover:text-primary transition-colors">{tier}</h3>
@@ -98,7 +98,7 @@ export function EnhancedMatchCard({ tier, worlds }: EnhancedMatchCardProps) {
             return (
               <div
                 key={world.color}
-                className={`p-3 rounded-lg border-2 ${
+                className={`p-2.5 sm:p-3 rounded-lg border-2 ${
                   world.color === 'red'
                     ? 'border-red-500/30 bg-red-500/5'
                     : world.color === 'blue'
@@ -114,7 +114,7 @@ export function EnhancedMatchCard({ tier, worlds }: EnhancedMatchCardProps) {
                     </div>
 
                     {/* Stats Row */}
-                    <div className="flex flex-wrap gap-3 text-sm">
+                    <div className="flex flex-wrap gap-2 sm:gap-3 text-sm">
                       {/* Kills */}
                       <div className="flex items-center gap-1" title="Total kills in this match">
                         <Swords className="h-3 w-3 text-muted-foreground" />

@@ -127,9 +127,9 @@ export default async function MatchesPage() {
     <div className="min-h-screen">
       <MatchesHeader />
 
-      <main className="container mx-auto px-4 py-8 space-y-8">
+      <main className="container mx-auto px-3 sm:px-4 md:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
         {allMatches.length > 0 ? (
-          <div className="space-y-12">
+          <div className="space-y-8 sm:space-y-12">
             {/* North America */}
             {naMatches.length > 0 && (
               <div className="space-y-4">

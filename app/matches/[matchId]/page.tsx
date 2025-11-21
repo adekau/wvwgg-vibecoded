@@ -204,7 +204,7 @@ export default async function MatchDetailPage({ params }: PageProps) {
       <MatchesHeader />
       <MatchSubNav matchId={matchId} currentTab="overview" />
 
-      <main className="container mx-auto px-4 py-8 space-y-6">
+      <main className="container mx-auto px-3 sm:px-4 md:px-6 py-6 sm:py-8 space-y-4 sm:space-y-6">
         <MatchDashboard
           match={match}
           matchId={matchId}

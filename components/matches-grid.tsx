@@ -23,7 +23,7 @@ interface MatchesGridProps {
 
 export function MatchesGrid({ matches }: MatchesGridProps) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       {matches.map((match) => (
         <EnhancedMatchCard key={match.tier} tier={match.tier} worlds={match.worlds} />
       ))}
