@@ -309,8 +309,12 @@ export function InteractiveVPPlanner({ matchId, match }: InteractiveVPPlannerPro
 
   // Auto-fill handler (use solver solution)
   const handleAutoFill = useCallback(async () => {
+    // Update UI state immediately to prevent INP issues
     setIsAutoFilling(true)
     setAutoFillMessage('Running solver...')
+
+    // Defer expensive computation to next frame to allow UI to paint
+    await new Promise(resolve => setTimeout(resolve, 0))
 
     try {
       // Prepare input for solver

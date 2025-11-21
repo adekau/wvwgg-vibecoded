@@ -53,8 +53,12 @@ export function GearOptimizer({
   const presets = getOptimizationPresets()
 
   const handleOptimize = async () => {
+    // Update UI state immediately to prevent INP issues
     setState('optimizing')
     setResult(null)
+
+    // Defer expensive computation to next frame to allow UI to paint
+    await new Promise(resolve => setTimeout(resolve, 0))
 
     // Get the selected goal
     const preset = presets.find(p => p.goal.type === selectedPreset)
