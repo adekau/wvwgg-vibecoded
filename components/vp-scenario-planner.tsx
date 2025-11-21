@@ -813,11 +813,11 @@ export function VPScenarioPlanner({ matchId, match }: VPScenarioPlannerProps) {
                     <div className="text-xs text-muted-foreground mb-2">
                       Required placements for each remaining skirmish to achieve this outcome:
                     </div>
-                    <div className="max-h-96 overflow-y-auto">
+                    <div className="max-h-96 overflow-x-auto overflow-y-auto">
                       <table className="w-full text-xs">
                         <thead className="sticky top-0 bg-background">
                           <tr className="border-b border-border/50">
-                            <th className="text-left py-2 px-2">Skirmish</th>
+                            <th className="sticky left-0 z-20 bg-background border-r border-border text-left py-2 px-2">Skirmish</th>
                             <th className="text-left py-2 px-2">Time</th>
                             <th className="text-center py-2 px-2">VP Awards</th>
                             {match.worlds.map((world) => (
@@ -839,7 +839,7 @@ export function VPScenarioPlanner({ matchId, match }: VPScenarioPlannerProps) {
 
                             return (
                               <tr key={placement.skirmishId} className="border-b border-border/50">
-                                <td className="py-2 px-2">#{skirmish.id + 1}</td>
+                                <td className="sticky left-0 z-10 bg-background border-r border-border py-2 px-2">#{skirmish.id + 1}</td>
                                 <td className="py-2 px-2 whitespace-nowrap">
                                   {skirmish.startTime.toLocaleString(undefined, {
                                     month: 'short',
@@ -959,7 +959,7 @@ export function VPScenarioPlanner({ matchId, match }: VPScenarioPlannerProps) {
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-muted z-10">
                     <tr className="border-b border-border">
-                      <th className="text-left py-3 px-3 font-medium">Skirmish</th>
+                      <th className="sticky left-0 z-20 bg-muted border-r border-border text-left py-3 px-3 font-medium">Skirmish</th>
                       <th className="text-left py-3 px-3 font-medium">Time</th>
                       <th className="text-center py-3 px-3 font-medium">VP Awards</th>
                       {match.worlds.map((world) => (
@@ -986,7 +986,7 @@ export function VPScenarioPlanner({ matchId, match }: VPScenarioPlannerProps) {
                           key={skirmish.id}
                           className={`border-b border-border/50 ${isComplete ? 'bg-muted/30' : ''}`}
                         >
-                          <td className="py-3 px-3">
+                          <td className={`sticky left-0 z-10 border-r border-border py-3 px-3 ${isComplete ? 'bg-muted/30' : 'bg-background'}`}>
                             <div className="flex items-center gap-2">
                               #{skirmish.id + 1}
                               {isComplete && (

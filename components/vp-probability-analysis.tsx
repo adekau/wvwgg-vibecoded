@@ -259,8 +259,10 @@ export function VPProbabilityAnalysis({ matchId, match, remainingSkirmishes }: V
               disabled={isCalculating}
               size="sm"
             >
-              <RefreshCcw className={`h-4 w-4 mr-2 ${isCalculating ? 'animate-spin' : ''}`} />
-              {isCalculating ? 'Running...' : 'Run Simulation'}
+              <RefreshCcw className={`h-4 w-4 ${isCalculating ? 'animate-spin' : ''} md:mr-2`} />
+              <span className="hidden md:inline">
+                {isCalculating ? 'Running...' : 'Run Simulation'}
+              </span>
             </Button>
           </div>
         </div>
@@ -337,7 +339,7 @@ export function VPProbabilityAnalysis({ matchId, match, remainingSkirmishes }: V
                 <table className="w-full text-xs border-collapse">
                   <thead>
                     <tr className="border-b border-border">
-                      <th className="text-left py-2 px-3 font-medium text-muted-foreground">Skirmish</th>
+                      <th className="sticky left-0 z-10 bg-background border-r border-border text-left py-2 px-3 font-medium text-muted-foreground">Skirmish</th>
                       <th className="text-left py-2 px-3 font-medium text-muted-foreground">Time</th>
                       <th className="text-left py-2 px-3 font-medium text-muted-foreground">Window</th>
                       <th className="text-center py-2 px-3 font-medium text-muted-foreground">VP</th>
@@ -364,7 +366,7 @@ export function VPProbabilityAnalysis({ matchId, match, remainingSkirmishes }: V
 
                       return (
                         <tr key={skirmish.id} className="border-b border-border/50 hover:bg-muted/20">
-                          <td className="py-2 px-3 font-medium">
+                          <td className="sticky left-0 z-10 bg-background border-r border-border py-2 px-3 font-medium">
                             #{completedSkirmishes + index + 1}
                           </td>
                           <td className="py-2 px-3 text-muted-foreground whitespace-nowrap">
