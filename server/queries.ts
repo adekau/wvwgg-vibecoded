@@ -1,3 +1,23 @@
+/**
+ * DynamoDB Query Functions
+ *
+ * This module provides query functions for fetching data from DynamoDB:
+ * - Match data (current active matches)
+ * - World data (server names and IDs)
+ * - Historical snapshots (15-minute intervals)
+ * - Guild associations
+ *
+ * All queries use Next.js `unstable_cache` for automatic caching and revalidation.
+ *
+ * Data Flow:
+ * 1. Lambda functions fetch data from GW2 API and store in DynamoDB
+ * 2. These query functions read from DynamoDB (with fallback to GW2 API)
+ * 3. Next.js caches responses using ISR (Incremental Static Regeneration)
+ * 4. Client components use React Query for additional client-side caching
+ *
+ * @module server/queries
+ */
+
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { unstable_cache } from 'next/cache';
@@ -10,7 +30,8 @@ import {
   SNAPSHOT_INTERVALS_PER_HOUR,
 } from '@/lib/game-constants';
 
-// Types
+// TypeScript Interfaces
+// See docs/DATA_MODEL.md for detailed schema documentation
 export interface IWorld {
   id: number;
   name: string;
@@ -73,6 +94,7 @@ export interface IGuild {
 }
 
 // DynamoDB Client Setup
+// Uses AWS SDK v3 with Document Client for simplified DynamoDB operations
 const credentials = createCredentialsProvider();
 
 const client = new DynamoDBClient({
@@ -80,14 +102,25 @@ const client = new DynamoDBClient({
   ...(credentials && { credentials }),
 });
 
+// Document Client automatically marshals/unmarshals DynamoDB items to/from JavaScript objects
 const docClient = DynamoDBDocumentClient.from(client, {
   marshallOptions: {
-    removeUndefinedValues: true,
+    removeUndefinedValues: true, // Remove undefined values to prevent DynamoDB errors
   },
 });
 
 /**
  * Decompress data that was compressed with gzip
+ *
+ * Historical snapshots are compressed to reduce DynamoDB storage costs (~70% reduction).
+ * This function decompresses base64-encoded gzip data back to JSON.
+ *
+ * Compression Pipeline:
+ * 1. Lambda: JSON.stringify(data) → gzip → base64 → store in DynamoDB
+ * 2. This function: base64 → gunzip → JSON.parse → return object
+ *
+ * @param compressedData Base64-encoded gzip-compressed JSON string
+ * @returns Decompressed object or null on error
  */
 const decompressData = (compressedData: string): any => {
   try {
