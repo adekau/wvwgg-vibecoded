@@ -331,14 +331,14 @@
 /* Frosted glass card with subtle elevation and grainy texture */
 .inset-card {
   position: relative;
-  background: oklch(from var(--card) calc(l - 0.03) c h / 0.65);
-  backdrop-filter: blur(8px) saturate(180%);
-  border: 1px solid oklch(from var(--border) calc(l - 0.1) c h / 0.5);
+  background: oklch(from var(--card) calc(l + 0.01) c h / 0.75);
+  backdrop-filter: blur(12px) saturate(160%);
+  border: 1px solid oklch(from var(--border) l c h / 0.6);
   box-shadow:
-    0 1px 2px 0 rgb(0 0 0 / 0.08),
-    0 2px 4px 0 rgb(0 0 0 / 0.06),
-    0 4px 8px 0 rgb(0 0 0 / 0.05),
-    0 0 0 1px rgb(0 0 0 / 0.03);
+    0 1px 3px 0 rgb(0 0 0 / 0.05),
+    0 2px 6px 0 rgb(0 0 0 / 0.04),
+    0 4px 12px 0 rgb(0 0 0 / 0.03),
+    0 0 0 1px rgb(0 0 0 / 0.02);
 }
 
 /* Remove inset-card background when frosted-panel is present */
@@ -361,13 +361,14 @@
 }
 
 .dark .inset-card {
-  background: oklch(from var(--card) l c h / 0.5);
-  backdrop-filter: blur(10px) saturate(180%);
-  border: 1px solid oklch(from var(--border) l c h / 0.4);
+  background: oklch(from var(--card) calc(l + 0.02) c h / 0.65);
+  backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid oklch(from var(--border) calc(l + 0.05) c h / 0.5);
   box-shadow:
-    0 1px 2px 0 rgb(0 0 0 / 0.2),
-    0 2px 4px 0 rgb(0 0 0 / 0.15),
-    0 4px 8px 0 rgb(0 0 0 / 0.1);
+    0 1px 3px 0 rgb(0 0 0 / 0.3),
+    0 2px 6px 0 rgb(0 0 0 / 0.2),
+    0 4px 12px 0 rgb(0 0 0 / 0.15),
+    0 8px 24px 0 rgb(0 0 0 / 0.1);
 }
 
 /* Remove inset-card background when frosted-panel is present in dark mode */
