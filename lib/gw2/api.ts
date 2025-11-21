@@ -20,11 +20,16 @@ const GW2_API_BASE = 'https://api.guildwars2.com/v2'
  */
 const CACHE_DURATION_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 const REQUEST_TIMEOUT_MS = 10000 // 10 seconds
+const LARGE_FETCH_TIMEOUT_MS = 120000 // 2 minutes for fetching all skills/traits
 
 /**
  * Generic fetch wrapper with error handling
  */
-async function fetchGW2API<T>(endpoint: string, ids?: string | number[]): Promise<T> {
+async function fetchGW2API<T>(
+  endpoint: string,
+  ids?: string | number[],
+  timeoutMs: number = REQUEST_TIMEOUT_MS
+): Promise<T> {
   const url = new URL(`${GW2_API_BASE}${endpoint}`)
 
   if (ids) {
@@ -36,7 +41,7 @@ async function fetchGW2API<T>(endpoint: string, ids?: string | number[]): Promis
   }
 
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
   try {
     const response = await fetch(url.toString(), {
@@ -72,7 +77,8 @@ async function fetchGW2API<T>(endpoint: string, ids?: string | number[]): Promis
 async function fetchBatch<T>(
   endpoint: string,
   ids: number[],
-  chunkSize = 200
+  chunkSize = 200,
+  timeoutMs: number = REQUEST_TIMEOUT_MS
 ): Promise<T[]> {
   const chunks: number[][] = []
 
@@ -81,7 +87,7 @@ async function fetchBatch<T>(
   }
 
   const results = await Promise.all(
-    chunks.map(chunk => fetchGW2API<T[]>(endpoint, chunk))
+    chunks.map(chunk => fetchGW2API<T[]>(endpoint, chunk, timeoutMs))
   )
 
   return results.flat()
@@ -150,7 +156,7 @@ export async function getTraits(ids: number[]): Promise<Trait[]> {
 
 export async function getAllTraits(): Promise<Trait[]> {
   const ids = await getAllTraitIds()
-  return getTraits(ids)
+  return fetchBatch<Trait>('/traits', ids, 200, LARGE_FETCH_TIMEOUT_MS)
 }
 
 // ============================================================================
@@ -172,7 +178,7 @@ export async function getSkills(ids: number[]): Promise<Skill[]> {
 
 export async function getAllSkills(): Promise<Skill[]> {
   const ids = await getAllSkillIds()
-  return getSkills(ids)
+  return fetchBatch<Skill>('/skills', ids, 200, LARGE_FETCH_TIMEOUT_MS)
 }
 
 // ============================================================================
