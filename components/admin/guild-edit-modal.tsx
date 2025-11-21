@@ -32,13 +32,13 @@ interface AuditLogEntry {
 }
 
 interface AdminGuild extends IGuild {
-  classification?: 'alliance' | 'member' | 'independent'
-  allianceGuildId?: string
-  memberGuildIds?: string[]
-  description?: string
-  contact_info?: string
-  recruitment_status?: 'open' | 'closed' | 'by_application'
-  notes?: string
+  classification?: 'alliance' | 'member' | 'independent' | null
+  allianceGuildId?: string | null
+  memberGuildIds?: string[] | null
+  description?: string | null
+  contact_info?: string | null
+  recruitment_status?: 'open' | 'closed' | 'by_application' | null
+  notes?: string | null
   reviewed?: boolean
   reviewedAt?: number
   reviewedBy?: string
@@ -107,13 +107,13 @@ export function GuildEditModal({ guild, allGuilds, open, onClose, onSave }: Guil
     try {
       const updatedGuild: AdminGuild = {
         ...guild,
-        classification: classification === 'unclassified' ? undefined : classification as any,
-        allianceGuildId: classification === 'member' ? allianceGuildId || undefined : undefined,
-        memberGuildIds: classification === 'alliance' ? memberGuildIds : undefined,
-        description: description || undefined,
-        contact_info: contactInfo || undefined,
-        recruitment_status: recruitmentStatus || undefined,
-        notes: notes || undefined,
+        classification: classification === 'unclassified' ? null as any : classification as any,
+        allianceGuildId: classification === 'member' ? (allianceGuildId || null) : null,
+        memberGuildIds: classification === 'alliance' ? memberGuildIds : null as any,
+        description: description || null as any,
+        contact_info: contactInfo || null as any,
+        recruitment_status: recruitmentStatus || null as any,
+        notes: notes || null as any,
       }
 
       await onSave(updatedGuild)
