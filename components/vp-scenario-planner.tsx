@@ -202,7 +202,12 @@ export function VPScenarioPlanner({ matchId, match }: VPScenarioPlannerProps) {
   }
 
   const handleCalculate = async () => {
+    // Update UI state immediately to prevent INP issues
     setIsCalculating(true)
+
+    // Defer expensive computation to next frame to allow UI to paint
+    await new Promise(resolve => setTimeout(resolve, 0))
+
     try {
       const input: ScenarioInput = {
         currentVP,
@@ -334,8 +339,12 @@ export function VPScenarioPlanner({ matchId, match }: VPScenarioPlannerProps) {
 
   // Auto-fill handler (use solver solution)
   const handleAutoFill = useCallback(async () => {
+    // Update UI state immediately to prevent INP issues
     setIsAutoFilling(true)
     setAutoFillMessage('Running solver...')
+
+    // Defer expensive computation to next frame to allow UI to paint
+    await new Promise(resolve => setTimeout(resolve, 0))
 
     try {
       const solverInput: ScenarioInput = {
