@@ -1,22 +1,70 @@
 "use client"
 
-import { Moon, Sun } from 'lucide-react'
+import { Moon, Sun, ChevronDown } from 'lucide-react'
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu"
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+
+interface Match {
+  id: string
+  tier: string
+  region: string
+  worlds: {
+    red: string
+    blue: string
+    green: string
+  }
+}
 
 export function MatchesHeader() {
   const { theme, setTheme } = useTheme()
   const pathname = usePathname()
-  
+  const router = useRouter()
+  const [isMatchesDropdownOpen, setIsMatchesDropdownOpen] = useState(false)
+
+  // Fetch matches for the dropdown
+  const { data: matches = [] } = useQuery<Match[]>({
+    queryKey: ['nav-matches'],
+    queryFn: async () => {
+      const res = await fetch('/api/matches')
+      if (!res.ok) throw new Error('Failed to fetch matches')
+      return res.json()
+    },
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+  })
+
+  // Group matches by region
+  const matchesByRegion = matches.reduce((acc, match) => {
+    if (!acc[match.region]) {
+      acc[match.region] = []
+    }
+    acc[match.region].push(match)
+    return acc
+  }, {} as Record<string, Match[]>)
+
+  const sortedRegions = Object.keys(matchesByRegion).sort((a, b) => {
+    if (a === 'North America') return -1
+    if (b === 'North America') return 1
+    return 0
+  })
+
   const navLinks = [
-    { href: '/matches', label: 'Matches' },
     { href: '/maps', label: 'Maps' },
     { href: '/guilds', label: 'Guilds' },
     { href: '/legend', label: 'Legend' },
   ]
-  
+
   return (
     <header className="border-b border-border bg-card sticky top-0 z-50 header-shadow">
       <div className="container mx-auto px-4 py-4">
@@ -46,8 +94,74 @@ export function MatchesHeader() {
                 <p className="text-xs text-muted-foreground">World vs World Matches</p>
               </div>
             </Link>
-            
+
             <nav className="hidden md:flex items-center gap-1">
+              {/* Matches link with dropdown */}
+              <div className="flex items-center">
+                <Link
+                  href="/matches"
+                  className={`pl-4 pr-2 py-2 rounded-l-md text-sm font-medium transition-colors ${
+                    pathname === '/matches' || pathname?.startsWith('/matches/')
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                  }`}
+                >
+                  Matches
+                </Link>
+                <DropdownMenu open={isMatchesDropdownOpen} onOpenChange={setIsMatchesDropdownOpen}>
+                  <button
+                    onClick={() => setIsMatchesDropdownOpen(!isMatchesDropdownOpen)}
+                    className={`pr-3 pl-1 py-2 rounded-r-md text-sm font-medium transition-colors border-l border-primary-foreground/20 ${
+                      pathname === '/matches' || pathname?.startsWith('/matches/')
+                        ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                    }`}
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </button>
+                  <DropdownMenuContent
+                    align="start"
+                    className="w-[340px] bg-popover/70 backdrop-blur-sm border-border/40 shadow-xl rounded-xl"
+                    sideOffset={8}
+                  >
+                    {sortedRegions.map((region) => (
+                      <DropdownMenuGroup key={region}>
+                        <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/80 px-4 pt-3 pb-1.5">
+                          {region}
+                        </DropdownMenuLabel>
+                        {matchesByRegion[region].map((match) => (
+                          <DropdownMenuItem
+                            key={match.id}
+                            onClick={() => {
+                              router.push(`/matches/${match.id}`)
+                              setIsMatchesDropdownOpen(false)
+                            }}
+                            className="cursor-pointer py-2.5 px-4 mx-1.5 mb-1 rounded-lg focus:bg-accent/40 hover:bg-accent/30 transition-colors"
+                          >
+                            <div className="flex flex-col gap-1 w-full">
+                              <div className="flex items-center justify-between">
+                                <span className="font-semibold text-sm">{match.id}</span>
+                                <span className="text-xs text-muted-foreground/80 font-medium">
+                                  Tier {match.tier}
+                                </span>
+                              </div>
+                              <div className="text-xs flex items-center gap-1.5 flex-wrap">
+                                <span className="text-chart-1 font-medium">{match.worlds.red}</span>
+                                <span className="text-muted-foreground/40">vs</span>
+                                <span className="text-chart-2 font-medium">{match.worlds.blue}</span>
+                                <span className="text-muted-foreground/40">vs</span>
+                                <span className="text-chart-3 font-medium">{match.worlds.green}</span>
+                              </div>
+                            </div>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuGroup>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              {/* Other nav links */}
               {navLinks.map((link) => {
                 const isActive = pathname === link.href || pathname?.startsWith(link.href + '/')
                 return (
@@ -66,7 +180,7 @@ export function MatchesHeader() {
               })}
             </nav>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
