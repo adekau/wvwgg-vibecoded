@@ -33,6 +33,13 @@ export interface GuildInfo {
   tag: string;
 }
 
+export interface MapMetadata {
+  id: number;
+  name: string;
+  map_rect: [[number, number], [number, number]];
+  continent_rect: [[number, number], [number, number]];
+}
+
 export interface WvWMapProps {
   matchId: string;
   className?: string;
@@ -41,9 +48,20 @@ export interface WvWMapProps {
 type ObjectiveType = 'camp' | 'tower' | 'keep' | 'castle';
 type TeamColor = 'green' | 'blue' | 'red' | 'neutral';
 
+interface IconSet {
+  [key: string]: L.Icon;
+}
+
 interface MapIcons {
-  [key: string]: {
-    [key: string]: L.Icon;
+  camp?: IconSet;
+  tower?: IconSet;
+  keep?: IconSet;
+  castle?: IconSet;
+  claimed: {
+    camp?: IconSet;
+    tower?: IconSet;
+    keep?: IconSet;
+    castle?: IconSet;
   };
 }
 
@@ -55,7 +73,33 @@ export function WvWMap({ matchId, className = '' }: WvWMapProps) {
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const [objectiveInfo, setObjectiveInfo] = useState<{ [key: string]: GW2Objective }>({});
+  const [mapMetadata, setMapMetadata] = useState<{ [key: number]: MapMetadata }>({});
   const [isMapReady, setIsMapReady] = useState(false);
+
+  // Transform map coordinates to continent coordinates
+  // Based on GW2 API coordinate system: https://wiki.guildwars2.com/wiki/API:2/maps
+  const transformCoordinates = useCallback(
+    (
+      mapCoord: [number, number],
+      mapRect: [[number, number], [number, number]],
+      continentRect: [[number, number], [number, number]]
+    ): [number, number] => {
+      const [x, y] = mapCoord;
+      const [[mrX1, mrY1], [mrX2, mrY2]] = mapRect;
+      const [[crX1, crY1], [crX2, crY2]] = continentRect;
+
+      // Calculate the position as a percentage within the map
+      const xPercent = (x - mrX1) / (mrX2 - mrX1);
+      const yPercent = (y - mrY1) / (mrY2 - mrY1);
+
+      // Apply to continent coordinates (note: Y is inverted)
+      const continentX = crX1 + (crX2 - crX1) * xPercent;
+      const continentY = crY1 + (crY2 - crY1) * (1 - yPercent);
+
+      return [continentX, continentY];
+    },
+    []
+  );
 
   // Coordinate unprojection utility - converts GW2 coordinates to Leaflet coordinates
   const unproject = useCallback((coord: [number, number]): L.LatLng => {
@@ -173,11 +217,28 @@ export function WvWMap({ matchId, className = '' }: WvWMapProps) {
       const type = objective.type.toLowerCase() as ObjectiveType;
       const isClaimed = !!objective.claimed_by;
 
+      // Get the map metadata for coordinate transformation
+      const metadata = mapMetadata[objectiveDefinition.map_id];
+      if (!metadata) {
+        console.warn(`No map metadata found for map_id ${objectiveDefinition.map_id}`);
+        return;
+      }
+
+      // Transform coordinates from map space to continent space
+      const continentCoord = transformCoordinates(
+        objectiveDefinition.coord,
+        metadata.map_rect,
+        metadata.continent_rect
+      );
+
       // Create marker if it doesn't exist
       if (!markersRef.current[objId]) {
-        const marker = L.marker(unproject(objectiveDefinition.coord), {
+        const typeIcons = iconsRef.current[type];
+        if (!typeIcons) return;
+
+        const marker = L.marker(unproject(continentCoord), {
           title: objectiveDefinition.name,
-          icon: iconsRef.current[type].neutral,
+          icon: typeIcons.neutral,
         }).addTo(mapRef.current);
 
         markersRef.current[objId] = marker;
@@ -186,9 +247,14 @@ export function WvWMap({ matchId, className = '' }: WvWMapProps) {
       const marker = markersRef.current[objId];
 
       // Update icon based on ownership and claimed status
+      const typeIcons = iconsRef.current[type];
+      if (!typeIcons) return;
+
       const icon = isClaimed
-        ? iconsRef.current.claimed[type][owner]
-        : iconsRef.current[type][owner];
+        ? iconsRef.current.claimed[type]?.[owner]
+        : typeIcons[owner];
+      if (!icon) return;
+
       marker.setIcon(icon);
 
       // Build popup content
@@ -215,7 +281,7 @@ export function WvWMap({ matchId, className = '' }: WvWMapProps) {
       marker.unbindPopup();
       marker.bindPopup(popupContent);
     },
-    [unproject, formatRelativeTime]
+    [unproject, formatRelativeTime, transformCoordinates, mapMetadata]
   );
 
   // Update recapture immunity timers
@@ -264,6 +330,15 @@ export function WvWMap({ matchId, className = '' }: WvWMapProps) {
     };
   }, [updateTimers, objectiveInfo]);
 
+  // Update markers when objective info or map metadata changes
+  useEffect(() => {
+    if (!isMapReady || Object.keys(mapMetadata).length === 0) return;
+
+    Object.values(objectiveInfo).forEach((obj) => {
+      updateObjectiveMarker(obj, obj);
+    });
+  }, [objectiveInfo, mapMetadata, isMapReady, updateObjectiveMarker]);
+
   // Fetch objectives data from API
   useEffect(() => {
     if (!isMapReady || !matchId) return;
@@ -280,19 +355,18 @@ export function WvWMap({ matchId, className = '' }: WvWMapProps) {
 
         const data = await response.json();
         const allObjectives = data.objectives as GW2Objective[];
-
-        // Filter to only show Eternal Battlegrounds (Center) objectives
-        // since our tile layer only shows floor 1 (EB)
-        const objectives = allObjectives.filter(obj => obj.map_type === 'Center');
+        const fetchedMapMetadata = data.mapMetadata as { [key: number]: MapMetadata };
 
         if (!isMounted) return;
 
-        // Create objective info map and update markers
+        // Store map metadata for coordinate transformations
+        setMapMetadata(fetchedMapMetadata);
+
+        // Create objective info map - markers will be updated in separate effect
         const objInfo: { [key: string]: GW2Objective } = {};
 
-        objectives.forEach((obj) => {
+        allObjectives.forEach((obj) => {
           objInfo[obj.id] = obj;
-          updateObjectiveMarker(obj, obj);
         });
 
         setObjectiveInfo(objInfo);
@@ -311,7 +385,7 @@ export function WvWMap({ matchId, className = '' }: WvWMapProps) {
       isMounted = false;
       clearInterval(interval);
     };
-  }, [isMapReady, matchId, updateObjectiveMarker]);
+  }, [isMapReady, matchId]);
 
   return (
     <>

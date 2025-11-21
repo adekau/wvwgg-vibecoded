@@ -20,10 +20,22 @@ interface ObjectiveDefinition {
   type: string;
 }
 
+interface MapMetadata {
+  id: number;
+  name: string;
+  map_rect: [[number, number], [number, number]];
+  continent_rect: [[number, number], [number, number]];
+}
+
 // Cache for objective definitions (static data that rarely changes)
 let objectiveDefinitionsCache: ObjectiveDefinition[] | null = null;
 let objectiveDefinitionsCacheTime = 0;
 const OBJECTIVE_DEFINITIONS_CACHE_TTL = 1000 * 60 * 60; // 1 hour
+
+// Cache for map metadata (static data that rarely changes)
+let mapMetadataCache: Map<number, MapMetadata> = new Map();
+let mapMetadataCacheTime = 0;
+const MAP_METADATA_CACHE_TTL = 1000 * 60 * 60; // 1 hour
 
 async function fetchObjectiveDefinitions(): Promise<ObjectiveDefinition[]> {
   const now = Date.now();
@@ -49,6 +61,41 @@ async function fetchObjectiveDefinitions(): Promise<ObjectiveDefinition[]> {
   objectiveDefinitionsCacheTime = now;
 
   return definitions;
+}
+
+async function fetchMapMetadata(mapIds: number[]): Promise<Map<number, MapMetadata>> {
+  const now = Date.now();
+
+  // Check if we need to fetch any new map data
+  const missingMapIds = mapIds.filter(id => !mapMetadataCache.has(id));
+
+  // Return cached data if still valid and we have all the maps
+  if (missingMapIds.length === 0 && (now - mapMetadataCacheTime) < MAP_METADATA_CACHE_TTL) {
+    return mapMetadataCache;
+  }
+
+  // Fetch map metadata from GW2 API
+  if (missingMapIds.length > 0) {
+    const response = await fetch(
+      `https://api.guildwars2.com/v2/maps?ids=${missingMapIds.join(',')}`,
+      { cache: 'force-cache' }
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch map metadata');
+    }
+
+    const maps = await response.json() as MapMetadata[];
+
+    // Update cache with new maps
+    maps.forEach((map) => {
+      mapMetadataCache.set(map.id, map);
+    });
+
+    mapMetadataCacheTime = now;
+  }
+
+  return mapMetadataCache;
 }
 
 export async function GET(
@@ -82,6 +129,7 @@ export async function GET(
 
     // Extract all objectives from all maps with their definitions
     const objectives: any[] = [];
+    const uniqueMapIds = new Set<number>();
 
     if (matchData.maps && Array.isArray(matchData.maps)) {
       for (const map of matchData.maps) {
@@ -99,14 +147,25 @@ export async function GET(
                 chat_link: definition.chat_link,
                 sector_id: definition.sector_id,
               });
+              uniqueMapIds.add(definition.map_id);
             }
           }
         }
       }
     }
 
+    // Fetch map metadata for coordinate transformation
+    const mapMetadata = await fetchMapMetadata(Array.from(uniqueMapIds));
+
+    // Convert map metadata to plain object for JSON serialization
+    const mapMetadataObj: { [key: number]: MapMetadata } = {};
+    mapMetadata.forEach((metadata, mapId) => {
+      mapMetadataObj[mapId] = metadata;
+    });
+
     return NextResponse.json({
       objectives,
+      mapMetadata: mapMetadataObj,
       matchId,
       timestamp: new Date().toISOString(),
     });
