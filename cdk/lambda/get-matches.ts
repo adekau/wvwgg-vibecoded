@@ -170,64 +170,65 @@ const calculateAndSavePrimeTimeStats = async (formattedMatches: any): Promise<vo
     matchesByRegion[region].push({ matchId, startInterval });
   }
 
-  // Process each region (query snapshots once per region)
+  // Process each region - query per match using matchId-interval-index
   for (const [region, matches] of Object.entries(matchesByRegion)) {
     try {
-      // All matches in a region share the same start time, so use the first one
-      const startInterval = matches[0].startInterval;
-      console.log(`[PRIME-TIME] Querying snapshots for ${region.toUpperCase()} region (${matches.length} matches) from interval ${startInterval}`);
+      console.log(`[PRIME-TIME] Processing ${region.toUpperCase()} region (${matches.length} matches)`);
 
-      // Query all snapshots for this region ONCE
-      let allSnapshots: any[] = [];
-      let lastEvaluatedKey: Record<string, any> | undefined;
-
-      do {
-        const response = await dynamoDb.send(
-          new QueryCommand({
-            TableName: TABLE_NAME,
-            IndexName: 'type-interval-index',
-            KeyConditionExpression: '#type = :type AND #interval >= :startInterval',
-            ProjectionExpression: '#timestamp, #interval, #data, compressed, matchId',
-            ExpressionAttributeNames: {
-              '#type': 'type',
-              '#interval': 'interval',
-              '#timestamp': 'timestamp',
-              '#data': 'data',
-            },
-            ExpressionAttributeValues: {
-              ':type': 'match-history',
-              ':startInterval': startInterval,
-            },
-            ExclusiveStartKey: lastEvaluatedKey,
-          })
-        );
-
-        allSnapshots = allSnapshots.concat(response.Items || []);
-        lastEvaluatedKey = response.LastEvaluatedKey;
-      } while (lastEvaluatedKey);
-
-      // Decompress snapshots if needed
-      const decompressedSnapshots = allSnapshots.map(snapshot => {
-        if (snapshot.compressed && typeof snapshot.data === 'string') {
-          const decompressed = decompressData(snapshot.data);
-          return {
-            ...snapshot,
-            data: decompressed || snapshot.data,
-          };
-        }
-        return snapshot;
-      });
-
-      const snapshots = decompressedSnapshots.sort((a, b) => a.timestamp - b.timestamp);
-      console.log(`[PRIME-TIME] Retrieved ${snapshots.length} snapshots for ${region.toUpperCase()} region`);
-
-      // Now calculate stats for each match in this region using the SAME snapshots
-      for (const { matchId } of matches) {
+      // Query each match's snapshots individually using the matchId-interval-index GSI
+      // This is much more efficient than querying all matches and filtering
+      for (const { matchId, startInterval: matchStartInterval } of matches) {
         try {
-          if (snapshots.length === 0) {
+          console.log(`[PRIME-TIME] Querying snapshots for match ${matchId} from interval ${matchStartInterval}`);
+
+          // Query snapshots for this specific match using matchId-interval-index
+          let allSnapshots: any[] = [];
+          let lastEvaluatedKey: Record<string, any> | undefined;
+
+          do {
+            const response = await dynamoDb.send(
+              new QueryCommand({
+                TableName: TABLE_NAME,
+                IndexName: 'matchId-interval-index', // Use the new match-specific GSI
+                KeyConditionExpression: 'matchId = :matchId AND #interval >= :startInterval',
+                ProjectionExpression: '#timestamp, #interval, #data, compressed',
+                ExpressionAttributeNames: {
+                  '#interval': 'interval',
+                  '#timestamp': 'timestamp',
+                  '#data': 'data',
+                },
+                ExpressionAttributeValues: {
+                  ':matchId': matchId,
+                  ':startInterval': matchStartInterval,
+                },
+                ExclusiveStartKey: lastEvaluatedKey,
+              })
+            );
+
+            allSnapshots = allSnapshots.concat(response.Items || []);
+            lastEvaluatedKey = response.LastEvaluatedKey;
+          } while (lastEvaluatedKey);
+
+          console.log(`[PRIME-TIME] Retrieved ${allSnapshots.length} snapshots for match ${matchId}`);
+
+          if (allSnapshots.length === 0) {
             console.log(`[PRIME-TIME] No snapshots found for ${matchId}`);
             continue;
           }
+
+          // Decompress snapshots if needed
+          const decompressedSnapshots = allSnapshots.map(snapshot => {
+            if (snapshot.compressed && typeof snapshot.data === 'string') {
+              const decompressed = decompressData(snapshot.data);
+              return {
+                ...snapshot,
+                data: decompressed || snapshot.data,
+              };
+            }
+            return snapshot;
+          });
+
+          const snapshots = decompressedSnapshots.sort((a, b) => a.timestamp - b.timestamp);
 
           // Calculate prime time stats
           const primeTimeStats = calculateMatchPrimeTimeStats(matchId, snapshots);
