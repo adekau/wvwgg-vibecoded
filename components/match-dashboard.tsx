@@ -716,13 +716,7 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
                     <th className="text-right py-2 px-2 font-medium text-muted-foreground">Kills</th>
                     <th className="text-right py-2 px-2 font-medium text-muted-foreground">Deaths</th>
                     <th className="text-right py-2 px-2 font-medium text-muted-foreground">K/D</th>
-                    {selectedSkirmish === 'all' && (
-                      <>
-                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">1st</th>
-                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">2nd</th>
-                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">3rd</th>
-                      </>
-                    )}
+                    <th className="text-right py-2 px-2 font-medium text-muted-foreground">Activity</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -782,19 +776,13 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
                             </span>
                           ) : '-'}
                         </td>
-                        {selectedSkirmish === 'all' && (
-                          <>
-                            <td className="text-right py-3 px-2 font-mono text-yellow-600 dark:text-yellow-400">
-                              {world.skirmishes.first}
-                            </td>
-                            <td className="text-right py-3 px-2 font-mono text-gray-400 dark:text-gray-300">
-                              {world.skirmishes.second}
-                            </td>
-                            <td className="text-right py-3 px-2 font-mono text-orange-600 dark:text-orange-400">
-                              {world.skirmishes.third}
-                            </td>
-                          </>
-                        )}
+                        <td className="text-right py-3 px-2 font-mono">
+                          {historyLoading && (selectedSkirmish !== 'all' || selectedMap !== 'all') ? (
+                            <Loader2 className="h-4 w-4 animate-spin mx-auto text-muted-foreground" />
+                          ) : world.displayKills !== undefined && world.displayDeaths !== undefined ? (
+                            (kills + deaths).toLocaleString()
+                          ) : '-'}
+                        </td>
                       </tr>
                     )
                   })}
