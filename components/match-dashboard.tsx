@@ -11,6 +11,7 @@ import { SkirmishTimer } from '@/components/skirmish-timer'
 import { AutoRefresh } from '@/components/auto-refresh'
 import { PrimeTimePerformance } from '@/components/prime-time-performance'
 import { VPScenarioPlanner } from '@/components/vp-scenario-planner'
+import { InteractiveVPPlanner } from '@/components/interactive-vp-planner'
 import { PPTBreakdown } from '@/components/ppt-breakdown'
 import { WorldAlliances } from '@/components/world-alliances'
 import { SkirmishWinScenarioModal } from '@/components/skirmish-win-scenario-modal'
@@ -991,6 +992,9 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
 
       {/* VP Scenario Planner */}
       <VPScenarioPlanner matchId={matchId} match={match} />
+
+      {/* Interactive VP Planner */}
+      <InteractiveVPPlanner matchId={matchId} match={match} />
 
       {/* Skirmish Win Scenario Modals */}
       {(['red', 'blue', 'green'] as const).map(color => {
