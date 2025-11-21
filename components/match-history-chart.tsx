@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -36,31 +37,27 @@ const colorClasses = {
 };
 
 export function MatchHistoryChart({ matchId }: MatchHistoryChartProps) {
-  // Fetch history data client-side
-  const [history, setHistory] = useState<HistoryDataPoint[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const isPending = false; // No pending transitions in this component
   const [metric, setMetric] = useState<'score' | 'kills' | 'deaths' | 'kd' | 'victoryPoints'>('score');
   const [timeRange, setTimeRange] = useState<6 | 12 | 24 | 48>(24);
 
-  // Fetch history data when matchId or timeRange changes
-  useEffect(() => {
-    async function fetchHistory() {
-      try {
-        setIsLoading(true);
-        const response = await fetch(`/api/match-history?matchId=${matchId}&hours=${timeRange}`);
-        if (response.ok) {
-          const data = await response.json();
-          setHistory(data.history || []);
-        }
-      } catch (error) {
-        console.error('Failed to fetch match history:', error);
-      } finally {
-        setIsLoading(false);
+  // Fetch history data with React Query (automatic caching, deduplication, and refetching)
+  const { data, isLoading, isPending } = useQuery({
+    queryKey: ['match-history', matchId, timeRange],
+    queryFn: async () => {
+      const response = await fetch(`/api/match-history?matchId=${matchId}&hours=${timeRange}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch match history');
       }
-    }
-    fetchHistory();
-  }, [matchId, timeRange]);
+      const data = await response.json();
+      return data.history || [];
+    },
+    // Refetch every 2 minutes to stay in sync with server cache
+    refetchInterval: 2 * 60 * 1000,
+    // Keep data fresh for 1 minute
+    staleTime: 60 * 1000,
+  });
+
+  const history = data || [];
 
   // Transform data for chart (memoized to prevent expensive recalculations)
   // Must be called before any conditional returns (Rules of Hooks)

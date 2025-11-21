@@ -10,11 +10,15 @@ import { ObjectivesDisplay } from '@/components/objectives-display'
 import { SkirmishTimer } from '@/components/skirmish-timer'
 import { AutoRefresh } from '@/components/auto-refresh'
 import { PrimeTimePerformance } from '@/components/prime-time-performance'
-import { VPScenarioPlanner } from '@/components/vp-scenario-planner'
 import { PPTBreakdown } from '@/components/ppt-breakdown'
 import { WorldAlliances } from '@/components/world-alliances'
 import { SkirmishWinScenarioModal } from '@/components/skirmish-win-scenario-modal'
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react'
+
+// Lazy load VP Scenario Planner to reduce initial bundle size
+const VPScenarioPlanner = lazy(() =>
+  import('@/components/vp-scenario-planner').then(mod => ({ default: mod.VPScenarioPlanner }))
+)
 import { calculateMatchPPT, getPPTTrend, calculateTicksBehind, ticksToTimeString, getTeamStatus, calculateRequiredPPTToOvertake, calculateMaxAchievablePPT } from '@/lib/ppt-calculator'
 import { IGuild } from '@/server/queries'
 import { SKIRMISH_DURATION_MS, POLL_INTERVALS_MS } from '@/lib/game-constants'
@@ -989,8 +993,19 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
         primeTimeStats={primeTimeStats}
       />
 
-      {/* VP Scenario Planner */}
-      <VPScenarioPlanner matchId={matchId} match={match} />
+      {/* VP Scenario Planner (lazy loaded to reduce initial bundle size) */}
+      <Suspense
+        fallback={
+          <Card className="panel-border inset-card frosted-panel p-6" style={{ background: 'transparent' }}>
+            <div className="animate-pulse space-y-4">
+              <div className="h-6 bg-muted rounded w-1/3"></div>
+              <div className="h-48 bg-muted rounded"></div>
+            </div>
+          </Card>
+        }
+      >
+        <VPScenarioPlanner matchId={matchId} match={match} />
+      </Suspense>
 
       {/* Skirmish Win Scenario Modals */}
       {(['red', 'blue', 'green'] as const).map(color => {
