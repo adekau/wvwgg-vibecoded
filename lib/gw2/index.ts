@@ -5,3 +5,4 @@
 export * from './types'
 export * from './api'
 export * from './build-calculator'
+export * from './gear-optimizer'
