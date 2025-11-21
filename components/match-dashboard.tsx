@@ -486,11 +486,11 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
           )
           const maxAchievablePPT = maxAchievableData.maxPPT
 
-          // Calculate required PPT to win skirmish (if not catching up)
+          // Calculate required PPT to win skirmish and time remaining
           let requiredPPT: number | null = null
           let ticksRemaining = 0
           let ticksNeeded: number | null = null
-          if ((teamStatus.status === 'falling-behind' || teamStatus.status === 'maintaining-gap') && pointsBehind > 0) {
+          if (pointsBehind > 0) {
             // Calculate time remaining in current skirmish
             const matchStart = new Date(match.startDate)
             const now = new Date()
@@ -572,6 +572,39 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
                           {teamStatus.status === 'maintaining-gap' && 'Gap maintained'}
                           {teamStatus.status === 'falling-behind' && '🔻 Falling behind'}
                         </div>
+                        {/* Show required PPT info for all non-leading teams */}
+                        {teamStatus.status === 'catching-up' && ticksBehind !== null && ticksBehind > ticksRemaining && requiredPPT !== null && (
+                          <>
+                            {/* Catching up but not enough time at current PPT rate */}
+                            {requiredPPT > maxAchievablePPT ? (
+                              <div className="flex items-center gap-1.5 text-muted-foreground">
+                                <span>
+                                  Can't win skirmish (need <span className="font-mono font-semibold text-red-600 dark:text-red-400">{requiredPPT} PPT</span>, max {maxAchievablePPT})
+                                </span>
+                                <button
+                                  onClick={() => setOpenModalColor(world.color)}
+                                  className="inline-flex items-center justify-center hover:bg-accent rounded p-0.5 transition-colors"
+                                  title="View detailed breakdown"
+                                >
+                                  <Info className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 text-muted-foreground">
+                                <span>
+                                  Need <span className="font-mono font-semibold text-orange-600 dark:text-orange-400">{requiredPPT} PPT</span> to win skirmish
+                                </span>
+                                <button
+                                  onClick={() => setOpenModalColor(world.color)}
+                                  className="inline-flex items-center justify-center hover:bg-accent rounded p-0.5 transition-colors"
+                                  title="View detailed breakdown"
+                                >
+                                  <Info className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            )}
+                          </>
+                        )}
                         {(teamStatus.status === 'falling-behind' || teamStatus.status === 'maintaining-gap') && requiredPPT !== null && (
                           <>
                             {/* Check if achievable: must have enough time AND enough objectives available */}
