@@ -132,7 +132,7 @@ export async function GET(
 
     // Extract all objectives from all maps with their definitions
     const objectives: any[] = [];
-    const uniqueMapIds = new Set<number>();
+    const uniqueMapIds: number[] = [];
 
     if (matchData.maps && Array.isArray(matchData.maps)) {
       for (const map of matchData.maps) {
@@ -150,7 +150,10 @@ export async function GET(
                 chat_link: definition.chat_link,
                 sector_id: definition.sector_id,
               });
-              uniqueMapIds.add(definition.map_id);
+              // Only add unique map IDs
+              if (!uniqueMapIds.includes(definition.map_id)) {
+                uniqueMapIds.push(definition.map_id);
+              }
             }
           }
         }
@@ -158,12 +161,13 @@ export async function GET(
     }
 
     // Fetch map metadata for coordinate transformation
-    const mapMetadata = await fetchMapMetadata(Array.from(uniqueMapIds));
+    const mapMetadata = await fetchMapMetadata(uniqueMapIds);
 
     // Convert map metadata to plain object for JSON serialization
     const mapMetadataObj: { [key: number]: MapMetadata } = {};
-    if (mapMetadata && mapMetadata instanceof Map) {
-      mapMetadata.forEach((metadata, mapId) => {
+    if (mapMetadata && typeof mapMetadata === 'object' && mapMetadata instanceof Map) {
+      // Use Array.from to safely iterate the Map
+      Array.from(mapMetadata.entries()).forEach(([mapId, metadata]) => {
         mapMetadataObj[mapId] = metadata;
       });
     }
