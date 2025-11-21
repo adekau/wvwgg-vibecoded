@@ -171,8 +171,15 @@ export const getGuilds = unstable_cache(
           new QueryCommand({
             TableName: process.env.TABLE_NAME,
             KeyConditionExpression: '#type = :type',
-            ExpressionAttributeNames: { '#type': 'type' },
+            ExpressionAttributeNames: {
+              '#type': 'type',
+              '#data': 'data',
+              '#name': 'name',
+              '#tag': 'tag',
+            },
             ExpressionAttributeValues: { ':type': DB_CONSTANTS.QUERY_TYPES.GUILD },
+            // Project only the fields we need to reduce payload size
+            ProjectionExpression: 'id, #data.#name, #data.#tag, #data.worldId, #data.level, #data.favor, #data.member_count, classification, allianceGuildId, memberGuildIds, description, contact_info, recruitment_status',
             ExclusiveStartKey: lastEvaluatedKey,
           })
         );

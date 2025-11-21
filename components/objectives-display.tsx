@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, memo } from 'react';
 import { Shield, Castle as CastleIcon, Home, Flag } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -40,7 +40,8 @@ const colorClasses = {
   },
 };
 
-export function ObjectivesDisplay({ matchId, worlds }: ObjectivesDisplayProps) {
+// Memoized to prevent re-renders when parent re-renders with same props
+export const ObjectivesDisplay = memo(function ObjectivesDisplay({ matchId, worlds }: ObjectivesDisplayProps) {
   const [objectives, setObjectives] = useState<ObjectivesData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -150,4 +151,4 @@ export function ObjectivesDisplay({ matchId, worlds }: ObjectivesDisplayProps) {
       </div>
     </Card>
   );
-}
+})

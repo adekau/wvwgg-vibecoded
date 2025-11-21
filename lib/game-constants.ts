@@ -232,8 +232,8 @@ export const PRIME_TIME_WINDOWS = {
 // ============================================================================
 
 export const CACHE_DURATIONS = {
-  /** Guild data cache duration (1 hour) */
-  GUILDS: 3600,
+  /** Guild data cache duration (1 day) */
+  GUILDS: 86400,
   /** Match data cache duration (1 minute) */
   MATCHES: 60,
   /** World data cache duration (1 day) */
