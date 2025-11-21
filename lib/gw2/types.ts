@@ -392,6 +392,7 @@ export interface GearSelection {
   accessory1: GearPiece
   accessory2: GearPiece
   backItem: GearPiece
+  relic: GearPiece
   weaponSet1Main: WeaponPiece
   weaponSet1Off?: WeaponPiece
   weaponSet2Main?: WeaponPiece

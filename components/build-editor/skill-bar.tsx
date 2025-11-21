@@ -59,7 +59,7 @@ export function SkillBar({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex gap-2">
+        <div className="grid grid-cols-5 gap-2 max-w-md">
           {/* Heal Skill */}
           <SkillSlot
             skill={getSkillById(selection.heal)}
@@ -129,13 +129,13 @@ function SkillSlot({
     return (
       <button
         onClick={onClick}
-        className="flex-1 aspect-square rounded-lg border-2 border-dashed border-border hover:border-primary transition-all bg-muted/30 flex items-center justify-center group"
+        className="aspect-square rounded-lg border-2 border-dashed border-border hover:border-primary transition-all bg-muted/30 flex items-center justify-center group"
       >
         <div className="text-center">
-          <div className="text-2xl text-muted-foreground group-hover:text-primary transition-colors">
+          <div className="text-xl text-muted-foreground group-hover:text-primary transition-colors">
             +
           </div>
-          <div className="text-xs text-muted-foreground mt-1">
+          <div className="text-[10px] text-muted-foreground mt-0.5">
             {type}
             {label && ` ${label}`}
           </div>
@@ -149,7 +149,7 @@ function SkillSlot({
       <HoverCardTrigger asChild>
         <button
           onClick={onClick}
-          className="flex-1 aspect-square rounded-lg border-2 border-primary/50 hover:border-primary hover:scale-105 transition-all bg-card overflow-hidden group"
+          className="aspect-square rounded-lg border-2 border-primary/50 hover:border-primary hover:scale-105 transition-all bg-card overflow-hidden group"
         >
           <img
             src={skill.icon}

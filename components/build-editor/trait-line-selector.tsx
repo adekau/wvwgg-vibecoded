@@ -112,7 +112,7 @@ export function TraitLineSelector({
                     Cancel
                   </Button>
                 </div>
-                <div className="grid grid-cols-5 gap-2">
+                <div className="grid grid-cols-6 gap-2">
                   {availableSpecializations
                     .filter((spec) => !selectedLines.some((l) => l.id === spec.id))
                     .map((spec) => (
@@ -129,7 +129,7 @@ export function TraitLineSelector({
                             <img
                               src={spec.icon}
                               alt={spec.name}
-                              className="w-full h-full object-contain p-1.5 drop-shadow-lg"
+                              className="w-full h-full object-contain p-1 drop-shadow-lg"
                             />
                           )}
                         </div>
@@ -182,14 +182,14 @@ function TraitLineDisplay({
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
         <div
-          className="w-10 h-10 rounded-lg bg-cover bg-center flex items-center justify-center"
+          className="w-8 h-8 rounded-lg bg-cover bg-center flex items-center justify-center"
           style={{ backgroundImage: `url(${specialization.background})` }}
         >
           {specialization.icon && (
             <img
               src={specialization.icon}
               alt={specialization.name}
-              className="w-8 h-8 drop-shadow-lg"
+              className="w-6 h-6 drop-shadow-lg"
             />
           )}
         </div>
