@@ -125,12 +125,17 @@ export function WvWMap({ matchId, className = '' }: WvWMapProps) {
       maxZoom: 6,
       crs: L.CRS.Simple,
       maxBoundsViscosity: 1.0,
-    }).setView([0, 165], 3);
+    });
 
     // Set map bounds to GW2's map coordinate space
     const southWest = map.unproject([0, 16384], map.getMaxZoom());
     const northEast = map.unproject([16384, 8192], map.getMaxZoom());
-    map.setMaxBounds(L.latLngBounds(southWest, northEast));
+    const bounds = L.latLngBounds(southWest, northEast);
+    map.setMaxBounds(bounds);
+
+    // Center the map on the bounds with appropriate zoom level for overview
+    map.fitBounds(bounds);
+    map.setZoom(1); // Lower zoom level to see more of the map
 
     // Add GW2 tile layer
     L.tileLayer('https://{s}.guildwars2.com/2/1/{z}/{x}/{y}.jpg', {
@@ -266,12 +271,16 @@ export function WvWMap({ matchId, className = '' }: WvWMapProps) {
       try {
         const response = await fetch(`/api/map-objectives/${matchId}`);
         if (!response.ok) {
-          console.error('Failed to fetch objectives');
+          console.error('Failed to fetch objectives, status:', response.status);
           return;
         }
 
         const data = await response.json();
-        const objectives = data.objectives as GW2Objective[];
+        const allObjectives = data.objectives as GW2Objective[];
+
+        // Filter to only show Eternal Battlegrounds (Center) objectives
+        // since our tile layer only shows floor 1 (EB)
+        const objectives = allObjectives.filter(obj => obj.map_type === 'Center');
 
         if (!isMounted) return;
 
