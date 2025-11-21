@@ -21,11 +21,15 @@ interface WorldData {
 
 interface EnhancedMatchCardProps {
   tier: string;
+  region: string;
   worlds: WorldData[];
 }
 
-export function EnhancedMatchCard({ tier, worlds }: EnhancedMatchCardProps) {
+export function EnhancedMatchCard({ tier, region, worlds }: EnhancedMatchCardProps) {
   const router = useRouter();
+  // Extract tier number from tier string (e.g., "1-2" -> "2")
+  const tierNumber = tier.split('-')[1];
+
   // Sort worlds by score to determine rankings (for vertical order)
   const rankedWorlds = [...worlds].sort((a, b) => (b.score || 0) - (a.score || 0));
 
@@ -98,19 +102,14 @@ export function EnhancedMatchCard({ tier, worlds }: EnhancedMatchCardProps) {
             return (
               <div
                 key={world.color}
-                className={`p-2.5 sm:p-3 rounded-lg border-2 ${
-                  world.color === 'red'
-                    ? 'border-red-500/30 bg-red-500/5'
-                    : world.color === 'blue'
-                    ? 'border-blue-500/30 bg-blue-500/5'
-                    : 'border-green-500/30 bg-green-500/5'
-                }`}
+                className={`p-2.5 sm:p-3 rounded-lg frosted-card-${world.color}`}
+                style={{ background: 'transparent' }}
               >
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-lg">{getRankIcon(vpRank)}</span>
-                      <h4 className="font-semibold">{world.name}</h4>
+                      <h4 className="font-semibold">{region} - Tier {tierNumber}</h4>
                     </div>
 
                     {/* Stats Row */}
