@@ -170,35 +170,37 @@ const calculateAndSavePrimeTimeStats = async (formattedMatches: any): Promise<vo
       const snapshots = allSnapshots.sort((a, b) => a.timestamp - b.timestamp);
       console.log(`[PRIME-TIME] Retrieved ${snapshots.length} snapshots for ${region.toUpperCase()} region`);
 
-      // Now calculate stats for each match in this region using the SAME snapshots
-      for (const { matchId } of matches) {
-        try {
-          if (snapshots.length === 0) {
-            console.log(`[PRIME-TIME] No snapshots found for ${matchId}`);
-            continue;
-          }
-
-          // Calculate prime time stats
-          const primeTimeStats = calculateMatchPrimeTimeStats(matchId, snapshots);
-
-          // Save to DynamoDB
-          await dynamoDb.put({
-            TableName: TABLE_NAME,
-            Item: {
-              type: 'prime-time-stats',
-              id: matchId,
-              stats: primeTimeStats,
-              updatedAt: Date.now(),
-              ttl: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7 days TTL
-            }
-          });
-
-          console.log(`[PRIME-TIME] Saved stats for ${matchId} (${primeTimeStats.length} windows, ${snapshots.length} snapshots)`);
-        } catch (err) {
-          console.error(`[PRIME-TIME] Failed to calculate stats for ${matchId}:`, err);
-          // Continue with other matches even if one fails
-        }
+      if (snapshots.length === 0) {
+        console.log(`[PRIME-TIME] No snapshots found for ${region.toUpperCase()} region, skipping all matches`);
+        continue;
       }
+
+      // Process all matches in this region in parallel for better performance
+      await Promise.all(
+        matches.map(async ({ matchId }) => {
+          try {
+            // Calculate prime time stats
+            const primeTimeStats = calculateMatchPrimeTimeStats(matchId, snapshots);
+
+            // Save to DynamoDB
+            await dynamoDb.put({
+              TableName: TABLE_NAME,
+              Item: {
+                type: 'prime-time-stats',
+                id: matchId,
+                stats: primeTimeStats,
+                updatedAt: Date.now(),
+                ttl: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7 days TTL
+              }
+            });
+
+            console.log(`[PRIME-TIME] Saved stats for ${matchId} (${primeTimeStats.length} windows, ${snapshots.length} snapshots)`);
+          } catch (err) {
+            console.error(`[PRIME-TIME] Failed to calculate stats for ${matchId}:`, err);
+            // Continue with other matches even if one fails
+          }
+        })
+      );
     } catch (err) {
       console.error(`[PRIME-TIME] Failed to process ${region.toUpperCase()} region:`, err);
     }

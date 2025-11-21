@@ -3,7 +3,7 @@
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Clock } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo, memo } from 'react'
 import {
   getDominantTeam,
   calculateScoreDistribution,
@@ -46,7 +46,8 @@ const colorClasses = {
   },
 }
 
-export function PrimeTimePerformance({ matchId, worlds, primeTimeStats }: PrimeTimePerformanceProps) {
+// Memoized to prevent re-renders when parent re-renders with same props
+export const PrimeTimePerformance = memo(function PrimeTimePerformance({ matchId, worlds, primeTimeStats }: PrimeTimePerformanceProps) {
   // Use pre-computed stats from SSR (no client-side fetching needed!)
   const [activeWindows, setActiveWindows] = useState<PrimeTimeWindow[]>(getActiveWindows())
 
@@ -79,19 +80,19 @@ export function PrimeTimePerformance({ matchId, worlds, primeTimeStats }: PrimeT
     )
   }
 
-  // Calculate score distribution for each team
-  const scoreDistributions = {
+  // Calculate score distribution for each team (memoized to prevent recalculation on every render)
+  const scoreDistributions = useMemo(() => ({
     red: calculateScoreDistribution(windowStats, 'red'),
     blue: calculateScoreDistribution(windowStats, 'blue'),
     green: calculateScoreDistribution(windowStats, 'green'),
-  }
+  }), [windowStats])
 
-  // Calculate activity distribution for each team
-  const activityDistributions = {
+  // Calculate activity distribution for each team (memoized to prevent recalculation on every render)
+  const activityDistributions = useMemo(() => ({
     red: calculateActivityDistribution(windowStats, 'red'),
     blue: calculateActivityDistribution(windowStats, 'blue'),
     green: calculateActivityDistribution(windowStats, 'green'),
-  }
+  }), [windowStats])
 
   return (
     <Card className="panel-border inset-card frosted-panel" style={{ background: 'transparent' }}>
@@ -322,4 +323,4 @@ export function PrimeTimePerformance({ matchId, worlds, primeTimeStats }: PrimeT
       </div>
     </Card>
   )
-}
+})

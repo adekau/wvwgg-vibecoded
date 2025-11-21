@@ -1,5 +1,6 @@
 "use client"
 
+import { memo } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ArrowUpRight, Swords, Skull } from 'lucide-react'
@@ -29,9 +30,10 @@ const colorClasses = {
   green: 'bg-chart-3/10 text-chart-3 border-chart-3/20',
 }
 
-export function MatchCard({ match, index }: MatchCardProps) {
+// Memoized to prevent re-renders when parent re-renders
+export const MatchCard = memo(function MatchCard({ match, index }: MatchCardProps) {
   const totalActivity = match.worlds.reduce((sum, world) => sum + world.kills + world.deaths, 0)
-  
+
   return (
     <Link
       href={`/matches/${match.tier.toLowerCase()}`}
@@ -59,13 +61,13 @@ export function MatchCard({ match, index }: MatchCardProps) {
               <ArrowUpRight className="h-4 w-4" />
             </Button>
           </div>
-          
+
           {/* Worlds */}
           <div className="space-y-3">
             {match.worlds.map((world) => {
               const kdRatio = (world.kills / world.deaths).toFixed(2)
               const activity = world.kills + world.deaths
-              
+
               return (
                 <div
                   key={world.name}
@@ -79,7 +81,7 @@ export function MatchCard({ match, index }: MatchCardProps) {
                       {kdRatio}
                     </Badge>
                   </div>
-                  
+
                   <div className="grid grid-cols-3 gap-2 text-xs tabular-nums">
                     <div className="flex items-center gap-1">
                       <Swords className="h-3 w-3 opacity-60" />
@@ -102,4 +104,4 @@ export function MatchCard({ match, index }: MatchCardProps) {
       </Card>
     </Link>
   )
-}
+})
