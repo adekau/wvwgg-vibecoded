@@ -30,6 +30,23 @@ interface MapsPageClientProps {
 export function MapsPageClient({ matches, defaultMatchId }: MapsPageClientProps) {
   const [selectedMatchId, setSelectedMatchId] = useState(defaultMatchId);
 
+  // Ensure matches is always an array (defensive check)
+  const safeMatches = Array.isArray(matches) ? matches : [];
+
+  // If no matches available, show a message
+  if (safeMatches.length === 0) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center">
+        <div className="container mx-auto px-4 py-6 text-center">
+          <h1 className="text-3xl font-bold mb-4">Live WvW Map</h1>
+          <p className="text-muted-foreground">
+            No matches available at the moment. Please try again later.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 flex flex-col">
       <div className="container mx-auto px-4 py-6">
@@ -45,7 +62,7 @@ export function MapsPageClient({ matches, defaultMatchId }: MapsPageClientProps)
               <SelectValue placeholder="Select a match" />
             </SelectTrigger>
             <SelectContent>
-              {matches.map((match) => (
+              {safeMatches.map((match) => (
                 <SelectItem key={match.id} value={match.id}>
                   {match.label}
                 </SelectItem>
