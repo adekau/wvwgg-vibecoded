@@ -54,10 +54,9 @@ export const ObjectivesDisplay = memo(function ObjectivesDisplay({ matchId, worl
       const data = await response.json();
       return data.objectives as ObjectivesData;
     },
-    // Poll every 30 seconds for real-time updates
-    refetchInterval: POLL_INTERVALS_MS.OBJECTIVES,
-    // Keep data fresh for 20 seconds
-    staleTime: 20 * 1000,
+    // Data updates with match data every 60 seconds from DynamoDB
+    // No need for aggressive polling - rely on manual refresh or page navigation
+    staleTime: 60 * 1000, // Keep data fresh for 1 minute
   });
 
   const objectives = data || null;

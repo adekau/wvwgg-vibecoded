@@ -54,11 +54,12 @@ export const PrimeTimePerformance = memo(function PrimeTimePerformance({ matchId
   // Window stats are either from SSR or empty array
   const windowStats = primeTimeStats || []
 
-  // Update active windows every minute
+  // Update active windows every 15 minutes (aligns with snapshot frequency)
+  // This just highlights which time windows are currently active, doesn't fetch data
   useEffect(() => {
     const interval = setInterval(() => {
       setActiveWindows(getActiveWindows())
-    }, POLL_INTERVALS_MS.CHART_UPDATE)
+    }, 15 * 60 * 1000) // 15 minutes
 
     return () => clearInterval(interval)
   }, [])

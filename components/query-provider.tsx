@@ -17,8 +17,9 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
             gcTime: 10 * 60 * 1000,
             // Retry failed requests 1 time
             retry: 1,
-            // Refetch on window focus for real-time data
-            refetchOnWindowFocus: true,
+            // Disable refetch on window focus to reduce CPU usage
+            // Specific queries can override this if needed
+            refetchOnWindowFocus: false,
             // Don't refetch on mount if data is fresh
             refetchOnMount: false,
           },

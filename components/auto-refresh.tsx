@@ -17,15 +17,9 @@ export function AutoRefresh({ interval = 60000, matchStart, matchEnd }: AutoRefr
   const [timeAgo, setTimeAgo] = useState<string>('just now');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Auto-refresh on interval
-  useEffect(() => {
-    const timer = setInterval(() => {
-      router.refresh();
-      setLastUpdate(new Date());
-    }, interval);
-
-    return () => clearInterval(timer);
-  }, [interval, router]);
+  // Note: Auto-refresh removed for performance
+  // React Query handles data updates via refetchInterval on individual queries
+  // Manual refresh still available via button below
 
   // Update "time ago" display every second
   useEffect(() => {

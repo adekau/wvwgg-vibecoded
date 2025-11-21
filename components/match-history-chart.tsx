@@ -65,10 +65,11 @@ export function MatchHistoryChart({ matchId }: MatchHistoryChartProps) {
       const responseData = await response.json();
       return responseData;
     },
-    // Refetch every 2 minutes to stay in sync with server cache
-    refetchInterval: 2 * 60 * 1000,
-    // Keep data fresh for 1 minute
-    staleTime: 60 * 1000,
+    // Refetch every 15 minutes to match DynamoDB snapshot frequency
+    // (Lambda creates snapshots every 15 minutes)
+    refetchInterval: 15 * 60 * 1000,
+    // Keep data fresh for 10 minutes
+    staleTime: 10 * 60 * 1000,
   });
 
   const history = data?.history || [];
