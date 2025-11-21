@@ -230,14 +230,19 @@ function InGameGearEditor({
   const isWeapon = slot.includes('weapon')
   const weaponPiece = isWeapon ? (piece as WeaponPiece) : null
   const isOffHand = slot.includes('Off')
+  const isArmorPiece = ['helm', 'shoulders', 'coat', 'gloves', 'leggings', 'boots'].includes(slot)
 
   const [selectedStat, setSelectedStat] = useState(piece.statId)
   const [selectedRarity, setSelectedRarity] = useState<ItemRarity>(piece.rarity)
   const [selectedUpgrade, setSelectedUpgrade] = useState<number | undefined>(piece.upgradeId)
+  const [selectedUpgrade2, setSelectedUpgrade2] = useState<number | undefined>(
+    weaponPiece?.upgrade2Id
+  )
   const [selectedWeaponType, setSelectedWeaponType] = useState<WeaponType | undefined>(
     weaponPiece?.weaponType
   )
   const [searchTerm, setSearchTerm] = useState('')
+  const [upgradeSearchTerm, setUpgradeSearchTerm] = useState('')
 
   const currentStats = itemStats.find(s => s.id === piece.statId)
   const newStats = itemStats.find(s => s.id === selectedStat)
@@ -281,13 +286,15 @@ function InGameGearEditor({
 
   const handleSave = () => {
     if (isWeapon && selectedWeaponType) {
-      onSave({
+      const weaponUpdate: WeaponPiece = {
         ...piece,
         statId: selectedStat,
         rarity: selectedRarity,
         upgradeId: selectedUpgrade,
+        upgrade2Id: selectedUpgrade2,
         weaponType: selectedWeaponType,
-      } as WeaponPiece)
+      } as WeaponPiece
+      onSave(weaponUpdate)
     } else {
       onSave({
         ...piece,
@@ -302,6 +309,13 @@ function InGameGearEditor({
     stat.name.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
+  const filteredUpgrades = upgrades.filter(upgrade =>
+    upgrade.name.toLowerCase().includes(upgradeSearchTerm.toLowerCase())
+  )
+
+  // Check if weapon is two-handed
+  const isTwoHanded = selectedWeaponType && isTwoHandedWeapon(selectedWeaponType)
+
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-5xl bg-slate-900 border-white/20 max-h-[90vh] overflow-hidden flex flex-col">
@@ -311,7 +325,7 @@ function InGameGearEditor({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto space-y-6">
           {/* Weapon Type Selection (for weapons only) */}
           {isWeapon && (
             <div className="mb-6">
@@ -398,6 +412,105 @@ function InGameGearEditor({
                 ))}
               </div>
             </div>
+          </div>
+
+          {/* Rune/Sigil Selection */}
+          <div>
+            <div className="text-sm text-white/70 mb-3">
+              {isWeapon ? 'Sigils' : isArmorPiece ? 'Rune' : 'Upgrade'}
+            </div>
+
+            {/* Search bar */}
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+              <Input
+                placeholder={`Search ${isWeapon ? 'sigils' : 'runes'}...`}
+                value={upgradeSearchTerm}
+                onChange={(e) => setUpgradeSearchTerm(e.target.value)}
+                className="pl-9 bg-black/40 border-white/20 text-white"
+              />
+            </div>
+
+            {/* Sigil slots for weapons */}
+            {isWeapon && (
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <div className="text-xs text-white/50 mb-2">Sigil 1</div>
+                  <Select
+                    value={selectedUpgrade?.toString() || 'none'}
+                    onValueChange={(value) => setSelectedUpgrade(value === 'none' ? undefined : parseInt(value))}
+                  >
+                    <SelectTrigger className="bg-black/40 border-white/20 text-white">
+                      <SelectValue placeholder="Select sigil..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-900 border-white/20 max-h-[300px]">
+                      <SelectItem value="none" className="text-white">None</SelectItem>
+                      {filteredUpgrades.map((upgrade) => (
+                        <SelectItem key={upgrade.id} value={upgrade.id.toString()} className="text-white">
+                          {upgrade.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {isTwoHanded && (
+                  <div>
+                    <div className="text-xs text-white/50 mb-2">Sigil 2 (Two-Handed)</div>
+                    <Select
+                      value={selectedUpgrade2?.toString() || 'none'}
+                      onValueChange={(value) => setSelectedUpgrade2(value === 'none' ? undefined : parseInt(value))}
+                    >
+                      <SelectTrigger className="bg-black/40 border-white/20 text-white">
+                        <SelectValue placeholder="Select sigil..." />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-900 border-white/20 max-h-[300px]">
+                        <SelectItem value="none" className="text-white">None</SelectItem>
+                        {filteredUpgrades.map((upgrade) => (
+                          <SelectItem key={upgrade.id} value={upgrade.id.toString()} className="text-white">
+                            {upgrade.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Rune selection for armor */}
+            {!isWeapon && isArmorPiece && (
+              <Select
+                value={selectedUpgrade?.toString() || 'none'}
+                onValueChange={(value) => setSelectedUpgrade(value === 'none' ? undefined : parseInt(value))}
+              >
+                <SelectTrigger className="bg-black/40 border-white/20 text-white">
+                  <SelectValue placeholder="Select rune..." />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-white/20 max-h-[300px]">
+                  <SelectItem value="none" className="text-white">None</SelectItem>
+                  {filteredUpgrades.map((upgrade) => (
+                    <SelectItem key={upgrade.id} value={upgrade.id.toString()} className="text-white">
+                      {upgrade.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            {/* Show selected upgrade details */}
+            {selectedUpgrade && (
+              <div className="mt-3 bg-black/40 backdrop-blur-sm border border-white/10 rounded-lg p-3">
+                <div className="text-white font-medium mb-2">
+                  {upgrades.find(u => u.id === selectedUpgrade)?.name}
+                </div>
+                <div className="text-xs text-white/70 space-y-1">
+                  {upgrades.find(u => u.id === selectedUpgrade)?.details?.bonuses?.map((bonus, idx) => (
+                    <div key={idx}>• {bonus}</div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
