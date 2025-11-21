@@ -1,6 +1,7 @@
 import { DynamoDB } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocument, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { gzipSync, gunzipSync } from 'zlib';
 import { IMatchResponse } from '../shared/interfaces/match-response.interface';
 import { IWorld } from '../shared/interfaces/world.interface';
 import { formatMatches } from '../shared/util/format-matches';
@@ -12,6 +13,29 @@ const ANET_MATCHES_ENDPOINT = process.env.ANET_MATCHES_ENDPOINT;
 const ANET_WORLDS_ENDPOINT = process.env.ANET_WORLDS_ENDPOINT;
 const REGION = process.env.REGION;
 const dynamoDb = DynamoDBDocument.from(new DynamoDB({ region: REGION }));
+
+/**
+ * Compress data using gzip and return base64 encoded string
+ */
+const compressData = (data: any): string => {
+  const jsonString = JSON.stringify(data);
+  const compressed = gzipSync(jsonString);
+  return compressed.toString('base64');
+};
+
+/**
+ * Decompress data that was compressed with gzip
+ */
+const decompressData = (compressedData: string): any => {
+  try {
+    const buffer = Buffer.from(compressedData, 'base64');
+    const decompressed = gunzipSync(buffer);
+    return JSON.parse(decompressed.toString());
+  } catch (error) {
+    console.error('Error decompressing data:', error);
+    return null;
+  }
+};
 
 export const handler = async (_event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   if (!ANET_MATCHES_ENDPOINT || !ANET_WORLDS_ENDPOINT) {
@@ -60,44 +84,56 @@ const saveMatchesToDynamo = async (matchesResponse: IMatchResponse[], worlds: IW
     }
   });
 
-  // Save historical snapshot (every 15 minutes)
+  // Save historical snapshots (every 15 minutes)
   const current15Min = Math.floor(now / (1000 * 60 * 15)); // 15-minute timestamp
-  const snapshotId = `snapshot-${current15Min}`;
 
-  console.log(`[SNAPSHOT] Current interval: ${current15Min}, ID: ${snapshotId}`);
+  console.log(`[SNAPSHOT] Current interval: ${current15Min}`);
 
-  // Only save snapshot once per 15 minutes
-  const existingSnapshot = await dynamoDb.get({
-    TableName: TABLE_NAME,
-    Key: { type: "match-history", id: snapshotId }
-  });
+  // Save individual snapshots per match for efficient matchId-based queries
+  const matchIds = Object.keys(formattedMatches);
+  let snapshotsCreated = 0;
 
-  console.log(`[SNAPSHOT] Existing snapshot check:`, existingSnapshot.Item ? 'FOUND' : 'NOT FOUND');
+  for (const matchId of matchIds) {
+    const snapshotId = `snapshot-${matchId}-${current15Min}`;
 
-  if (!existingSnapshot.Item) {
-    console.log(`[SNAPSHOT] Creating new snapshot ${snapshotId}...`);
-    try {
-      await dynamoDb.put({
-        TableName: TABLE_NAME,
-        Item: {
-          type: "match-history",
-          id: snapshotId,
-          timestamp: now,
-          interval: current15Min,
-          data: formattedMatches,
-          ttl: Math.floor(now / 1000) + (7 * 24 * 60 * 60) // 7 days TTL
-        }
-      });
-      console.log(`[SNAPSHOT] Successfully created snapshot ${snapshotId}`);
+    // Check if snapshot already exists
+    const existingSnapshot = await dynamoDb.get({
+      TableName: TABLE_NAME,
+      Key: { type: "match-history", id: snapshotId }
+    });
 
-      // After creating snapshot, calculate and save prime time stats for each match
-      await calculateAndSavePrimeTimeStats(formattedMatches);
-    } catch (err) {
-      console.error(`[SNAPSHOT] Failed to create snapshot ${snapshotId}:`, err);
-      throw err;
+    if (!existingSnapshot.Item) {
+      try {
+        // Compress the match data before storing
+        const matchData = { [matchId]: formattedMatches[matchId] };
+        const compressedData = compressData(matchData);
+
+        await dynamoDb.put({
+          TableName: TABLE_NAME,
+          Item: {
+            type: "match-history",
+            id: snapshotId,
+            matchId: matchId, // Added for GSI
+            timestamp: now,
+            interval: current15Min,
+            data: compressedData, // Store compressed data
+            compressed: true, // Flag to indicate compression
+            ttl: Math.floor(now / 1000) + (7 * 24 * 60 * 60) // 7 days TTL
+          }
+        });
+        snapshotsCreated++;
+      } catch (err) {
+        console.error(`[SNAPSHOT] Failed to create snapshot ${snapshotId}:`, err);
+        // Continue with other matches even if one fails
+      }
     }
-  } else {
-    console.log(`[SNAPSHOT] Skipping - snapshot ${snapshotId} already exists`);
+  }
+
+  console.log(`[SNAPSHOT] Created ${snapshotsCreated}/${matchIds.length} new snapshots for interval ${current15Min}`);
+
+  // After creating snapshots, calculate and save prime time stats for each match
+  if (snapshotsCreated > 0) {
+    await calculateAndSavePrimeTimeStats(formattedMatches);
   }
 }
 
@@ -151,9 +187,12 @@ const calculateAndSavePrimeTimeStats = async (formattedMatches: any): Promise<vo
             TableName: TABLE_NAME,
             IndexName: 'type-interval-index',
             KeyConditionExpression: '#type = :type AND #interval >= :startInterval',
+            ProjectionExpression: '#timestamp, #interval, #data, compressed, matchId',
             ExpressionAttributeNames: {
               '#type': 'type',
               '#interval': 'interval',
+              '#timestamp': 'timestamp',
+              '#data': 'data',
             },
             ExpressionAttributeValues: {
               ':type': 'match-history',
@@ -167,7 +206,19 @@ const calculateAndSavePrimeTimeStats = async (formattedMatches: any): Promise<vo
         lastEvaluatedKey = response.LastEvaluatedKey;
       } while (lastEvaluatedKey);
 
-      const snapshots = allSnapshots.sort((a, b) => a.timestamp - b.timestamp);
+      // Decompress snapshots if needed
+      const decompressedSnapshots = allSnapshots.map(snapshot => {
+        if (snapshot.compressed && typeof snapshot.data === 'string') {
+          const decompressed = decompressData(snapshot.data);
+          return {
+            ...snapshot,
+            data: decompressed || snapshot.data,
+          };
+        }
+        return snapshot;
+      });
+
+      const snapshots = decompressedSnapshots.sort((a, b) => a.timestamp - b.timestamp);
       console.log(`[PRIME-TIME] Retrieved ${snapshots.length} snapshots for ${region.toUpperCase()} region`);
 
       // Now calculate stats for each match in this region using the SAME snapshots

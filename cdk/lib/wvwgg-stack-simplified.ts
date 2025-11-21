@@ -40,6 +40,11 @@ export class WvWGGStack extends cdk.Stack {
           indexName: 'type-interval-index',
           partitionKey: { name: 'type', type: cdk.aws_dynamodb.AttributeType.STRING },
           sortKey: { name: 'interval', type: cdk.aws_dynamodb.AttributeType.NUMBER },
+        },
+        {
+          indexName: 'matchId-interval-index',
+          partitionKey: { name: 'matchId', type: cdk.aws_dynamodb.AttributeType.STRING },
+          sortKey: { name: 'interval', type: cdk.aws_dynamodb.AttributeType.NUMBER },
         }
       ]
     });
