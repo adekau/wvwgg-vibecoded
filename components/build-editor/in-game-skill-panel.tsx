@@ -185,7 +185,7 @@ export function InGameSkillPanel({
                   </div>
                   <div className="grid grid-cols-5 gap-2">
                     {specializations
-                      .filter((spec) => !selectedLines.some((l) => l.id === spec.id))
+                      .filter((spec) => !spec.elite && !selectedLines.some((l) => l.id === spec.id))
                       .map((spec) => (
                         <button
                           key={spec.id}
