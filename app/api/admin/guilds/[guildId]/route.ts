@@ -21,8 +21,11 @@ interface UpdateGuildRequest {
   classification?: 'alliance' | 'member' | 'independent'
   allianceGuildId?: string | null
   memberGuildIds?: string[]
+  description?: string
+  contact_info?: string
+  recruitment_status?: 'open' | 'closed' | 'by_application'
   notes?: string
-  reviewedBy?: string
+  updatedBy?: string
 }
 
 export async function PATCH(
@@ -60,6 +63,15 @@ export async function PATCH(
     if (body.memberGuildIds !== undefined && JSON.stringify(body.memberGuildIds) !== JSON.stringify(currentGuild.Item.memberGuildIds)) {
       changes.memberGuildIds = { from: currentGuild.Item.memberGuildIds, to: body.memberGuildIds }
     }
+    if (body.description !== undefined && body.description !== currentGuild.Item.description) {
+      changes.description = { from: currentGuild.Item.description, to: body.description }
+    }
+    if (body.contact_info !== undefined && body.contact_info !== currentGuild.Item.contact_info) {
+      changes.contact_info = { from: currentGuild.Item.contact_info, to: body.contact_info }
+    }
+    if (body.recruitment_status !== undefined && body.recruitment_status !== currentGuild.Item.recruitment_status) {
+      changes.recruitment_status = { from: currentGuild.Item.recruitment_status, to: body.recruitment_status }
+    }
     if (body.notes !== undefined && body.notes !== currentGuild.Item.notes) {
       changes.notes = { from: currentGuild.Item.notes, to: body.notes }
     }
@@ -87,6 +99,24 @@ export async function PATCH(
       expressionAttributeValues[':memberGuildIds'] = body.memberGuildIds
     }
 
+    if (body.description !== undefined) {
+      updateExpressions.push('#description = :description')
+      expressionAttributeNames['#description'] = 'description'
+      expressionAttributeValues[':description'] = body.description
+    }
+
+    if (body.contact_info !== undefined) {
+      updateExpressions.push('#contactInfo = :contactInfo')
+      expressionAttributeNames['#contactInfo'] = 'contact_info'
+      expressionAttributeValues[':contactInfo'] = body.contact_info
+    }
+
+    if (body.recruitment_status !== undefined) {
+      updateExpressions.push('#recruitmentStatus = :recruitmentStatus')
+      expressionAttributeNames['#recruitmentStatus'] = 'recruitment_status'
+      expressionAttributeValues[':recruitmentStatus'] = body.recruitment_status
+    }
+
     if (body.notes !== undefined) {
       updateExpressions.push('#notes = :notes')
       expressionAttributeNames['#notes'] = 'notes'
@@ -96,32 +126,21 @@ export async function PATCH(
     // Create audit log entry
     const auditEntry = {
       timestamp: Date.now(),
-      actor: body.reviewedBy || 'unknown',
-      action: 'update',
+      actor: body.updatedBy || 'admin',
+      action: 'admin-update',
       changes,
     }
 
     // Append to audit log (create if doesn't exist)
-    const existingAuditLog = currentGuild.Item.auditLog || []
     updateExpressions.push('#auditLog = list_append(if_not_exists(#auditLog, :emptyList), :auditEntry)')
     expressionAttributeNames['#auditLog'] = 'auditLog'
     expressionAttributeValues[':auditEntry'] = [auditEntry]
     expressionAttributeValues[':emptyList'] = []
 
-    // Always mark as reviewed when updating
-    updateExpressions.push('#isReviewed = :isReviewed')
-    expressionAttributeNames['#isReviewed'] = 'isReviewed'
-    expressionAttributeValues[':isReviewed'] = true
-
-    updateExpressions.push('#reviewedAt = :reviewedAt')
-    expressionAttributeNames['#reviewedAt'] = 'reviewedAt'
-    expressionAttributeValues[':reviewedAt'] = Date.now()
-
-    if (body.reviewedBy) {
-      updateExpressions.push('#reviewedBy = :reviewedBy')
-      expressionAttributeNames['#reviewedBy'] = 'reviewedBy'
-      expressionAttributeValues[':reviewedBy'] = body.reviewedBy
-    }
+    // Update timestamp
+    updateExpressions.push('#updatedAt = :updatedAt')
+    expressionAttributeNames['#updatedAt'] = 'updatedAt'
+    expressionAttributeValues[':updatedAt'] = Date.now()
 
     const response = await docClient.send(
       new UpdateCommand({

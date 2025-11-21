@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Dialog,
   DialogContent,
@@ -19,7 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, Shield, AlertTriangle, Eye, EyeOff, ExternalLink } from 'lucide-react'
 import { IGuild } from '@/server/queries'
@@ -36,22 +36,12 @@ interface GuildUpdateModalProps {
 export function GuildUpdateModal({ guild, allGuilds, open, onClose, onSuccess, addNew = false }: GuildUpdateModalProps) {
   const [apiKey, setApiKey] = useState('')
   const [showApiKey, setShowApiKey] = useState(false)
-  const [allianceGuildId, setAllianceGuildId] = useState('')
-  const [allianceSearch, setAllianceSearch] = useState('')
+  const [description, setDescription] = useState('')
+  const [contactInfo, setContactInfo] = useState('')
+  const [recruitmentStatus, setRecruitmentStatus] = useState<'open' | 'closed' | 'by_application'>('closed')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [accepted, setAccepted] = useState(false)
-
-  const allianceGuilds = useMemo(() => {
-    return allGuilds.filter(g =>
-      ((g as any).classification === 'alliance' || !g.id.includes(guild?.id || '')) &&
-      g.id !== guild?.id &&
-      (g.name.toLowerCase().includes(allianceSearch.toLowerCase()) ||
-       g.tag.toLowerCase().includes(allianceSearch.toLowerCase()))
-    ).slice(0, 10)
-  }, [allGuilds, guild?.id, allianceSearch])
-
-  const selectedAlliance = allGuilds.find(g => g.id === allianceGuildId)
 
   const handleSubmit = async () => {
     setError('')
@@ -75,7 +65,9 @@ export function GuildUpdateModal({ guild, allGuilds, open, onClose, onSuccess, a
         body: JSON.stringify({
           guildId: guild?.id,
           apiKey,
-          allianceGuildId: allianceGuildId || undefined,
+          description: description || undefined,
+          contact_info: contactInfo || undefined,
+          recruitment_status: recruitmentStatus,
           addNew,
         }),
       })
@@ -103,8 +95,9 @@ export function GuildUpdateModal({ guild, allGuilds, open, onClose, onSuccess, a
   const handleClose = () => {
     setApiKey('')
     setShowApiKey(false)
-    setAllianceGuildId('')
-    setAllianceSearch('')
+    setDescription('')
+    setContactInfo('')
+    setRecruitmentStatus('closed')
     setError('')
     setAccepted(false)
     onClose()
@@ -188,58 +181,53 @@ export function GuildUpdateModal({ guild, allGuilds, open, onClose, onSuccess, a
             </p>
           </div>
 
-          {/* Alliance Selection */}
+          {/* Guild Description */}
           <div className="space-y-2">
-            <Label>Alliance (Optional)</Label>
-            <p className="text-xs text-muted-foreground mb-2">
-              Select which alliance your guild belongs to, or leave blank if independent
+            <Label htmlFor="description">Guild Description (Optional)</Label>
+            <Textarea
+              id="description"
+              placeholder="Enter a description for your guild..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              disabled={submitting}
+              rows={4}
+              maxLength={500}
+            />
+            <p className="text-xs text-muted-foreground">
+              {description.length}/500 characters
             </p>
-            {selectedAlliance ? (
-              <div className="flex items-center gap-2 p-3 border rounded-md">
-                <div className="flex-1">
-                  <div className="font-medium">{selectedAlliance.name}</div>
-                  <div className="text-sm text-muted-foreground">[{selectedAlliance.tag}]</div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setAllianceGuildId('')}
-                  disabled={submitting}
-                >
-                  Clear
-                </Button>
-              </div>
-            ) : (
-              <Select value={allianceSearch} onValueChange={(value) => {
-                const guild = allGuilds.find(g => g.id === value)
-                if (guild) {
-                  setAllianceGuildId(guild.id)
-                  setAllianceSearch('')
-                }
-              }}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Search for alliance guild..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <Input
-                    placeholder="Type to search..."
-                    value={allianceSearch}
-                    onChange={(e) => setAllianceSearch(e.target.value)}
-                    className="mb-2"
-                  />
-                  {allianceGuilds.map((g) => (
-                    <SelectItem key={g.id} value={g.id}>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="font-mono text-xs">
-                          {g.tag}
-                        </Badge>
-                        <span>{g.name}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+          </div>
+
+          {/* Contact Info */}
+          <div className="space-y-2">
+            <Label htmlFor="contactInfo">Contact Information (Optional)</Label>
+            <Input
+              id="contactInfo"
+              type="text"
+              placeholder="Discord server, website, or other contact info..."
+              value={contactInfo}
+              onChange={(e) => setContactInfo(e.target.value)}
+              disabled={submitting}
+              maxLength={200}
+            />
+            <p className="text-xs text-muted-foreground">
+              e.g., Discord invite link, website URL, or in-game contact name
+            </p>
+          </div>
+
+          {/* Recruitment Status */}
+          <div className="space-y-2">
+            <Label htmlFor="recruitmentStatus">Recruitment Status</Label>
+            <Select value={recruitmentStatus} onValueChange={(value: 'open' | 'closed' | 'by_application') => setRecruitmentStatus(value)}>
+              <SelectTrigger id="recruitmentStatus">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="open">Open - Accepting all new members</SelectItem>
+                <SelectItem value="by_application">By Application - Reviewing applications</SelectItem>
+                <SelectItem value="closed">Closed - Not recruiting</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Acceptance Checkbox */}

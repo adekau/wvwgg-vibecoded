@@ -14,9 +14,6 @@ const docClient = DynamoDBDocumentClient.from(client)
 
 export async function GET(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams
-    const filter = searchParams.get('filter') // 'all', 'unreviewed', 'reviewed'
-
     // Paginate through all guilds
     let allItems: any[] = []
     let lastEvaluatedKey: Record<string, any> | undefined
@@ -46,17 +43,8 @@ export async function GET(request: NextRequest) {
       lastEvaluatedKey = response.LastEvaluatedKey
     } while (lastEvaluatedKey && iterations < maxIterations)
 
-    let guilds = allItems
-
-    // Apply client-side filtering based on review status
-    if (filter === 'unreviewed') {
-      guilds = guilds.filter((item) => !item.isReviewed)
-    } else if (filter === 'reviewed') {
-      guilds = guilds.filter((item) => item.isReviewed)
-    }
-
     // Map to a cleaner format
-    const formattedGuilds = guilds.map((item) => ({
+    const formattedGuilds = allItems.map((item) => ({
       id: item.id,
       name: item.data?.name || '',
       tag: item.data?.tag || '',
@@ -64,11 +52,12 @@ export async function GET(request: NextRequest) {
       classification: item.classification || null,
       allianceGuildId: item.allianceGuildId || null,
       memberGuildIds: item.memberGuildIds || [],
-      isReviewed: item.isReviewed || false,
-      reviewedBy: item.reviewedBy || null,
-      reviewedAt: item.reviewedAt || null,
+      description: item.description || null,
+      contact_info: item.contact_info || null,
+      recruitment_status: item.recruitment_status || null,
       notes: item.notes || null,
       updatedAt: item.updatedAt || Date.now(),
+      auditLog: item.auditLog || [],
     }))
 
     return NextResponse.json({

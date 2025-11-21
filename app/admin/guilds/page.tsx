@@ -30,10 +30,10 @@ interface AdminGuild extends IGuild {
   classification?: 'alliance' | 'member' | 'independent'
   allianceGuildId?: string
   memberGuildIds?: string[]
+  description?: string
+  contact_info?: string
+  recruitment_status?: 'open' | 'closed' | 'by_application'
   notes?: string
-  reviewed?: boolean
-  reviewedAt?: number
-  reviewedBy?: string
 }
 
 interface WorldData {
@@ -49,7 +49,6 @@ export default function AdminGuildsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [worldFilter, setWorldFilter] = useState<string>('all')
   const [classificationFilter, setClassificationFilter] = useState<string>('all')
-  const [reviewedFilter, setReviewedFilter] = useState<string>('all')
   const [selectedGuild, setSelectedGuild] = useState<AdminGuild | null>(null)
   const [searchModalOpen, setSearchModalOpen] = useState(false)
   const [addingGuild, setAddingGuild] = useState(false)
@@ -106,21 +105,16 @@ export default function AdminGuildsPage() {
         (classificationFilter === 'unclassified' && !guild.classification) ||
         guild.classification === classificationFilter
 
-      // Reviewed filter
-      const matchesReviewed = reviewedFilter === 'all' ||
-        (reviewedFilter === 'reviewed' && guild.reviewed) ||
-        (reviewedFilter === 'unreviewed' && !guild.reviewed)
-
-      return matchesSearch && matchesWorld && matchesClassification && matchesReviewed
+      return matchesSearch && matchesWorld && matchesClassification
     })
 
     return filtered
-  }, [guilds, searchTerm, worldFilter, classificationFilter, reviewedFilter])
+  }, [guilds, searchTerm, worldFilter, classificationFilter])
 
   // Reset to page 1 when filters change - moved outside useMemo to fix performance
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchTerm, worldFilter, classificationFilter, reviewedFilter])
+  }, [searchTerm, worldFilter, classificationFilter])
 
   const paginatedGuilds = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage
@@ -169,7 +163,6 @@ export default function AdminGuildsPage() {
       members: guilds.filter(g => g.classification === 'member').length,
       independent: guilds.filter(g => g.classification === 'independent').length,
       unclassified: guilds.filter(g => !g.classification).length,
-      reviewed: guilds.filter(g => g.reviewed).length,
     }
   }, [guilds])
 
@@ -209,7 +202,7 @@ export default function AdminGuildsPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total</CardTitle>
@@ -248,14 +241,6 @@ export default function AdminGuildsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.unclassified}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Reviewed</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.reviewed}</div>
           </CardContent>
         </Card>
       </div>
@@ -302,16 +287,6 @@ export default function AdminGuildsPage() {
                 <SelectItem value="unclassified">Unclassified</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={reviewedFilter} onValueChange={setReviewedFilter}>
-              <SelectTrigger className="w-full md:w-[200px]">
-                <SelectValue placeholder="All Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="reviewed">Reviewed</SelectItem>
-                <SelectItem value="unreviewed">Unreviewed</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </CardContent>
       </Card>
@@ -333,14 +308,13 @@ export default function AdminGuildsPage() {
                   <TableHead>Tag</TableHead>
                   <TableHead>World</TableHead>
                   <TableHead>Classification</TableHead>
-                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paginatedGuilds.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                       No guilds found
                     </TableCell>
                   </TableRow>
@@ -351,15 +325,6 @@ export default function AdminGuildsPage() {
                       <TableCell>[{guild.tag}]</TableCell>
                       <TableCell>{worldMap.get(guild.worldId) || 'Unknown'}</TableCell>
                       <TableCell>{getClassificationBadge(guild.classification)}</TableCell>
-                      <TableCell>
-                        {guild.reviewed ? (
-                          <Badge variant="outline" className="bg-green-500/10 text-green-500">
-                            Reviewed
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline">Unreviewed</Badge>
-                        )}
-                      </TableCell>
                       <TableCell className="text-right">
                         <Button
                           variant="ghost"
@@ -424,8 +389,11 @@ export default function AdminGuildsPage() {
                 classification: updatedGuild.classification,
                 allianceGuildId: updatedGuild.allianceGuildId,
                 memberGuildIds: updatedGuild.memberGuildIds,
+                description: updatedGuild.description,
+                contact_info: updatedGuild.contact_info,
+                recruitment_status: updatedGuild.recruitment_status,
                 notes: updatedGuild.notes,
-                reviewedBy: user?.getUsername() || 'unknown',
+                updatedBy: user?.getUsername() || 'admin',
               }),
             })
 

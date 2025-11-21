@@ -66,6 +66,9 @@ export interface IGuild {
   classification?: 'alliance' | 'member' | 'independent';
   allianceGuildId?: string;
   memberGuildIds?: string[];
+  description?: string;
+  contact_info?: string;
+  recruitment_status?: 'open' | 'closed' | 'by_application';
 }
 
 // DynamoDB Client Setup
@@ -196,6 +199,9 @@ export const getGuilds = unstable_cache(
         classification: item.classification,
         allianceGuildId: item.allianceGuildId,
         memberGuildIds: item.memberGuildIds,
+        description: item.description,
+        contact_info: item.contact_info,
+        recruitment_status: item.recruitment_status,
       })) || [];
     } catch (error) {
       console.error('Error fetching guilds:', error);
