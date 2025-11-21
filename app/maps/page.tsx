@@ -10,7 +10,8 @@ export default async function MapsPage() {
   const matchesData = await getMatches();
 
   // Get all match IDs and find a default match (first NA match)
-  const allMatches = matchesData
+  // Validate that matchesData is an object and not an array or null
+  const allMatches = matchesData && typeof matchesData === 'object' && !Array.isArray(matchesData)
     ? Object.values(matchesData)
         .filter((match: any) => match.red && match.blue && match.green)
         .sort((a: any, b: any) => {
