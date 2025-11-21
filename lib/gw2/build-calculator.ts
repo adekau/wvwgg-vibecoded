@@ -17,6 +17,7 @@ import type {
   Skill,
   SpecializationSelection,
 } from './types'
+import { isTwoHandedWeapon } from './types'
 
 // ============================================================================
 // CONSTANTS
@@ -83,7 +84,7 @@ export function calculateGearStats(
   // Helper to add stats from a gear piece
   const addGearPieceStats = (
     statId: number,
-    slot: 'armor' | 'trinket' | 'weapon' | 'back'
+    slot: 'armor' | 'trinket' | 'weapon' | 'weapon-2h' | 'back' | 'amulet' | 'ring' | 'accessory'
   ) => {
     const itemStat = itemStats.get(statId)
     if (!itemStat) return
@@ -105,22 +106,24 @@ export function calculateGearStats(
   addGearPieceStats(gear.leggings.statId, 'armor')
   addGearPieceStats(gear.boots.statId, 'armor')
 
-  // Trinkets
-  addGearPieceStats(gear.amulet.statId, 'trinket')
-  addGearPieceStats(gear.ring1.statId, 'trinket')
-  addGearPieceStats(gear.ring2.statId, 'trinket')
-  addGearPieceStats(gear.accessory1.statId, 'trinket')
-  addGearPieceStats(gear.accessory2.statId, 'trinket')
+  // Trinkets (using specific multipliers)
+  addGearPieceStats(gear.amulet.statId, 'amulet')
+  addGearPieceStats(gear.ring1.statId, 'ring')
+  addGearPieceStats(gear.ring2.statId, 'ring')
+  addGearPieceStats(gear.accessory1.statId, 'accessory')
+  addGearPieceStats(gear.accessory2.statId, 'accessory')
   addGearPieceStats(gear.backItem.statId, 'back')
   addGearPieceStats(gear.relic.statId, 'trinket')
 
-  // Weapons
-  addGearPieceStats(gear.weaponSet1Main.statId, 'weapon')
+  // Weapons (check if two-handed)
+  const weaponSet1MainSlot = isTwoHandedWeapon(gear.weaponSet1Main.weaponType) ? 'weapon-2h' : 'weapon'
+  addGearPieceStats(gear.weaponSet1Main.statId, weaponSet1MainSlot)
   if (gear.weaponSet1Off) {
     addGearPieceStats(gear.weaponSet1Off.statId, 'weapon')
   }
   if (gear.weaponSet2Main) {
-    addGearPieceStats(gear.weaponSet2Main.statId, 'weapon')
+    const weaponSet2MainSlot = isTwoHandedWeapon(gear.weaponSet2Main.weaponType) ? 'weapon-2h' : 'weapon'
+    addGearPieceStats(gear.weaponSet2Main.statId, weaponSet2MainSlot)
   }
   if (gear.weaponSet2Off) {
     addGearPieceStats(gear.weaponSet2Off.statId, 'weapon')
@@ -128,6 +131,9 @@ export function calculateGearStats(
 
   // Add rune bonuses
   addRuneStats(stats, gear, items)
+
+  // Add sigil bonuses
+  addSigilStats(stats, gear, items)
 
   // Add infusion stats
   addInfusionStats(stats, gear, items)
@@ -138,17 +144,29 @@ export function calculateGearStats(
 /**
  * Get stat multiplier for gear slot
  * Based on ascended gear values from GW2 Wiki
+ * https://wiki.guildwars2.com/wiki/Attribute_combinations
+ *
+ * These multipliers are applied to ItemStat multipliers to get final stat values.
+ * Base reference is armor pieces (63 for major stat).
  */
-function getSlotMultiplier(slot: 'armor' | 'trinket' | 'weapon' | 'back'): number {
+function getSlotMultiplier(slot: 'armor' | 'trinket' | 'weapon' | 'weapon-2h' | 'back' | 'amulet' | 'ring' | 'accessory'): number {
   switch (slot) {
     case 'armor':
-      return 1.0 // Armor pieces give full stat values
-    case 'trinket':
-      return 1.26 // Trinkets give 26% more stats
-    case 'weapon':
-      return 1.0
+      return 1.0 // Base: 63 major / 45 minor
+    case 'amulet':
+      return 2.492 // 157 major / 63 base
+    case 'ring':
+      return 2.0 // 126 major / 63 base
+    case 'accessory':
+      return 1.746 // 110 major / 63 base
     case 'back':
-      return 0.56 // Back items give reduced stats
+      return 0.857 // 54 major / 63 base
+    case 'trinket':
+      return 2.0 // Default trinket (ring value)
+    case 'weapon':
+      return 1.984 // 125 major / 63 base (1-handed)
+    case 'weapon-2h':
+      return 3.984 // 251 major / 63 base (2-handed)
     default:
       return 1.0
   }
@@ -197,7 +215,8 @@ function addAttributeToStats(stats: BaseStats, attribute: string, value: number)
 }
 
 /**
- * Add stats from runes (6-piece bonus)
+ * Add stats from runes (all bonuses based on piece count)
+ * Runes give bonuses at 1, 2, 3, 4, 5, and 6 pieces equipped
  */
 function addRuneStats(stats: BaseStats, gear: GearSelection, items: Map<number, Item>): void {
   // Count rune occurrences
@@ -218,15 +237,163 @@ function addRuneStats(stats: BaseStats, gear: GearSelection, items: Map<number, 
     }
   }
 
-  // Apply rune bonuses for 6-piece sets
+  // Apply rune bonuses based on piece count
   for (const [runeId, count] of runeCounts) {
-    if (count >= 6) {
-      const rune = items.get(runeId)
-      if (rune?.details?.infix_upgrade) {
-        for (const attr of rune.details.infix_upgrade.attributes) {
-          addAttributeToStats(stats, attr.attribute, attr.modifier)
+    const rune = items.get(runeId)
+    if (!rune?.details) continue
+
+    // The bonuses array contains text descriptions like "+25 Power"
+    // We apply bonuses for each tier up to the equipped count
+    const bonuses = rune.details.bonuses || []
+
+    for (let i = 0; i < Math.min(count, bonuses.length); i++) {
+      const bonus = bonuses[i]
+      parseRuneBonus(stats, bonus)
+    }
+
+    // Also apply infix_upgrade stats if present (usually for lower tier bonuses)
+    if (rune.details.infix_upgrade) {
+      for (const attr of rune.details.infix_upgrade.attributes) {
+        addAttributeToStats(stats, attr.attribute, attr.modifier)
+      }
+    }
+  }
+}
+
+/**
+ * Parse a rune bonus string and add the stats
+ * Examples: "+25 Power", "+10% Boon Duration", "+100 Precision"
+ */
+function parseRuneBonus(stats: BaseStats, bonus: string): void {
+  // Match patterns like "+25 Power" or "+10% Boon Duration"
+  const statMatch = bonus.match(/\+(\d+)\s+(\w+(?:\s+\w+)*)/)
+
+  if (statMatch) {
+    const value = parseInt(statMatch[1])
+    const attributeName = statMatch[2]
+
+    // Map common attribute names to our stat types
+    const attributeMap: Record<string, string> = {
+      'Power': 'Power',
+      'Precision': 'Precision',
+      'Toughness': 'Toughness',
+      'Vitality': 'Vitality',
+      'Ferocity': 'Ferocity',
+      'Condition Damage': 'ConditionDamage',
+      'Expertise': 'Expertise',
+      'Concentration': 'Concentration',
+      'Healing Power': 'Healing',
+      'Boon Duration': 'Concentration', // Boon Duration maps to Concentration
+      'Condition Duration': 'Expertise', // Condition Duration maps to Expertise
+    }
+
+    const mappedAttribute = attributeMap[attributeName]
+    if (mappedAttribute) {
+      addAttributeToStats(stats, mappedAttribute, value)
+    }
+  }
+}
+
+/**
+ * Add stats from sigils
+ * Sigils can provide flat stat bonuses or percentage modifiers
+ */
+function addSigilStats(stats: BaseStats, gear: GearSelection, items: Map<number, Item>): void {
+  const weaponPieces = [
+    gear.weaponSet1Main,
+    gear.weaponSet1Off,
+    gear.weaponSet2Main,
+    gear.weaponSet2Off,
+  ].filter((piece): piece is typeof gear.weaponSet1Main => piece !== undefined)
+
+  for (const piece of weaponPieces) {
+    // Add first sigil
+    if (piece.upgradeId) {
+      const sigil = items.get(piece.upgradeId)
+      if (sigil?.details) {
+        // Apply infix_upgrade stats if present
+        if (sigil.details.infix_upgrade) {
+          for (const attr of sigil.details.infix_upgrade.attributes) {
+            addAttributeToStats(stats, attr.attribute, attr.modifier)
+          }
+        }
+
+        // Parse bonus descriptions for additional stats
+        const bonuses = sigil.details.bonuses || []
+        for (const bonus of bonuses) {
+          parseSigilBonus(stats, bonus)
         }
       }
+    }
+
+    // Add second sigil (for two-handed weapons)
+    if ('upgrade2Id' in piece && piece.upgrade2Id) {
+      const sigil = items.get(piece.upgrade2Id)
+      if (sigil?.details) {
+        // Apply infix_upgrade stats if present
+        if (sigil.details.infix_upgrade) {
+          for (const attr of sigil.details.infix_upgrade.attributes) {
+            addAttributeToStats(stats, attr.attribute, attr.modifier)
+          }
+        }
+
+        // Parse bonus descriptions for additional stats
+        const bonuses = sigil.details.bonuses || []
+        for (const bonus of bonuses) {
+          parseSigilBonus(stats, bonus)
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Parse a sigil bonus string and add the stats
+ * Examples: "+5% Crit Chance", "+100 Power", "+7% Critical Chance"
+ */
+function parseSigilBonus(stats: BaseStats, bonus: string): void {
+  // Match flat stat bonuses like "+100 Power"
+  const flatStatMatch = bonus.match(/\+(\d+)\s+(\w+(?:\s+\w+)*)/)
+  if (flatStatMatch) {
+    const value = parseInt(flatStatMatch[1])
+    const attributeName = flatStatMatch[2]
+
+    const attributeMap: Record<string, string> = {
+      'Power': 'Power',
+      'Precision': 'Precision',
+      'Toughness': 'Toughness',
+      'Vitality': 'Vitality',
+      'Ferocity': 'Ferocity',
+      'Condition Damage': 'ConditionDamage',
+      'Expertise': 'Expertise',
+      'Concentration': 'Concentration',
+      'Healing Power': 'Healing',
+    }
+
+    const mappedAttribute = attributeMap[attributeName]
+    if (mappedAttribute) {
+      addAttributeToStats(stats, mappedAttribute, value)
+      return
+    }
+  }
+
+  // Match percentage bonuses like "+7% Critical Chance" or "+5% Crit Chance"
+  const percentMatch = bonus.match(/\+(\d+)%\s+(?:Critical|Crit)\s+(?:Chance|Damage)/)
+  if (percentMatch) {
+    const percent = parseInt(percentMatch[1])
+
+    // Convert percentage crit chance to precision
+    // 1% crit = 21 precision (from formula: critChance = (precision - 895) / 21)
+    if (bonus.toLowerCase().includes('chance')) {
+      const precisionBonus = percent * 21
+      stats.precision += precisionBonus
+    }
+
+    // Convert percentage crit damage to ferocity
+    // 1% crit damage = 15 ferocity (from formula: critDamage = 1.5 + ferocity / 1500)
+    if (bonus.toLowerCase().includes('damage')) {
+      const ferocityBonus = percent * 15
+      stats.ferocity += ferocityBonus
     }
   }
 }
