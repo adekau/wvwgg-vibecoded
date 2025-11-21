@@ -96,11 +96,11 @@ export function WorldAlliances({ worlds, guilds }: WorldAlliancesProps) {
             return (
               <div
                 key={world.id}
-                className={`rounded-lg border p-4 ${classes.bg} ${classes.border}`}
+                className={`rounded-md p-4 border world-card-frosted ${classes.bg} ${classes.border}`}
               >
                 <div className="mb-3">
-                  <div className={`font-bold text-lg ${classes.text}`}>{world.name}</div>
-                  <div className="text-xs text-muted-foreground mt-1">
+                  <div className="font-medium text-sm mb-1">{world.name}</div>
+                  <div className="text-xs text-muted-foreground">
                     {world.totalGuilds} {world.totalGuilds === 1 ? 'guild' : 'guilds'} registered
                   </div>
                 </div>
