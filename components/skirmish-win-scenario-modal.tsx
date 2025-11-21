@@ -72,8 +72,15 @@ export function SkirmishWinScenarioModal({
   // Calculate immediate points available from capturing objectives (flip points)
   const flipPoints = maxAchievableData.potentialGain
 
-  // Calculate points from ticks remaining
-  const pointsFromTicks = (maxAchievablePPT - currentPPT) * ticksRemaining
+  // Calculate leader's PPT (derived from requiredPPT calculation)
+  // requiredPPT = leaderPPT + ceil((pointsBehind + 1) / ticksRemaining)
+  // Therefore: leaderPPT = requiredPPT - ceil((pointsBehind + 1) / ticksRemaining)
+  const pptDifferentialNeeded = Math.ceil((pointsBehind + 1) / ticksRemaining)
+  const leaderPPT = requiredPPT - pptDifferentialNeeded
+
+  // Calculate NET points from ticks remaining (relative to leader)
+  // This accounts for both our gains AND the leader's gains
+  const pointsFromTicks = (maxAchievablePPT - leaderPPT) * ticksRemaining
 
   // Calculate gap that needs to be filled beyond objectives
   const totalObjectivePoints = flipPoints + pointsFromTicks
@@ -138,13 +145,16 @@ export function SkirmishWinScenarioModal({
               {canWin ? (
                 <div className="p-3 rounded-md bg-green-500/10 border border-green-500/20">
                   <div className="text-sm font-medium text-green-600 dark:text-green-400">
-                    ✓ Winnable - Can gain up to {maxAchievableData.potentialGain} PPT by capturing objectives
+                    ✓ Required PPT achievable - Can gain up to {maxAchievableData.potentialGain} PPT by capturing objectives
                   </div>
                 </div>
               ) : (
                 <div className="p-3 rounded-md bg-red-500/10 border border-red-500/20">
                   <div className="text-sm font-medium text-red-600 dark:text-red-400">
-                    ✗ Cannot win - Short by {Math.abs(pptGap)} PPT even if all enemy objectives are captured
+                    ✗ Required PPT not achievable - Short by {Math.abs(pptGap)} PPT even if all objectives captured
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    However, victory may still be possible through flip points and/or kills (see below)
                   </div>
                 </div>
               )}
@@ -227,7 +237,7 @@ export function SkirmishWinScenarioModal({
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="text-sm font-medium">Per-Tick Points (Sustained)</div>
-                    <div className="text-xs text-muted-foreground">Points from holding objectives over {ticksRemaining} ticks</div>
+                    <div className="text-xs text-muted-foreground">Net points gained relative to leader over {ticksRemaining} ticks</div>
                   </div>
                   <Badge variant="outline" className="font-mono">
                     +{pointsFromTicks} pts
