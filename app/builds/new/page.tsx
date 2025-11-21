@@ -27,6 +27,7 @@ import {
   TraitLineSelector,
   SkillBar,
   GearPanel,
+  GearOptimizer,
 } from '@/components/build-editor'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -51,6 +52,9 @@ export default function BuildEditorPage() {
 
   // Build state
   const [build, setBuild] = useState<Build>(createDefaultBuild())
+
+  // Optimizer modal state
+  const [optimizerOpen, setOptimizerOpen] = useState(false)
 
   // Load specializations
   useEffect(() => {
@@ -175,7 +179,7 @@ export default function BuildEditorPage() {
               <Share2 className="w-4 h-4 mr-2" />
               Share
             </Button>
-            <Button size="sm" disabled>
+            <Button size="sm" onClick={() => setOptimizerOpen(true)}>
               <Sparkles className="w-4 h-4 mr-2" />
               Optimize
             </Button>
@@ -375,6 +379,17 @@ export default function BuildEditorPage() {
           </Card>
         </div>
       </div>
+
+      {/* Gear Optimizer Modal */}
+      {itemStats && (
+        <GearOptimizer
+          open={optimizerOpen}
+          onClose={() => setOptimizerOpen(false)}
+          build={build}
+          itemStats={itemStats}
+          onApplyGear={handleGearChange}
+        />
+      )}
     </div>
   )
 }
