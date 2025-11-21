@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -20,12 +20,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, Shield, AlertTriangle, Eye, EyeOff, ExternalLink } from 'lucide-react'
+import { Loader2, Shield, AlertTriangle, Eye, EyeOff, ExternalLink, X, Search } from 'lucide-react'
 import { IGuild } from '@/server/queries'
 
 interface GuildUpdateModalProps {
-  guild?: IGuild | { id: string; name: string; tag: string }
+  guild?: IGuild | { id: string; name: string; tag: string; classification?: 'alliance' | 'member' | 'independent'; memberGuildIds?: string[] }
   allGuilds: IGuild[]
   open: boolean
   onClose: () => void
@@ -39,9 +40,28 @@ export function GuildUpdateModal({ guild, allGuilds, open, onClose, onSuccess, a
   const [description, setDescription] = useState('')
   const [contactInfo, setContactInfo] = useState('')
   const [recruitmentStatus, setRecruitmentStatus] = useState<'open' | 'closed' | 'by_application'>('closed')
+  const [memberGuildIds, setMemberGuildIds] = useState<string[]>((guild as any)?.memberGuildIds || [])
+  const [memberSearch, setMemberSearch] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [accepted, setAccepted] = useState(false)
+
+  const isAllianceGuild = (guild as any)?.classification === 'alliance'
+
+  const memberCandidates = useMemo(() => {
+    if (!isAllianceGuild || !memberSearch) return []
+    return allGuilds.filter(g =>
+      g.id !== guild?.id &&
+      !memberGuildIds.includes(g.id) &&
+      (g.name.toLowerCase().includes(memberSearch.toLowerCase()) ||
+       g.tag.toLowerCase().includes(memberSearch.toLowerCase()))
+    ).slice(0, 10)
+  }, [allGuilds, guild?.id, memberGuildIds, memberSearch, isAllianceGuild])
+
+  const selectedMembers = useMemo(() => {
+    if (!isAllianceGuild) return []
+    return allGuilds.filter(g => memberGuildIds.includes(g.id))
+  }, [allGuilds, memberGuildIds, isAllianceGuild])
 
   const handleSubmit = async () => {
     setError('')
@@ -68,6 +88,7 @@ export function GuildUpdateModal({ guild, allGuilds, open, onClose, onSuccess, a
           description: description || undefined,
           contact_info: contactInfo || undefined,
           recruitment_status: recruitmentStatus,
+          memberGuildIds: isAllianceGuild ? memberGuildIds : undefined,
           addNew,
         }),
       })
@@ -98,6 +119,8 @@ export function GuildUpdateModal({ guild, allGuilds, open, onClose, onSuccess, a
     setDescription('')
     setContactInfo('')
     setRecruitmentStatus('closed')
+    setMemberGuildIds((guild as any)?.memberGuildIds || [])
+    setMemberSearch('')
     setError('')
     setAccepted(false)
     onClose()
@@ -229,6 +252,73 @@ export function GuildUpdateModal({ guild, allGuilds, open, onClose, onSuccess, a
               </SelectContent>
             </Select>
           </div>
+
+          {/* Member Guilds Management (for alliance guilds only) */}
+          {isAllianceGuild && (
+            <div className="space-y-2 p-4 border rounded-md bg-muted/30">
+              <div>
+                <Label>Alliance Member Guilds</Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  As an alliance guild leader, you can manage which guilds are members of your alliance
+                </p>
+              </div>
+              {selectedMembers.length > 0 && (
+                <div className="space-y-2 mb-2">
+                  {selectedMembers.map((member) => (
+                    <div key={member.id} className="flex items-center gap-2 p-2 border rounded-md bg-background">
+                      <div className="flex-1">
+                        <div className="font-medium text-sm">{member.name}</div>
+                        <div className="text-xs text-muted-foreground">[{member.tag}]</div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setMemberGuildIds(memberGuildIds.filter(id => id !== member.id))}
+                        disabled={submitting}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="space-y-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search to add member guilds..."
+                    value={memberSearch}
+                    onChange={(e) => setMemberSearch(e.target.value)}
+                    className="pl-10"
+                    disabled={submitting}
+                  />
+                </div>
+                {memberSearch && memberCandidates.length > 0 && (
+                  <div className="border rounded-md divide-y max-h-[200px] overflow-y-auto">
+                    {memberCandidates.map((g) => (
+                      <button
+                        key={g.id}
+                        onClick={() => {
+                          setMemberGuildIds([...memberGuildIds, g.id])
+                          setMemberSearch('')
+                        }}
+                        disabled={submitting}
+                        className="w-full px-3 py-2 text-left hover:bg-accent disabled:opacity-50"
+                      >
+                        <div className="font-medium">{g.name}</div>
+                        <div className="text-sm text-muted-foreground">[{g.tag}]</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {memberSearch && memberCandidates.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-2">
+                    No guilds found
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Acceptance Checkbox */}
           <div className="flex items-start gap-3 p-4 rounded-md bg-muted/50 border">
