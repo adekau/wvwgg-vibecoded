@@ -87,8 +87,7 @@ export function MatchSelector({ currentMatchId, matches, className }: MatchSelec
       </SelectTrigger>
       <SelectContent
         className={cn(
-          'bg-popover border-border/50',
-          'supports-[backdrop-filter]:bg-popover/60',
+          'bg-popover border-border',
           'shadow-2xl shadow-black/20',
           'min-w-[280px] lg:min-w-[320px]'
         )}
