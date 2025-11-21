@@ -4,7 +4,6 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { IGuild } from '@/server/queries'
 import { Globe, Link as LinkIcon, Shield, Users, X } from 'lucide-react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { GuildDetailHeader } from '@/components/guild-detail-header'
@@ -123,7 +122,7 @@ export function GuildDetailPanel({ guild, allGuilds, worldMap, isModal = false }
             </CardHeader>
             <CardContent className="space-y-3">
               {allianceGuild && (
-                <Link href={`/guilds/${allianceGuild.id}`}>
+                <a href={`/guilds/${allianceGuild.id}`}>
                   <div className="p-3 rounded-md border hover:bg-accent/50 transition-colors">
                     <div className="flex items-center gap-2">
                       <Badge variant="outline" className="font-mono">
@@ -132,11 +131,11 @@ export function GuildDetailPanel({ guild, allGuilds, worldMap, isModal = false }
                       <span className="font-medium">{allianceGuild.name}</span>
                     </div>
                   </div>
-                </Link>
+                </a>
               )}
 
               {memberGuilds.map((member) => (
-                <Link key={member.id} href={`/guilds/${member.id}`}>
+                <a key={member.id} href={`/guilds/${member.id}`}>
                   <div className="p-3 rounded-md border hover:bg-accent/50 transition-colors">
                     <div className="flex items-center gap-2">
                       <Badge variant="outline" className="font-mono">
@@ -150,7 +149,7 @@ export function GuildDetailPanel({ guild, allGuilds, worldMap, isModal = false }
                       </div>
                     )}
                   </div>
-                </Link>
+                </a>
               ))}
             </CardContent>
           </Card>

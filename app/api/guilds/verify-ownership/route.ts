@@ -1,7 +1,7 @@
 import { createCredentialsProvider } from '@/server/aws-credentials'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
-import { revalidateTag, updateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 
 const credentials = createCredentialsProvider()
@@ -190,7 +190,7 @@ export async function POST(request: NextRequest) {
       console.log('[VERIFY] New guild added successfully')
 
       // Revalidate the guilds cache
-      updateTag('guilds')
+      revalidateTag('guilds', 'max')
 
       return NextResponse.json({
         success: true,
@@ -259,7 +259,7 @@ export async function POST(request: NextRequest) {
     console.log('[VERIFY] Guild updated successfully')
 
     // Revalidate the guilds cache
-    updateTag('guilds')
+    revalidateTag('guilds', 'max')
 
     return NextResponse.json({
       success: true,
