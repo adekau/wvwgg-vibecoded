@@ -14,6 +14,7 @@ import {
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
+import { useAuth } from '@/lib/auth-context'
 
 interface Match {
   id: string
@@ -30,6 +31,7 @@ export function MatchesHeader() {
   const { theme, setTheme } = useTheme()
   const pathname = usePathname()
   const router = useRouter()
+  const { user, session } = useAuth()
 
   // Fetch matches for the dropdown
   const { data: matches = [] } = useQuery<Match[]>({
@@ -178,6 +180,17 @@ export function MatchesHeader() {
           </div>
 
           <div className="flex items-center gap-2">
+            {user && session && (
+              <Link href="/admin/dashboard">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-md"
+                >
+                  Admin Panel
+                </Button>
+              </Link>
+            )}
             <Button
               variant="ghost"
               size="icon"

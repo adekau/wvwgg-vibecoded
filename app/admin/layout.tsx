@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import { ProtectedRoute } from '@/components/protected-route'
+import { MatchesHeader } from '@/components/matches-header'
 
 export default function AdminLayout({
   children,
@@ -12,8 +13,18 @@ export default function AdminLayout({
 
   // Don't protect the login page
   if (pathname === '/admin/login') {
-    return <>{children}</>
+    return (
+      <>
+        <MatchesHeader />
+        {children}
+      </>
+    )
   }
 
-  return <ProtectedRoute>{children}</ProtectedRoute>
+  return (
+    <ProtectedRoute>
+      <MatchesHeader />
+      {children}
+    </ProtectedRoute>
+  )
 }
