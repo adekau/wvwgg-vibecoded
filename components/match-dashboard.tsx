@@ -1,3 +1,29 @@
+/**
+ * Match Dashboard Component
+ *
+ * Main dashboard for displaying detailed WvW match analysis including:
+ * - Live PPT (Points Per Tick) calculations and trends
+ * - Victory Point tracking across skirmishes
+ * - K/D ratios and activity metrics
+ * - Objective ownership breakdown (castles, keeps, towers, camps)
+ * - Prime time performance analysis across regions
+ * - Guild associations and alliance relationships
+ * - Real-time auto-refresh with configurable intervals
+ *
+ * This is the primary analytics view for active WvW matches.
+ *
+ * @component
+ * @example
+ * ```tsx
+ * <MatchDashboard
+ *   match={matchData}
+ *   matchId="1-1"
+ *   guilds={guildAssociations}
+ *   detailedObjectives={objectiveData}
+ *   primeTimeStats={primeTimeData}
+ * />
+ * ```
+ */
 "use client"
 
 import { Card } from '@/components/ui/card'
@@ -18,17 +44,23 @@ import { calculateMatchPPT, getPPTTrend, calculateTicksBehind, ticksToTimeString
 import { IGuild } from '@/server/queries'
 import { SKIRMISH_DURATION_MS, POLL_INTERVALS_MS } from '@/lib/game-constants'
 
+/**
+ * Represents a world (server) competing in WvW
+ */
 interface World {
   id: number
   name: string
   kills: number
   deaths: number
   color: 'red' | 'blue' | 'green'
-  score: number
-  victoryPoints: number
-  skirmishes: { first: number; second: number; third: number; current: number }
+  score: number // Accumulated total score (PPT * time)
+  victoryPoints: number // Total VP earned across all skirmishes
+  skirmishes: { first: number; second: number; third: number; current: number } // Skirmish placement counts
 }
 
+/**
+ * Represents a single 2-hour skirmish period within a match
+ */
 interface Skirmish {
   id: number
   scores: {
@@ -37,26 +69,32 @@ interface Skirmish {
     green: number
   }
   vpTier?: {
-    first: number
-    second: number
-    third: number
-    tier: 'low' | 'medium' | 'high' | 'peak'
+    first: number // VP awarded for 1st place
+    second: number // VP awarded for 2nd place
+    third: number // VP awarded for 3rd place
+    tier: 'low' | 'medium' | 'high' | 'peak' // VP tier based on skirmish timing
   }
 }
 
+/**
+ * Represents one of the four WvW maps (Red/Blue/Green Home borderlands + Eternal Battlegrounds)
+ */
 interface MapData {
   id: number
-  type: string
+  type: string // "RedHome", "BlueHome", "GreenHome", "Center"
   scores: { red: number; blue: number; green: number }
   kills: { red: number; blue: number; green: number }
   deaths: { red: number; blue: number; green: number }
 }
 
+/**
+ * Complete match data structure
+ */
 interface Match {
-  tier: string
-  region: string
-  startDate: string
-  endDate: string
+  tier: string // Match tier (e.g., "1", "2", "3")
+  region: string // "na", "eu", or "both"
+  startDate: string // ISO 8601 timestamp
+  endDate: string // ISO 8601 timestamp
   worlds: World[]
   objectives: {
     red: { keeps: number; towers: number; camps: number; castles: number }
@@ -72,12 +110,20 @@ interface Match {
   skirmishes?: Skirmish[]
 }
 
+/**
+ * Props for MatchDashboard component
+ */
 interface MatchDashboardProps {
+  /** Complete match data including worlds, scores, and objectives */
   match: Match
+  /** Match identifier (e.g., "1-1", "2-3") */
   matchId: string
+  /** Guild associations for this match's worlds */
   guilds: IGuild[]
+  /** Detailed objective data from GW2 API */
   detailedObjectives: any[]
-  primeTimeStats?: any // Pre-computed prime time stats from DynamoDB
+  /** Pre-computed prime time statistics from DynamoDB (optional) */
+  primeTimeStats?: any
 }
 
 const colorClasses = {

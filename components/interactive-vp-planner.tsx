@@ -1,3 +1,25 @@
+/**
+ * Interactive VP (Victory Point) Planner Component
+ *
+ * Provides an interactive UI for planning desired WvW match outcomes by:
+ * - Selecting desired skirmish placements (1st, 2nd, 3rd) for each team
+ * - Calculating VP requirements to achieve specific match results
+ * - Undo/redo functionality for exploring different scenarios
+ * - Visual feedback on scenario achievability
+ * - Integration with VP scenario solver algorithms
+ *
+ * Users can click through each skirmish and assign placements to see how
+ * Victory Points accumulate and whether desired outcomes are possible.
+ *
+ * @component
+ * @example
+ * ```tsx
+ * <InteractiveVPPlanner
+ *   matchId="1-1"
+ *   match={matchData}
+ * />
+ * ```
+ */
 "use client"
 
 import { Card } from '@/components/ui/card'
@@ -20,32 +42,48 @@ import { getVPTierForTime, getRegionFromMatchId } from '@/lib/vp-tiers'
 import { TOTAL_SKIRMISHES_PER_MATCH } from '@/lib/game-constants'
 import { calculateScenario, type ScenarioInput } from '@/lib/vp-scenario-solver-greedy'
 
+/**
+ * Props for InteractiveVPPlanner component
+ */
 interface InteractiveVPPlannerProps {
+  /** Match identifier (e.g., "1-1") */
   matchId: string
+  /** Match data including current VP standings and skirmish history */
   match: {
+    /** ISO 8601 timestamp of match start */
     startDate: string
+    /** Worlds competing in this match */
     worlds: Array<{
       name: string
       color: 'red' | 'blue' | 'green'
-      victoryPoints: number
+      victoryPoints: number // Current VP total
     }>
+    /** Historical skirmish data with VP tiers */
     skirmishes?: Array<{
       id: number
       vpTier?: {
-        first: number
-        second: number
-        third: number
-        tier: 'low' | 'medium' | 'high' | 'peak'
+        first: number // VP for 1st place
+        second: number // VP for 2nd place
+        third: number // VP for 3rd place
+        tier: 'low' | 'medium' | 'high' | 'peak' // VP tier based on timing
       }
     }>
   }
 }
 
+/** Skirmish placement (1st, 2nd, 3rd, or unassigned) */
 type Placement = 1 | 2 | 3 | null
+
+/** WvW team color */
 type TeamColor = 'red' | 'blue' | 'green'
 
+/**
+ * Represents user-assigned placements for a specific skirmish
+ */
 interface SkirmishAssignment {
+  /** Skirmish number (1-based) */
   skirmishId: number
+  /** Desired placements for each team */
   placements: {
     red: Placement
     blue: Placement
@@ -53,10 +91,17 @@ interface SkirmishAssignment {
   }
 }
 
+/**
+ * Metadata about a specific skirmish period
+ */
 interface SkirmishInfo {
+  /** Skirmish number (1-based) */
   id: number
+  /** Skirmish start timestamp */
   startTime: Date
+  /** Skirmish end timestamp (2 hours after start) */
   endTime: Date
+  /** VP awards based on skirmish timing and region */
   vpAwards: { first: number; second: number; third: number }
 }
 
