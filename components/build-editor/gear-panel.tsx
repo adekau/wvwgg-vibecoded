@@ -308,6 +308,8 @@ function GearEditorDialog({
   const [statId, setStatId] = useState(piece.statId)
   const [rarity, setRarity] = useState<ItemRarity>(piece.rarity)
   const [upgradeId, setUpgradeId] = useState<number | undefined>(piece.upgradeId)
+  const [statSearch, setStatSearch] = useState('')
+  const [upgradeSearch, setUpgradeSearch] = useState('')
 
   const handleSave = () => {
     onSave({
@@ -318,30 +320,37 @@ function GearEditorDialog({
     })
   }
 
+  // Filter stats based on search
+  const filteredStats = itemStats.filter((stat) =>
+    stat.name.toLowerCase().includes(statSearch.toLowerCase())
+  )
+
+  // Filter upgrades based on search
+  const filteredUpgrades = upgrades.filter((upgrade) =>
+    upgrade.name.toLowerCase().includes(upgradeSearch.toLowerCase())
+  )
+
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Configure {slot}</DialogTitle>
-          <DialogDescription>
-            Set the stat combination, rarity, and upgrades
-          </DialogDescription>
+          <DialogTitle className="text-base">Configure {slot}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* Stat Combination */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Stat Combination</label>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Stat Combination</label>
             <Select
               value={statId.toString()}
               onValueChange={(value) => setStatId(parseInt(value))}
             >
-              <SelectTrigger>
+              <SelectTrigger className="h-8 text-sm">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="max-h-[300px]">
-                {itemStats.map((stat) => (
-                  <SelectItem key={stat.id} value={stat.id.toString()}>
+              <SelectContent className="max-h-[200px]">
+                {filteredStats.map((stat) => (
+                  <SelectItem key={stat.id} value={stat.id.toString()} className="text-sm">
                     {stat.name}
                   </SelectItem>
                 ))}
@@ -350,26 +359,26 @@ function GearEditorDialog({
           </div>
 
           {/* Rarity */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Rarity</label>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Rarity</label>
             <Select
               value={rarity}
               onValueChange={(value) => setRarity(value as ItemRarity)}
             >
-              <SelectTrigger>
+              <SelectTrigger className="h-8 text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Exotic">Exotic</SelectItem>
-                <SelectItem value="Ascended">Ascended</SelectItem>
-                <SelectItem value="Legendary">Legendary</SelectItem>
+                <SelectItem value="Exotic" className="text-sm">Exotic</SelectItem>
+                <SelectItem value="Ascended" className="text-sm">Ascended</SelectItem>
+                <SelectItem value="Legendary" className="text-sm">Legendary</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {/* Upgrade (Rune or Sigil) */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">
               {slot.includes('weapon') ? 'Sigil' : 'Rune'}
             </label>
             <Select
@@ -378,13 +387,13 @@ function GearEditorDialog({
                 setUpgradeId(value === 'none' ? undefined : parseInt(value))
               }
             >
-              <SelectTrigger>
+              <SelectTrigger className="h-8 text-sm">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="max-h-[300px]">
-                <SelectItem value="none">None</SelectItem>
-                {upgrades.slice(0, 50).map((upgrade) => (
-                  <SelectItem key={upgrade.id} value={upgrade.id.toString()}>
+              <SelectContent className="max-h-[200px]">
+                <SelectItem value="none" className="text-sm">None</SelectItem>
+                {filteredUpgrades.slice(0, 100).map((upgrade) => (
+                  <SelectItem key={upgrade.id} value={upgrade.id.toString()} className="text-sm">
                     {upgrade.name}
                   </SelectItem>
                 ))}
@@ -393,11 +402,11 @@ function GearEditorDialog({
           </div>
 
           {/* Action buttons */}
-          <div className="flex gap-2 pt-4">
-            <Button onClick={onClose} variant="outline" className="flex-1">
+          <div className="flex gap-2 pt-2">
+            <Button onClick={onClose} variant="outline" size="sm" className="flex-1">
               Cancel
             </Button>
-            <Button onClick={handleSave} className="flex-1">
+            <Button onClick={handleSave} size="sm" className="flex-1">
               Save
             </Button>
           </div>

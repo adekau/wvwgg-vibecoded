@@ -176,41 +176,38 @@ function TraitLineDisplay({
 
   return (
     <div
-      className="relative p-4 rounded-lg border-2 bg-gradient-to-r from-background to-muted/30"
+      className="relative p-2 rounded-lg border bg-gradient-to-r from-background to-muted/20"
       style={{ borderColor: `hsl(var(--primary) / 0.3)` }}
     >
       {/* Header */}
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center gap-2 mb-2">
         <div
-          className="w-8 h-8 rounded-lg bg-cover bg-center flex items-center justify-center"
+          className="w-6 h-6 rounded bg-cover bg-center flex items-center justify-center"
           style={{ backgroundImage: `url(${specialization.background})` }}
         >
           {specialization.icon && (
             <img
               src={specialization.icon}
               alt={specialization.name}
-              className="w-6 h-6 drop-shadow-lg"
+              className="w-5 h-5 drop-shadow-lg"
             />
           )}
         </div>
         <div className="flex-1">
-          <div className="font-semibold">{specialization.name}</div>
-          <div className="text-xs text-muted-foreground">
-            {specialization.elite ? 'Elite Specialization' : 'Core Specialization'}
-          </div>
+          <div className="text-sm font-semibold">{specialization.name}</div>
         </div>
         <Button
           onClick={onRemove}
           variant="ghost"
           size="sm"
-          className="text-muted-foreground hover:text-destructive"
+          className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
         >
-          <X className="w-4 h-4" />
+          <X className="w-3 h-3" />
         </Button>
       </div>
 
       {/* Trait tiers */}
-      <div className="space-y-3">
+      <div className="space-y-1.5">
         {/* Adept (Tier 1) */}
         <TraitTier
           label="Adept"
@@ -257,9 +254,9 @@ function TraitTier({
   const majorTraits = traits.filter((t) => t.slot === 'Major')
 
   return (
-    <div className="flex items-center gap-2">
-      <div className="w-16 text-xs font-medium text-muted-foreground">{label}</div>
-      <div className="flex-1 flex gap-2">
+    <div className="flex items-center gap-1.5">
+      <div className="w-12 text-[10px] font-medium text-muted-foreground">{label}</div>
+      <div className="flex-1 flex gap-1.5">
         {majorTraits.map((trait) => (
           <TraitButton
             key={trait.id}
@@ -286,16 +283,16 @@ function TraitButton({
   onSelect: () => void
 }) {
   return (
-    <HoverCard openDelay={200}>
+    <HoverCard openDelay={300}>
       <HoverCardTrigger asChild>
         <button
           onClick={onSelect}
           className={cn(
-            'flex-1 aspect-square rounded-lg border-2 transition-all',
-            'hover:scale-110 hover:shadow-lg',
-            'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2',
+            'flex-1 aspect-square rounded border-2 transition-all',
+            'hover:scale-105 hover:shadow-md',
+            'focus:outline-none focus:ring-1 focus:ring-primary',
             isSelected
-              ? 'border-primary bg-primary/10 scale-110 shadow-lg'
+              ? 'border-primary bg-primary/10 scale-105 shadow-md'
               : 'border-border hover:border-primary/50 bg-card'
           )}
         >
@@ -304,35 +301,35 @@ function TraitButton({
               src={trait.icon}
               alt={trait.name}
               className={cn(
-                'w-full h-full object-contain p-1',
+                'w-full h-full object-contain p-0.5',
                 !isSelected && 'opacity-70 hover:opacity-100'
               )}
             />
           )}
         </button>
       </HoverCardTrigger>
-      <HoverCardContent className="w-80" side="top">
-        <div className="space-y-2">
+      <HoverCardContent className="w-64" side="top">
+        <div className="space-y-1.5">
           <div className="flex items-start gap-2">
             {trait.icon && (
               <img
                 src={trait.icon}
                 alt={trait.name}
-                className="w-8 h-8 rounded border"
+                className="w-6 h-6 rounded border"
               />
             )}
             <div>
-              <div className="font-semibold">{trait.name}</div>
-              <div className="text-xs text-muted-foreground">
+              <div className="text-sm font-semibold">{trait.name}</div>
+              <div className="text-[10px] text-muted-foreground">
                 {trait.tier === 1 ? 'Adept' : trait.tier === 2 ? 'Master' : 'Grandmaster'} Trait
               </div>
             </div>
           </div>
-          <p className="text-sm text-muted-foreground">{trait.description}</p>
+          <p className="text-xs text-muted-foreground">{trait.description}</p>
           {trait.facts && trait.facts.length > 0 && (
-            <div className="pt-2 border-t space-y-1">
+            <div className="pt-1.5 border-t space-y-0.5">
               {trait.facts.slice(0, 3).map((fact, i) => (
-                <div key={i} className="text-xs text-muted-foreground">
+                <div key={i} className="text-[10px] text-muted-foreground">
                   • {fact.text}
                 </div>
               ))}

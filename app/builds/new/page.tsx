@@ -28,6 +28,7 @@ import {
   SkillBar,
   GearPanel,
   GearOptimizer,
+  SkillDamageDisplay,
 } from '@/components/build-editor'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -392,6 +393,16 @@ export default function BuildEditorPage() {
               <p>CD = 1.5 + (Ferocity / 1500)</p>
             </CardContent>
           </Card>
+
+          {/* Skill Damage Calculator */}
+          {stats && (
+            <SkillDamageDisplay
+              weaponType={build.gear.weaponSet1Main.weaponType || 'Greatsword'}
+              power={stats.power}
+              critChance={stats.critChance}
+              critDamage={stats.critDamage}
+            />
+          )}
         </div>
       </div>
 
