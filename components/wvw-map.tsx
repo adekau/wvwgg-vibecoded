@@ -411,8 +411,8 @@ export function WvWMap({ matchId, className = '' }: WvWMapProps) {
     // Initial fetch
     fetchObjectives();
 
-    // Poll every 10 seconds for real-time updates
-    const interval = setInterval(fetchObjectives, 10000);
+    // Poll every 60 seconds to match DynamoDB update frequency
+    const interval = setInterval(fetchObjectives, 60000);
 
     return () => {
       isMounted = false;
