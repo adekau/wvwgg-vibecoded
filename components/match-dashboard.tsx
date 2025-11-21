@@ -13,15 +13,7 @@ import { PrimeTimePerformance } from '@/components/prime-time-performance'
 import { PPTBreakdown } from '@/components/ppt-breakdown'
 import { WorldAlliances } from '@/components/world-alliances'
 import { SkirmishWinScenarioModal } from '@/components/skirmish-win-scenario-modal'
-import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react'
-
-// Lazy load VP Scenario Planners to reduce initial bundle size
-const VPScenarioPlanner = lazy(() =>
-  import('@/components/vp-scenario-planner').then(mod => ({ default: mod.VPScenarioPlanner }))
-)
-const InteractiveVPPlanner = lazy(() =>
-  import('@/components/interactive-vp-planner').then(mod => ({ default: mod.InteractiveVPPlanner }))
-)
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { calculateMatchPPT, getPPTTrend, calculateTicksBehind, ticksToTimeString, getTeamStatus, calculateRequiredPPTToOvertake, calculateMaxAchievablePPT } from '@/lib/ppt-calculator'
 import { IGuild } from '@/server/queries'
 import { SKIRMISH_DURATION_MS, POLL_INTERVALS_MS } from '@/lib/game-constants'
@@ -983,34 +975,6 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
         worlds={match.worlds.map(w => ({ name: w.name, color: w.color }))}
         primeTimeStats={primeTimeStats}
       />
-
-      {/* VP Scenario Planner (lazy loaded to reduce initial bundle size) */}
-      <Suspense
-        fallback={
-          <Card className="panel-border inset-card frosted-panel p-6" style={{ background: 'transparent' }}>
-            <div className="animate-pulse space-y-4">
-              <div className="h-6 bg-muted rounded w-1/3"></div>
-              <div className="h-48 bg-muted rounded"></div>
-            </div>
-          </Card>
-        }
-      >
-        <VPScenarioPlanner matchId={matchId} match={match} />
-      </Suspense>
-
-      {/* Interactive VP Planner (lazy loaded to reduce initial bundle size) */}
-      <Suspense
-        fallback={
-          <Card className="panel-border inset-card frosted-panel p-6" style={{ background: 'transparent' }}>
-            <div className="animate-pulse space-y-4">
-              <div className="h-6 bg-muted rounded w-1/3"></div>
-              <div className="h-48 bg-muted rounded"></div>
-            </div>
-          </Card>
-        }
-      >
-        <InteractiveVPPlanner matchId={matchId} match={match} />
-      </Suspense>
 
       {/* Skirmish Win Scenario Modals */}
       {(['red', 'blue', 'green'] as const).map(color => {
