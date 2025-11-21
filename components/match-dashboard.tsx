@@ -14,7 +14,7 @@ import { VPScenarioPlanner } from '@/components/vp-scenario-planner'
 import { PPTBreakdown } from '@/components/ppt-breakdown'
 import { WorldAlliances } from '@/components/world-alliances'
 import { SkirmishWinScenarioModal } from '@/components/skirmish-win-scenario-modal'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { calculateMatchPPT, getPPTTrend, calculateTicksBehind, ticksToTimeString, getTeamStatus, calculateRequiredPPTToOvertake, calculateMaxAchievablePPT } from '@/lib/ppt-calculator'
 import { IGuild } from '@/server/queries'
 import { SKIRMISH_DURATION_MS, POLL_INTERVALS_MS } from '@/lib/game-constants'
@@ -132,18 +132,19 @@ interface HistoryMapData {
 }
 
 export function MatchDashboard({ match, matchId, guilds, detailedObjectives, primeTimeStats }: MatchDashboardProps) {
-  const sortedWorlds = [...match.worlds].sort((a, b) => b.score - a.score)
+  const sortedWorlds = useMemo(() => [...match.worlds].sort((a, b) => b.score - a.score), [match.worlds])
   const highestScore = sortedWorlds[0]?.score || 1 // Prevent division by zero
 
   // Use actual PPT from API if available, otherwise calculate from objectives
-  const matchPPT = match.actualPPT
+  const matchPPT = useMemo(() => match.actualPPT
     ? {
         red: { total: match.actualPPT.red, breakdown: { camps: 0, towers: 0, keeps: 0, castles: 0 } },
         blue: { total: match.actualPPT.blue, breakdown: { camps: 0, towers: 0, keeps: 0, castles: 0 } },
         green: { total: match.actualPPT.green, breakdown: { camps: 0, towers: 0, keeps: 0, castles: 0 } },
       }
-    : calculateMatchPPT(match.objectives)
-  const highestPPT = Math.max(matchPPT.red.total, matchPPT.blue.total, matchPPT.green.total)
+    : calculateMatchPPT(match.objectives), [match.actualPPT, match.objectives])
+
+  const highestPPT = useMemo(() => Math.max(matchPPT.red.total, matchPPT.blue.total, matchPPT.green.total), [matchPPT])
 
   // Get the leader's PPT (for comparison - teams are compared against the score leader, not PPT leader)
   const leaderColor = sortedWorlds[0]?.color || 'red'
@@ -177,25 +178,23 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
     fetchHistory()
   }, [matchId])
 
-  const mapTypeNames: Record<string, string> = {
+  const mapTypeNames: Record<string, string> = useMemo(() => ({
     'Center': 'Eternal Battlegrounds',
     'RedHome': 'Red Borderlands',
     'BlueHome': 'Blue Borderlands',
     'GreenHome': 'Green Borderlands',
-  }
+  }), [])
 
-  const mapOptions = [
+  const mapOptions = useMemo(() => [
     { value: 'all', label: 'All Maps' },
     ...maps.map((m) => ({
       value: m.type,
       label: mapTypeNames[m.type] || m.type
     }))
-  ]
-
-  // History data is now passed as a prop from the server, no client-side fetching needed
+  ], [maps, mapTypeNames])
 
   // Format skirmish time based on when it occurred
-  const formatSkirmishTime = (skirmishId: number) => {
+  const formatSkirmishTime = useCallback((skirmishId: number) => {
     const matchStart = new Date(match.startDate)
     // Each skirmish is 2 hours, skirmish IDs are 1-indexed
     const skirmishStart = new Date(matchStart.getTime() + ((skirmishId - 1) * SKIRMISH_DURATION_MS))
@@ -206,9 +205,9 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
       hour: 'numeric',
       minute: '2-digit',
     })
-  }
+  }, [match.startDate])
 
-  const getTierIndicator = (tier?: 'low' | 'medium' | 'high' | 'peak') => {
+  const getTierIndicator = useCallback((tier?: 'low' | 'medium' | 'high' | 'peak') => {
     switch (tier) {
       case 'low': return '○';
       case 'medium': return '◐';
@@ -216,9 +215,9 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
       case 'peak': return '⦿';
       default: return '';
     }
-  }
+  }, [])
 
-  const skirmishOptions = [
+  const skirmishOptions = useMemo(() => [
     { value: 'all', label: 'All Skirmishes (Total)', tier: undefined },
     ...skirmishes
       .slice()
@@ -232,10 +231,10 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
           tier: s.vpTier?.tier
         };
       })
-  ]
+  ], [skirmishes, formatSkirmishTime, getTierIndicator])
 
   // Calculate per-skirmish stats from history data
-  const calculateSkirmishStats = (skirmishId: number) => {
+  const calculateSkirmishStats = useCallback((skirmishId: number) => {
     if (historyData.length === 0) return null
 
     const matchStart = new Date(match.startDate)
@@ -272,10 +271,10 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
         victoryPoints: endPoint.green.victoryPoints - startPoint.green.victoryPoints,
       },
     }
-  }
+  }, [historyData, match.startDate])
 
   // Calculate per-skirmish, per-map stats from history
-  const calculateSkirmishMapStats = (skirmishId: number, mapType: string) => {
+  const calculateSkirmishMapStats = useCallback((skirmishId: number, mapType: string) => {
     if (historyData.length === 0) return null
 
     const matchStart = new Date(match.startDate)
@@ -318,10 +317,10 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
         score: endMapData.scores.green - startMapData.scores.green,
       },
     }
-  }
+  }, [historyData, match.startDate])
 
   // Get data for selected skirmish and map
-  const getDisplayData = (): Array<World & { displayScore: number; displayKills?: number; displayDeaths?: number; displayVP?: number }> => {
+  const getDisplayData = useCallback((): Array<World & { displayScore: number; displayKills?: number; displayDeaths?: number; displayVP?: number }> => {
     // Case 1: Specific map AND specific skirmish
     if (selectedMap !== 'all' && selectedSkirmish !== 'all' && typeof selectedSkirmish === 'number') {
       const mapSkirmishStats = calculateSkirmishMapStats(selectedSkirmish, selectedMap)
@@ -381,23 +380,23 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
       displayDeaths: world.deaths,
       displayVP: world.victoryPoints,
     }))
-  }
+  }, [selectedMap, selectedSkirmish, match.worlds, skirmishes, maps, calculateSkirmishMapStats, calculateSkirmishStats])
 
-  const displayData = getDisplayData()
+  const displayData = useMemo(() => getDisplayData(), [getDisplayData])
 
   // Calculate highest values for each stat category for highlighting
-  const highestDisplayScore = Math.max(...displayData.map(w => w.displayScore))
-  const highestDisplayVP = Math.max(...displayData.map(w => w.displayVP ?? 0))
-  const highestDisplayKills = Math.max(...displayData.map(w => w.displayKills ?? 0))
-  const highestDisplayDeaths = Math.max(...displayData.map(w => w.displayDeaths ?? 0))
-  const highestDisplayKD = Math.max(...displayData.map(w => {
+  const highestDisplayScore = useMemo(() => Math.max(...displayData.map(w => w.displayScore)), [displayData])
+  const highestDisplayVP = useMemo(() => Math.max(...displayData.map(w => w.displayVP ?? 0)), [displayData])
+  const highestDisplayKills = useMemo(() => Math.max(...displayData.map(w => w.displayKills ?? 0)), [displayData])
+  const highestDisplayDeaths = useMemo(() => Math.max(...displayData.map(w => w.displayDeaths ?? 0)), [displayData])
+  const highestDisplayKD = useMemo(() => Math.max(...displayData.map(w => {
     const kills = w.displayKills ?? 0
     const deaths = w.displayDeaths ?? 0
     return deaths > 0 ? kills / deaths : kills
-  }))
+  })), [displayData])
 
   // Calculate modal data for each team
-  const teamModalData = sortedWorlds.reduce((acc, world, idx) => {
+  const teamModalData = useMemo(() => sortedWorlds.reduce((acc, world, idx) => {
     const pointsBehind = idx > 0 ? highestScore - world.score : 0
     const teamPPT = matchPPT[world.color]
     const pptDifferential = teamPPT.total - leaderPPT
@@ -435,7 +434,7 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
       maxAchievableData,
     }
     return acc
-  }, {} as Record<string, any>)
+  }, {} as Record<string, any>), [sortedWorlds, highestScore, matchPPT, leaderPPT, detailedObjectives, match.startDate])
 
   return (
     <div className="space-y-6">
