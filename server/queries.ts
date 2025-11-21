@@ -243,65 +243,93 @@ export interface HistoricalSnapshot {
 }
 
 export interface MatchHistoryOptions {
-  // Time-based query (legacy, for last N hours from now)
-  hours?: number;
-  // Match-specific query (for specific match time window)
-  matchId?: string;
-  matchStartTime?: string;
+  // Match-specific query (required for efficient queries)
+  matchId: string;
+  matchStartTime?: string; // If not provided, will query from beginning of match
+  // Optional time window filters
+  hours?: number; // Limit to last N hours
+  startTime?: string; // Custom start time (ISO string)
+  endTime?: string; // Custom end time (ISO string)
 }
 
 // Internal function that does the actual query
-async function _getMatchHistory(options: MatchHistoryOptions = {}): Promise<HistoricalSnapshot[]> {
+async function _getMatchHistory(options: MatchHistoryOptions): Promise<HistoricalSnapshot[]> {
   try {
+    if (!options.matchId) {
+      throw new Error('matchId is required for match history queries');
+    }
+
     let startInterval: number;
+    let endInterval: number | undefined;
     let queryDescription: string;
 
-    // If matchId and matchStartTime are provided, use match-specific time window
-    if (options.matchId && options.matchStartTime) {
-      const matchStartMs = new Date(options.matchStartTime).getTime();
-      // Calculate the 15-minute interval for match start
-      startInterval = Math.floor(matchStartMs / HISTORY_SNAPSHOT_INTERVAL_MS);
-      queryDescription = `match ${options.matchId} from ${options.matchStartTime}`;
-    } else {
-      // Legacy: query based on last N hours from now
-      const hours = options.hours || 24;
+    // Determine the start interval
+    if (options.startTime) {
+      // Custom start time provided
+      const startMs = new Date(options.startTime).getTime();
+      startInterval = Math.floor(startMs / HISTORY_SNAPSHOT_INTERVAL_MS);
+      queryDescription = `match ${options.matchId} from ${options.startTime}`;
+    } else if (options.hours) {
+      // Query last N hours
       const now = Date.now();
-      const current15Min = Math.floor(now / HISTORY_SNAPSHOT_INTERVAL_MS);
-      const intervalsToFetch = hours * SNAPSHOT_INTERVALS_PER_HOUR;
-      startInterval = current15Min - intervalsToFetch;
-      queryDescription = `last ${hours} hours`;
+      const hoursAgoMs = now - (options.hours * 60 * 60 * 1000);
+      startInterval = Math.floor(hoursAgoMs / HISTORY_SNAPSHOT_INTERVAL_MS);
+      queryDescription = `match ${options.matchId} last ${options.hours} hours`;
+    } else if (options.matchStartTime) {
+      // Query from match start
+      const matchStartMs = new Date(options.matchStartTime).getTime();
+      startInterval = Math.floor(matchStartMs / HISTORY_SNAPSHOT_INTERVAL_MS);
+      queryDescription = `match ${options.matchId} from match start`;
+    } else {
+      // Default: last 24 hours
+      const now = Date.now();
+      const hoursAgoMs = now - (24 * 60 * 60 * 1000);
+      startInterval = Math.floor(hoursAgoMs / HISTORY_SNAPSHOT_INTERVAL_MS);
+      queryDescription = `match ${options.matchId} last 24 hours`;
+    }
+
+    // Determine end interval if endTime is provided
+    if (options.endTime) {
+      const endMs = new Date(options.endTime).getTime();
+      endInterval = Math.floor(endMs / HISTORY_SNAPSHOT_INTERVAL_MS);
+      queryDescription += ` to ${options.endTime}`;
     }
 
     let allSnapshots: HistoricalSnapshot[] = [];
     let lastEvaluatedKey: Record<string, any> | undefined;
 
-    // Use QueryCommand with GSI for efficient querying (no full table scan!)
+    // Use matchId-interval-index GSI for efficient match-specific queries
     do {
-      const response = await docClient.send(
-        new QueryCommand({
-          TableName: process.env.TABLE_NAME,
-          IndexName: DB_CONSTANTS.INDEX_NAME,
-          KeyConditionExpression: '#type = :type AND #interval >= :startInterval',
-          ProjectionExpression: 'id, #interval, #timestamp, #data, compressed, matchId',
-          ExpressionAttributeNames: {
-            '#type': 'type',
-            '#interval': 'interval',
-            '#timestamp': 'timestamp',
-            '#data': 'data',
-          },
-          ExpressionAttributeValues: {
-            ':type': DB_CONSTANTS.QUERY_TYPES.MATCH_HISTORY,
-            ':startInterval': startInterval,
-          },
-          ExclusiveStartKey: lastEvaluatedKey,
-        })
-      );
+      const queryParams: any = {
+        TableName: process.env.TABLE_NAME,
+        IndexName: 'matchId-interval-index',
+        KeyConditionExpression: endInterval
+          ? 'matchId = :matchId AND #interval BETWEEN :startInterval AND :endInterval'
+          : 'matchId = :matchId AND #interval >= :startInterval',
+        ProjectionExpression: 'id, #interval, #timestamp, #data, compressed, matchId',
+        ExpressionAttributeNames: {
+          '#interval': 'interval',
+          '#timestamp': 'timestamp',
+          '#data': 'data',
+        },
+        ExpressionAttributeValues: {
+          ':matchId': options.matchId,
+          ':startInterval': startInterval,
+        },
+        ExclusiveStartKey: lastEvaluatedKey,
+      };
+
+      if (endInterval) {
+        queryParams.ExpressionAttributeValues[':endInterval'] = endInterval;
+      }
+
+      const response = await docClient.send(new QueryCommand(queryParams));
 
       allSnapshots = allSnapshots.concat((response.Items || []) as HistoricalSnapshot[]);
       lastEvaluatedKey = response.LastEvaluatedKey;
     } while (lastEvaluatedKey);
 
-    console.log(`[HISTORY] Queried ${allSnapshots.length} snapshots for ${queryDescription} (intervals >= ${startInterval})`);
+    console.log(`[HISTORY] Queried ${allSnapshots.length} snapshots for ${queryDescription} using matchId-interval-index`);
 
     // Decompress data if compressed
     const decompressedSnapshots = allSnapshots.map(snapshot => {

@@ -8,6 +8,8 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const matchId = searchParams.get('matchId');
     const hoursParam = searchParams.get('hours');
+    const startTime = searchParams.get('startTime');
+    const endTime = searchParams.get('endTime');
 
     if (!matchId) {
       return NextResponse.json(
@@ -16,29 +18,37 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let historyData;
+    // Get match data to determine start time
+    const matchesData = await getMatches();
+    const matchData = matchesData?.[matchId];
 
-    // If hours parameter is provided, use legacy time-based query
-    if (hoursParam) {
-      const hours = parseInt(hoursParam, 10);
-      historyData = await getMatchHistory({ hours });
-    } else {
-      // Otherwise, fetch match-specific history from match start to now
-      const matchesData = await getMatches();
-      const matchData = matchesData?.[matchId];
-
-      if (!matchData?.start_time) {
-        // Fallback to 24 hours if we can't find match start time
-        console.warn(`[HISTORY API] Could not find start_time for match ${matchId}, falling back to 24h`);
-        historyData = await getMatchHistory({ hours: 24 });
-      } else {
-        // Query from match start time to now
-        historyData = await getMatchHistory({
-          matchId,
-          matchStartTime: matchData.start_time,
-        });
-      }
+    if (!matchData?.start_time) {
+      console.warn(`[HISTORY API] Could not find start_time for match ${matchId}`);
+      return NextResponse.json(
+        { error: 'Match not found' },
+        { status: 404 }
+      );
     }
+
+    // Build query options
+    const queryOptions: any = {
+      matchId,
+      matchStartTime: matchData.start_time,
+    };
+
+    // Add optional time filters
+    if (hoursParam) {
+      queryOptions.hours = parseInt(hoursParam, 10);
+    }
+    if (startTime) {
+      queryOptions.startTime = startTime;
+    }
+    if (endTime) {
+      queryOptions.endTime = endTime;
+    }
+
+    // Query history using the new match-specific index
+    const historyData = await getMatchHistory(queryOptions);
 
     // Filter for this specific match and format
     const matchHistory = historyData
@@ -79,6 +89,8 @@ export async function GET(request: NextRequest) {
       matchId,
       history: matchHistory,
       dataPoints: matchHistory.length,
+      matchStartTime: matchData.start_time,
+      matchEndTime: matchData.end_time,
     });
   } catch (error) {
     console.error('Error fetching match history:', error);
