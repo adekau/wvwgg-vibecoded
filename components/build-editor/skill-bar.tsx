@@ -187,16 +187,147 @@ function SkillTooltip({ skill }: { skill: Skill }) {
       <p className="text-sm text-foreground">{skill.description}</p>
       {skill.facts && skill.facts.length > 0 && (
         <div className="pt-2 border-t space-y-1">
-          {skill.facts.slice(0, 5).map((fact, i) => (
-            <div key={i} className="flex items-center gap-2 text-xs">
-              {fact.icon && (
-                <img src={fact.icon} alt="" className="w-4 h-4" />
-              )}
-              <span className="text-muted-foreground">{fact.text}</span>
-            </div>
+          {skill.facts.map((fact, i) => (
+            <FactDisplay key={i} fact={fact} />
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+/**
+ * Enhanced fact display component showing detailed information
+ */
+function FactDisplay({ fact }: { fact: any }) {
+  const renderFactValue = () => {
+    switch (fact.type) {
+      case 'Damage':
+        return (
+          <span className="font-medium text-orange-400">
+            {fact.hit_count ? `${fact.hit_count}x ` : ''}
+            Damage: {fact.damage || fact.dmg_multiplier ? `${fact.dmg_multiplier || 1}x` : '?'}
+          </span>
+        )
+
+      case 'Heal':
+      case 'HealingAdjust':
+        return (
+          <span className="font-medium text-green-400">
+            Healing: {fact.hit_count || '?'}
+          </span>
+        )
+
+      case 'Buff':
+      case 'PrefixedBuff':
+        return (
+          <span className="font-medium text-blue-400">
+            {fact.status || fact.description || fact.text}
+            {fact.duration ? ` (${fact.duration}s)` : ''}
+            {fact.apply_count ? ` x${fact.apply_count}` : ''}
+          </span>
+        )
+
+      case 'Duration':
+        return (
+          <span className="font-medium text-purple-400">
+            Duration: {fact.duration}s
+          </span>
+        )
+
+      case 'Distance':
+      case 'Range':
+        return (
+          <span className="font-medium text-cyan-400">
+            {fact.type}: {fact.distance}
+          </span>
+        )
+
+      case 'Radius':
+        return (
+          <span className="font-medium text-cyan-400">
+            Radius: {fact.distance}
+          </span>
+        )
+
+      case 'Recharge':
+        return (
+          <span className="font-medium text-gray-400">
+            Recharge: {fact.value}s
+          </span>
+        )
+
+      case 'Number':
+        return (
+          <span className="font-medium">
+            {fact.text}
+          </span>
+        )
+
+      case 'Percent':
+        return (
+          <span className="font-medium text-yellow-400">
+            {fact.text}: {fact.percent}%
+          </span>
+        )
+
+      case 'ComboField':
+        return (
+          <span className="font-medium text-indigo-400">
+            Combo Field: {fact.field_type}
+          </span>
+        )
+
+      case 'ComboFinisher':
+        return (
+          <span className="font-medium text-indigo-400">
+            Combo Finisher: {fact.finisher_type} ({fact.percent}%)
+          </span>
+        )
+
+      case 'StunBreak':
+        return (
+          <span className="font-medium text-red-400">
+            Breaks Stun
+          </span>
+        )
+
+      case 'Unblockable':
+        return (
+          <span className="font-medium text-red-400">
+            Unblockable
+          </span>
+        )
+
+      case 'AttributeAdjust':
+        return (
+          <span className="font-medium text-amber-400">
+            {fact.text}
+          </span>
+        )
+
+      case 'Time':
+        return (
+          <span className="font-medium">
+            {fact.text}: {fact.duration}s
+          </span>
+        )
+
+      default:
+        return (
+          <span className="text-muted-foreground">
+            {fact.text}
+          </span>
+        )
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      {fact.icon && (
+        <img src={fact.icon} alt="" className="w-4 h-4 flex-shrink-0" />
+      )}
+      {renderFactValue()}
     </div>
   )
 }

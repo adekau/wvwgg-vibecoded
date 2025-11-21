@@ -403,6 +403,149 @@ function SkillTooltip({ skill }: { skill: Skill }) {
         </div>
       </div>
       <p className="text-sm text-white/80">{skill.description}</p>
+      {skill.facts && skill.facts.length > 0 && (
+        <div className="pt-2 border-t border-white/10 space-y-1">
+          {skill.facts.map((fact, i) => (
+            <FactDisplay key={i} fact={fact} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Enhanced fact display component showing detailed information
+ */
+function FactDisplay({ fact }: { fact: any }) {
+  const renderFactValue = () => {
+    switch (fact.type) {
+      case 'Damage':
+        return (
+          <span className="font-medium text-orange-400">
+            {fact.hit_count ? `${fact.hit_count}x ` : ''}
+            Damage: {fact.damage || fact.dmg_multiplier ? `${fact.dmg_multiplier || 1}x` : '?'}
+          </span>
+        )
+
+      case 'Heal':
+      case 'HealingAdjust':
+        return (
+          <span className="font-medium text-green-400">
+            Healing: {fact.hit_count || '?'}
+          </span>
+        )
+
+      case 'Buff':
+      case 'PrefixedBuff':
+        return (
+          <span className="font-medium text-blue-400">
+            {fact.status || fact.description || fact.text}
+            {fact.duration ? ` (${fact.duration}s)` : ''}
+            {fact.apply_count ? ` x${fact.apply_count}` : ''}
+          </span>
+        )
+
+      case 'Duration':
+        return (
+          <span className="font-medium text-purple-400">
+            Duration: {fact.duration}s
+          </span>
+        )
+
+      case 'Distance':
+      case 'Range':
+        return (
+          <span className="font-medium text-cyan-400">
+            {fact.type}: {fact.distance}
+          </span>
+        )
+
+      case 'Radius':
+        return (
+          <span className="font-medium text-cyan-400">
+            Radius: {fact.distance}
+          </span>
+        )
+
+      case 'Recharge':
+        return (
+          <span className="font-medium text-gray-400">
+            Recharge: {fact.value}s
+          </span>
+        )
+
+      case 'Number':
+        return (
+          <span className="font-medium text-white/90">
+            {fact.text}
+          </span>
+        )
+
+      case 'Percent':
+        return (
+          <span className="font-medium text-yellow-400">
+            {fact.text}: {fact.percent}%
+          </span>
+        )
+
+      case 'ComboField':
+        return (
+          <span className="font-medium text-indigo-400">
+            Combo Field: {fact.field_type}
+          </span>
+        )
+
+      case 'ComboFinisher':
+        return (
+          <span className="font-medium text-indigo-400">
+            Combo Finisher: {fact.finisher_type} ({fact.percent}%)
+          </span>
+        )
+
+      case 'StunBreak':
+        return (
+          <span className="font-medium text-red-400">
+            Breaks Stun
+          </span>
+        )
+
+      case 'Unblockable':
+        return (
+          <span className="font-medium text-red-400">
+            Unblockable
+          </span>
+        )
+
+      case 'AttributeAdjust':
+        return (
+          <span className="font-medium text-amber-400">
+            {fact.text}
+          </span>
+        )
+
+      case 'Time':
+        return (
+          <span className="font-medium text-white/90">
+            {fact.text}: {fact.duration}s
+          </span>
+        )
+
+      default:
+        return (
+          <span className="text-white/60">
+            {fact.text}
+          </span>
+        )
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      {fact.icon && (
+        <img src={fact.icon} alt="" className="w-4 h-4 flex-shrink-0" />
+      )}
+      {renderFactValue()}
     </div>
   )
 }
@@ -673,11 +816,11 @@ function TraitButton({
           )}
         </button>
       </HoverCardTrigger>
-      <HoverCardContent className="w-64 bg-slate-900 border-white/20">
+      <HoverCardContent className="w-80 bg-slate-900 border-white/20">
         <div className="space-y-2">
           <div className="flex items-start gap-2">
             {trait.icon && <img src={trait.icon} alt={trait.name} className="w-8 h-8 rounded" />}
-            <div>
+            <div className="flex-1">
               <div className="text-sm font-semibold text-white">{trait.name}</div>
               <div className="text-xs text-white/50">
                 {trait.tier === 1 ? 'Adept' : trait.tier === 2 ? 'Master' : 'Grandmaster'}{' '}
@@ -686,9 +829,152 @@ function TraitButton({
             </div>
           </div>
           <p className="text-xs text-white/70">{trait.description}</p>
+          {trait.facts && trait.facts.length > 0 && (
+            <div className="pt-2 border-t border-white/10 space-y-1">
+              {trait.facts.map((fact, i) => (
+                <TraitFactDisplay key={i} fact={fact} />
+              ))}
+            </div>
+          )}
         </div>
       </HoverCardContent>
     </HoverCard>
+  )
+}
+
+/**
+ * Enhanced fact display component for traits showing detailed information
+ */
+function TraitFactDisplay({ fact }: { fact: any }) {
+  const renderFactValue = () => {
+    switch (fact.type) {
+      case 'Damage':
+        return (
+          <span className="font-medium text-orange-400">
+            {fact.hit_count ? `${fact.hit_count}x ` : ''}
+            Damage: {fact.damage || fact.dmg_multiplier ? `${fact.dmg_multiplier || 1}x` : '?'}
+          </span>
+        )
+
+      case 'Heal':
+      case 'HealingAdjust':
+        return (
+          <span className="font-medium text-green-400">
+            Healing: {fact.hit_count || '?'}
+          </span>
+        )
+
+      case 'Buff':
+      case 'PrefixedBuff':
+        return (
+          <span className="font-medium text-blue-400">
+            {fact.status || fact.description || fact.text}
+            {fact.duration ? ` (${fact.duration}s)` : ''}
+            {fact.apply_count ? ` x${fact.apply_count}` : ''}
+          </span>
+        )
+
+      case 'Duration':
+        return (
+          <span className="font-medium text-purple-400">
+            Duration: {fact.duration}s
+          </span>
+        )
+
+      case 'Distance':
+      case 'Range':
+        return (
+          <span className="font-medium text-cyan-400">
+            {fact.type}: {fact.distance}
+          </span>
+        )
+
+      case 'Radius':
+        return (
+          <span className="font-medium text-cyan-400">
+            Radius: {fact.distance}
+          </span>
+        )
+
+      case 'Recharge':
+        return (
+          <span className="font-medium text-gray-400">
+            Recharge: {fact.value}s
+          </span>
+        )
+
+      case 'Number':
+        return (
+          <span className="font-medium text-white/90">
+            {fact.text}
+          </span>
+        )
+
+      case 'Percent':
+        return (
+          <span className="font-medium text-yellow-400">
+            {fact.text}: {fact.percent}%
+          </span>
+        )
+
+      case 'ComboField':
+        return (
+          <span className="font-medium text-indigo-400">
+            Combo Field: {fact.field_type}
+          </span>
+        )
+
+      case 'ComboFinisher':
+        return (
+          <span className="font-medium text-indigo-400">
+            Combo Finisher: {fact.finisher_type} ({fact.percent}%)
+          </span>
+        )
+
+      case 'StunBreak':
+        return (
+          <span className="font-medium text-red-400">
+            Breaks Stun
+          </span>
+        )
+
+      case 'Unblockable':
+        return (
+          <span className="font-medium text-red-400">
+            Unblockable
+          </span>
+        )
+
+      case 'AttributeAdjust':
+        return (
+          <span className="font-medium text-amber-400">
+            {fact.text}
+          </span>
+        )
+
+      case 'Time':
+        return (
+          <span className="font-medium text-white/90">
+            {fact.text}: {fact.duration}s
+          </span>
+        )
+
+      default:
+        return (
+          <span className="text-white/60">
+            {fact.text}
+          </span>
+        )
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      {fact.icon && (
+        <img src={fact.icon} alt="" className="w-4 h-4 flex-shrink-0" />
+      )}
+      {renderFactValue()}
+    </div>
   )
 }
 
