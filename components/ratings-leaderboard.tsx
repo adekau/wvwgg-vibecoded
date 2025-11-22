@@ -65,13 +65,12 @@ export function RatingsLeaderboard() {
 
   // Filter guilds
   const filteredGuilds = useMemo(() => {
-    // Only show rated alliance guilds
+    // Only show alliance guilds with Glicko ratings
     const ratedAlliances = guilds.filter(
       guild =>
         guild.classification === 'alliance' &&
         guild.glickoRating &&
-        guild.glickoRating.matchCount &&
-        guild.glickoRating.matchCount > 0
+        typeof guild.glickoRating.matchCount === 'number'
     )
 
     const filtered = ratedAlliances.filter(guild => {
@@ -146,7 +145,7 @@ export function RatingsLeaderboard() {
   // Calculate overall rank for each guild
   const guildRanks = useMemo(() => {
     const allRated = guilds.filter(
-      g => g.classification === 'alliance' && g.glickoRating && g.glickoRating.matchCount && g.glickoRating.matchCount > 0
+      g => g.classification === 'alliance' && g.glickoRating && typeof g.glickoRating.matchCount === 'number'
     )
     const sorted = [...allRated].sort((a, b) => (b.glickoRating?.rating || 0) - (a.glickoRating?.rating || 0))
     const ranks = new Map<string, number>()
