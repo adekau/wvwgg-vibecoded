@@ -24,6 +24,8 @@ import {
   type SkirmishInfo,
   type SimulationResult,
 } from '@/lib/monte-carlo-simulator'
+import { predictMatchFromData, enhanceHistoricalStatsWithGlicko } from '@/lib/glicko-match-predictor'
+import { useQuery } from '@tanstack/react-query'
 
 interface VPProbabilityAnalysisProps {
   matchId: string
@@ -113,7 +115,19 @@ export function VPProbabilityAnalysis({ matchId, match, remainingSkirmishes }: V
     }
   }
 
+  // Fetch guilds for Glicko rating predictions
+  const { data: guilds = [] } = useQuery({
+    queryKey: ['guilds'],
+    queryFn: async () => {
+      const response = await fetch('/api/guilds')
+      if (!response.ok) throw new Error('Failed to fetch guilds')
+      return response.json()
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
+
   // Calculate historical stats from completed skirmishes
+  // Enhanced with Glicko-2 ratings for hybrid prediction (Glicko base + historical time patterns)
   useEffect(() => {
     if (!match.skirmishes || match.skirmishes.length === 0) {
       setHistoricalStats(null)
@@ -127,7 +141,8 @@ export function VPProbabilityAnalysis({ matchId, match, remainingSkirmishes }: V
       match.allWorlds
     )
 
-    const stats = {
+    // Calculate base historical stats
+    let stats = {
       red: analyzeHistoricalPerformance(
         skirmishResults,
         'red',
@@ -148,8 +163,28 @@ export function VPProbabilityAnalysis({ matchId, match, remainingSkirmishes }: V
       ),
     }
 
+    // Enhance with Glicko-2 predictions if we have guild data and match structure
+    if (guilds.length > 0 && (match as any).all_worlds) {
+      try {
+        const glickoPrediction = predictMatchFromData(
+          { all_worlds: (match as any).all_worlds },
+          guilds
+        )
+
+        // Apply hybrid approach: Glicko base probabilities + historical time patterns
+        stats = {
+          red: enhanceHistoricalStatsWithGlicko(stats.red, glickoPrediction),
+          blue: enhanceHistoricalStatsWithGlicko(stats.blue, glickoPrediction),
+          green: enhanceHistoricalStatsWithGlicko(stats.green, glickoPrediction),
+        }
+      } catch (error) {
+        console.warn('Failed to enhance with Glicko predictions:', error)
+        // Fall back to pure historical stats
+      }
+    }
+
     setHistoricalStats(stats)
-  }, [match.skirmishes, match.worlds, match.startDate, region])
+  }, [match.skirmishes, match.worlds, match.startDate, match.allWorlds, region, guilds])
 
   const handleRunSimulation = async () => {
     if (!historicalStats || remainingSkirmishes.length === 0) return

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Shield, Users, CheckCircle, AlertCircle, LogOut, List } from 'lucide-react'
+import { Shield, Users, CheckCircle, AlertCircle, LogOut, List, TrendingUp } from 'lucide-react'
 
 interface DashboardStats {
   totalGuilds: number
@@ -199,6 +199,26 @@ export default function AdminDashboard() {
               <CardContent>
                 <Button variant="outline" className="w-full">
                   View All Guilds
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="panel-border hover:shadow-lg transition-shadow cursor-pointer group" onClick={() => router.push('/admin/ratings')}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 group-hover:text-accent transition-colors">
+                  <TrendingUp className="h-5 w-5" />
+                  Alliance Ratings
+                </CardTitle>
+                <CardDescription>
+                  View and manage Glicko-2 ratings for alliance guilds
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button variant="outline" className="w-full" onClick={(e) => {
+                  e.stopPropagation()
+                  router.push('/admin/ratings')
+                }}>
+                  View Ratings
                 </Button>
               </CardContent>
             </Card>
