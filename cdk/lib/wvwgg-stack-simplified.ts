@@ -104,6 +104,7 @@ export class WvWGGStack extends cdk.Stack {
 
     // Lambda: Sync Game Data (builds system - manual/daily trigger)
     const syncGameDataLambda = new lambdaNodejs.NodejsFunction(this, `WvWGGSyncGameDataLambda-${props.stage}`, {
+      functionName: `WvWGGSyncGameDataLambda-${props.stage}`,
       entry: path.join(__dirname, '../lambda/sync-game-data.ts'),
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'handler',

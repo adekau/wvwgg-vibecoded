@@ -21,7 +21,22 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-FUNCTION_NAME="WvWGGSyncGameDataLambda-${STAGE}"
+# Find the Lambda function name (CDK generates long names)
+echo "🔍 Looking up Lambda function name..."
+FUNCTION_NAME=$(aws lambda list-functions \
+  ${AWS_PROFILE} \
+  --query "Functions[?contains(FunctionName, 'WvWGGSyncGameDataLambda') && contains(FunctionName, '${STAGE}')].FunctionName | [0]" \
+  --output text)
+
+if [ -z "$FUNCTION_NAME" ] || [ "$FUNCTION_NAME" = "None" ]; then
+  echo "❌ Could not find sync Lambda function for stage: ${STAGE}"
+  echo ""
+  echo "Expected function name pattern: *WvWGGSyncGameDataLambda*${STAGE}*"
+  echo ""
+  echo "Available Lambda functions:"
+  aws lambda list-functions ${AWS_PROFILE} --query 'Functions[*].FunctionName' --output text
+  exit 1
+fi
 
 echo "🚀 Invoking ${FUNCTION_NAME}..."
 if [ -n "$AWS_PROFILE" ]; then

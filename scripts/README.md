@@ -8,6 +8,8 @@ Helper scripts for managing the GW2 build system data sync.
 
 Invokes the Sync Game Data Lambda to populate DynamoDB with GW2 game data.
 
+**Note:** The script automatically discovers the Lambda function name, so it works even with CDK-generated names.
+
 **Usage:**
 ```bash
 # Default (prod, default AWS credentials)
