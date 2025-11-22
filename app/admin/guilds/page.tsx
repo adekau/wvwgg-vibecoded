@@ -28,12 +28,13 @@ import { useAuth } from '@/lib/auth-context'
 import { AdminSubNav } from '@/components/admin-sub-nav'
 
 interface AdminGuild extends IGuild {
-  classification?: 'alliance' | 'member' | 'independent'
+  classification?: 'alliance' | 'solo-alliance' | 'member' | 'independent'
   allianceGuildId?: string
   memberGuildIds?: string[]
   description?: string
   contact_info?: string
   recruitment_status?: 'open' | 'closed' | 'by_application'
+  primetimeTimezones?: string[]
   notes?: string
 }
 
@@ -161,6 +162,7 @@ export default function AdminGuildsPage() {
     return {
       total: guilds.length,
       alliances: guilds.filter(g => g.classification === 'alliance').length,
+      soloAlliances: guilds.filter(g => g.classification === 'solo-alliance').length,
       members: guilds.filter(g => g.classification === 'member').length,
       independent: guilds.filter(g => g.classification === 'independent').length,
       unclassified: guilds.filter(g => !g.classification).length,
@@ -173,10 +175,17 @@ export default function AdminGuildsPage() {
     }
     const variants: Record<string, any> = {
       alliance: 'default',
+      'solo-alliance': 'default',
       member: 'secondary',
       independent: 'outline',
     }
-    return <Badge variant={variants[classification]}>{classification}</Badge>
+    const labels: Record<string, string> = {
+      'solo-alliance': 'Solo Alliance',
+      alliance: 'Alliance',
+      member: 'Member',
+      independent: 'Independent',
+    }
+    return <Badge variant={variants[classification]}>{labels[classification] || classification}</Badge>
   }
 
   if (loading) {
@@ -205,7 +214,7 @@ export default function AdminGuildsPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total</CardTitle>
@@ -220,6 +229,14 @@ export default function AdminGuildsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.alliances}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Solo Alliances</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.soloAlliances}</div>
           </CardContent>
         </Card>
         <Card>
@@ -285,6 +302,7 @@ export default function AdminGuildsPage() {
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
                 <SelectItem value="alliance">Alliance</SelectItem>
+                <SelectItem value="solo-alliance">Solo Alliance</SelectItem>
                 <SelectItem value="member">Member</SelectItem>
                 <SelectItem value="independent">Independent</SelectItem>
                 <SelectItem value="unclassified">Unclassified</SelectItem>
@@ -395,6 +413,7 @@ export default function AdminGuildsPage() {
                 description: updatedGuild.description,
                 contact_info: updatedGuild.contact_info,
                 recruitment_status: updatedGuild.recruitment_status,
+                primetimeTimezones: updatedGuild.primetimeTimezones,
                 notes: updatedGuild.notes,
                 updatedBy: user?.getUsername() || 'admin',
               }),

@@ -21,8 +21,23 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Loader2, X, Search, History } from 'lucide-react'
 import { IGuild } from '@/server/queries'
+
+// Common WvW primetime timezones
+const PRIMETIME_TIMEZONES = [
+  { value: 'America/New_York', label: 'NA East (ET)' },
+  { value: 'America/Chicago', label: 'NA Central (CT)' },
+  { value: 'America/Denver', label: 'NA Mountain (MT)' },
+  { value: 'America/Los_Angeles', label: 'NA West (PT)' },
+  { value: 'Europe/London', label: 'EU West (GMT/BST)' },
+  { value: 'Europe/Paris', label: 'EU Central (CET)' },
+  { value: 'Europe/Helsinki', label: 'EU East (EET)' },
+  { value: 'Australia/Sydney', label: 'OCX East (AEDT)' },
+  { value: 'Australia/Perth', label: 'OCX West (AWST)' },
+  { value: 'Asia/Singapore', label: 'SEA (SGT)' },
+]
 
 interface AuditLogEntry {
   timestamp: number
@@ -32,12 +47,13 @@ interface AuditLogEntry {
 }
 
 interface AdminGuild extends IGuild {
-  classification?: 'alliance' | 'member' | 'independent' | null
+  classification?: 'alliance' | 'solo-alliance' | 'member' | 'independent' | null
   allianceGuildId?: string | null
   memberGuildIds?: string[] | null
   description?: string | null
   contact_info?: string | null
   recruitment_status?: 'open' | 'closed' | 'by_application' | null
+  primetimeTimezones?: string[] | null
   notes?: string | null
   reviewed?: boolean
   reviewedAt?: number
@@ -60,6 +76,7 @@ export function GuildEditModal({ guild, allGuilds, open, onClose, onSave }: Guil
   const [description, setDescription] = useState(guild?.description || '')
   const [contactInfo, setContactInfo] = useState(guild?.contact_info || '')
   const [recruitmentStatus, setRecruitmentStatus] = useState<'open' | 'closed' | 'by_application'>(guild?.recruitment_status || 'closed')
+  const [primetimeTimezones, setPrimetimeTimezones] = useState<string[]>(guild?.primetimeTimezones || [])
   const [notes, setNotes] = useState(guild?.notes || '')
   const [allianceSearch, setAllianceSearch] = useState('')
   const [memberSearch, setMemberSearch] = useState('')
@@ -73,6 +90,7 @@ export function GuildEditModal({ guild, allGuilds, open, onClose, onSave }: Guil
       setDescription(guild.description || '')
       setContactInfo(guild.contact_info || '')
       setRecruitmentStatus(guild.recruitment_status || 'closed')
+      setPrimetimeTimezones(guild.primetimeTimezones || [])
       setNotes(guild.notes || '')
       setAllianceSearch('')
       setMemberSearch('')
@@ -113,6 +131,7 @@ export function GuildEditModal({ guild, allGuilds, open, onClose, onSave }: Guil
         description: description || null as any,
         contact_info: contactInfo || null as any,
         recruitment_status: recruitmentStatus || null as any,
+        primetimeTimezones: primetimeTimezones.length > 0 ? primetimeTimezones : null as any,
         notes: notes || null as any,
       }
 
@@ -148,12 +167,14 @@ export function GuildEditModal({ guild, allGuilds, open, onClose, onSave }: Guil
               <SelectContent>
                 <SelectItem value="unclassified">Unclassified</SelectItem>
                 <SelectItem value="alliance">Alliance</SelectItem>
+                <SelectItem value="solo-alliance">Solo Alliance</SelectItem>
                 <SelectItem value="member">Member Guild</SelectItem>
                 <SelectItem value="independent">Independent</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              {classification === 'alliance' && 'This guild is an alliance (e.g., [IRON])'}
+              {classification === 'alliance' && 'This guild is an alliance with member guilds (e.g., [IRON])'}
+              {classification === 'solo-alliance' && 'This guild operates as a solo alliance (no member guilds)'}
               {classification === 'member' && 'This guild is a member of an alliance'}
               {classification === 'independent' && 'This guild operates independently'}
               {classification === 'unclassified' && 'Classification not yet determined'}
@@ -315,6 +336,37 @@ export function GuildEditModal({ guild, allGuilds, open, onClose, onSave }: Guil
                 <SelectItem value="closed">Closed - Not recruiting</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Primetime Timezones */}
+          <div className="space-y-2">
+            <Label>Primetime Timezones</Label>
+            <p className="text-xs text-muted-foreground mb-2">
+              Select one or more timezones when this guild is most active
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 border rounded-md">
+              {PRIMETIME_TIMEZONES.map((tz) => (
+                <div key={tz.value} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`tz-${tz.value}`}
+                    checked={primetimeTimezones.includes(tz.value)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setPrimetimeTimezones([...primetimeTimezones, tz.value])
+                      } else {
+                        setPrimetimeTimezones(primetimeTimezones.filter(t => t !== tz.value))
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor={`tz-${tz.value}`}
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    {tz.label}
+                  </label>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Notes */}
