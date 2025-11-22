@@ -83,7 +83,7 @@ export class WvWGGSyncGameDataStepFunction extends Construct {
      * Returns S3 key for batch processing
      */
     private createGetItemIdsTask(itemType: 'UpgradeComponent' | 'Consumable') {
-        const lambda = new lambdaNode.NodejsFunction(this, `get-${itemType.toLowerCase()}-ids-lambda`, {
+        const l = new lambdaNode.NodejsFunction(this, `get-${itemType.toLowerCase()}-ids-lambda`, {
             entry: path.join(__dirname, '../../lambda/get-item-ids.ts'),
             runtime: lambda.Runtime.NODEJS_22_X,
             handler: 'handler',
@@ -95,11 +95,11 @@ export class WvWGGSyncGameDataStepFunction extends Construct {
                 GW2_API_BASE: 'https://api.guildwars2.com/v2'
             }
         });
-        lambda.node.addDependency(this.props.bucket);
-        this.props.bucket.grantWrite(lambda);
+        l.node.addDependency(this.props.bucket);
+        this.props.bucket.grantWrite(l);
 
         return new sfnTasks.LambdaInvoke(this, `get-${itemType.toLowerCase()}-ids`, {
-            lambdaFunction: lambda,
+            lambdaFunction: l,
             queryLanguage: QueryLanguage.JSONATA,
             payload: sfn.TaskInput.fromObject({
                 itemType: itemType
