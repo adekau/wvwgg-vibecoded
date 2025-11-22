@@ -198,7 +198,7 @@ export function GuildEditModal({ guild, allGuilds, open, onClose, onSave }: Guil
                             setAllianceGuildId(g.id)
                             setAllianceSearch('')
                           }}
-                          className="w-full px-3 py-2 text-left hover:bg-accent flex items-center justify-between"
+                          className="w-full px-3 py-2 text-left hover:bg-primary/10 hover:text-foreground transition-colors flex items-center justify-between"
                         >
                           <div>
                             <div className="font-medium">{g.name}</div>
@@ -258,7 +258,7 @@ export function GuildEditModal({ guild, allGuilds, open, onClose, onSave }: Guil
                           setMemberGuildIds([...memberGuildIds, g.id])
                           setMemberSearch('')
                         }}
-                        className="w-full px-3 py-2 text-left hover:bg-accent"
+                        className="w-full px-3 py-2 text-left hover:bg-primary/10 hover:text-foreground transition-colors"
                       >
                         <div className="font-medium">{g.name}</div>
                         <div className="text-sm text-muted-foreground">[{g.tag}]</div>
