@@ -34,8 +34,9 @@ export class WvWGGStack extends cdk.Stack {
       sortKey: { name: 'id', type: cdk.aws_dynamodb.AttributeType.STRING },
       billing: cdk.aws_dynamodb.Billing.onDemand(),
       removalPolicy: props.stage === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
-      // GSI for efficient querying by type + interval (for match-history)
+      // GSI for efficient querying
       globalSecondaryIndexes: [
+        // Match history queries
         {
           indexName: 'type-interval-index',
           partitionKey: { name: 'type', type: cdk.aws_dynamodb.AttributeType.STRING },
@@ -45,6 +46,21 @@ export class WvWGGStack extends cdk.Stack {
           indexName: 'matchId-interval-index',
           partitionKey: { name: 'matchId', type: cdk.aws_dynamodb.AttributeType.STRING },
           sortKey: { name: 'interval', type: cdk.aws_dynamodb.AttributeType.NUMBER },
+        },
+        {
+          indexName: 'gameVersion-validFrom-index',
+          partitionKey: { name: 'gameVersion', type: cdk.aws_dynamodb.AttributeType.STRING },
+          sortKey: { name: 'validFrom', type: cdk.aws_dynamodb.AttributeType.STRING },
+        },
+        {
+          indexName: 'itemCategory-gameVersion-index',
+          partitionKey: { name: 'itemCategory', type: cdk.aws_dynamodb.AttributeType.STRING },
+          sortKey: { name: 'gameVersion', type: cdk.aws_dynamodb.AttributeType.STRING },
+        },
+        {
+          indexName: 'sourceType-sourceId-index',
+          partitionKey: { name: 'sourceType', type: cdk.aws_dynamodb.AttributeType.STRING },
+          sortKey: { name: 'sourceId', type: cdk.aws_dynamodb.AttributeType.STRING },
         }
       ]
     });
@@ -54,6 +70,32 @@ export class WvWGGStack extends cdk.Stack {
       actions: ['dynamodb:BatchWriteItem'],
       resources: [this.dynamoDbTable.tableArn]
     }));
+
+    // Grant game data sync lambdas permission to write to DynamoDB
+    const gameDataSyncLambdas = [
+      props.automationStack.gameDataStepFunction.syncBaseDataLambda,
+      props.automationStack.gameDataStepFunction.fetchItemsBatchUpgradeLambda,
+      props.automationStack.gameDataStepFunction.fetchItemsBatchConsumableLambda
+    ];
+
+    gameDataSyncLambdas.forEach(lambda => {
+      // Add TABLE_NAME environment variable
+      lambda.addEnvironment('TABLE_NAME', this.dynamoDbTable.tableName);
+
+      // Grant DynamoDB permissions
+      lambda.addToRolePolicy(new PolicyStatement({
+        actions: [
+          'dynamodb:PutItem',
+          'dynamodb:BatchWriteItem',
+          'dynamodb:GetItem',
+          'dynamodb:Query'
+        ],
+        resources: [
+          this.dynamoDbTable.tableArn,
+          `${this.dynamoDbTable.tableArn}/index/*` // For GSI access
+        ]
+      }));
+    });
 
     // Lambda: Fetch Matches (runs every 60 seconds)
     const fetchMatchesLambda = new lambdaNodejs.NodejsFunction(this, `WvWGGFetchMatchesLambda-${props.stage}`, {
@@ -85,6 +127,22 @@ export class WvWGGStack extends cdk.Stack {
     });
     fetchWorldsLambda.node.addDependency(this.dynamoDbTable);
     this.dynamoDbTable.grantReadWriteData(fetchWorldsLambda);
+
+    // Lambda: Sync Game Data (builds system - manual/daily trigger)
+    const syncGameDataLambda = new lambdaNodejs.NodejsFunction(this, `WvWGGSyncGameDataLambda-${props.stage}`, {
+      functionName: `WvWGGSyncGameDataLambda-${props.stage}`,
+      entry: path.join(__dirname, '../lambda/sync-game-data.ts'),
+      runtime: lambda.Runtime.NODEJS_22_X,
+      handler: 'handler',
+      timeout: cdk.Duration.minutes(10), // Long timeout for GW2 API fetches
+      memorySize: 512, // More memory for processing
+      environment: {
+        TABLE_NAME: this.dynamoDbTable.tableName,
+        REGION: this.region
+      }
+    });
+    syncGameDataLambda.node.addDependency(this.dynamoDbTable);
+    this.dynamoDbTable.grantReadWriteData(syncGameDataLambda);
 
     // EventBridge Rule: Trigger fetchMatchesLambda every 60 seconds
     const fetchMatchesRule = new events.Rule(this, `WvWGGFetchMatchesRule-${props.stage}`, {
@@ -164,6 +222,12 @@ export class WvWGGStack extends cdk.Stack {
       value: this.dynamoDbTable.tableName,
       description: `DynamoDB table name for ${props.stage} environment`,
       exportName: `WvWGGTableName-${props.stage}`
+    });
+
+    new cdk.CfnOutput(this, `SyncGameDataLambdaArn-${props.stage}`, {
+      value: syncGameDataLambda.functionArn,
+      description: `Sync Game Data Lambda ARN for ${props.stage} (invoke to sync build data from GW2 API)`,
+      exportName: `WvWGGSyncGameDataLambdaArn-${props.stage}`
     });
   }
 }
