@@ -25,6 +25,12 @@ export interface SkirmishResult {
     blue: number
     green: number
   }
+  // Alliance composition - world IDs that make up each team
+  alliances?: {
+    red: number[]
+    blue: number[]
+    green: number[]
+  }
 }
 
 export interface TimeWindowStats {
@@ -36,6 +42,29 @@ export interface TimeWindowStats {
   }
   averageScore: number
   averageVP: number
+}
+
+export interface AllianceStats {
+  allianceKey: string // Sorted, comma-separated world IDs (e.g., "1001,1002,1003")
+  worldIds: number[]
+  stats: TimeWindowStats
+  statsByWindow: {
+    naPrime: TimeWindowStats
+    euPrime: TimeWindowStats
+    ocx: TimeWindowStats
+    offHours: TimeWindowStats
+  }
+  placementProbability: {
+    first: number
+    second: number
+    third: number
+  }
+  placementProbabilityByWindow: {
+    naPrime: { first: number; second: number; third: number }
+    euPrime: { first: number; second: number; third: number }
+    ocx: { first: number; second: number; third: number }
+    offHours: { first: number; second: number; third: number }
+  }
 }
 
 export interface TeamHistoricalStats {
@@ -67,9 +96,69 @@ export interface TeamHistoricalStats {
     ocx: { first: number; second: number; third: number }
     offHours: { first: number; second: number; third: number }
   }
+
+  // Performance by alliance composition
+  // This tracks how the team performs with different alliance compositions
+  // Key: alliance composition (sorted world IDs joined by comma)
+  // Value: statistics for that specific alliance composition
+  byAlliance: Map<string, AllianceStats>
+
+  // Current alliance composition (if available)
+  currentAlliance?: {
+    allianceKey: string
+    worldIds: number[]
+  }
 }
 
 export type TimeWindow = 'naPrime' | 'euPrime' | 'ocx' | 'offHours'
+
+/**
+ * Creates a unique key for an alliance composition
+ * Sorts the world IDs and joins them with commas
+ *
+ * @param worldIds Array of world IDs in the alliance
+ * @returns Sorted, comma-separated string of world IDs
+ */
+export function createAllianceKey(worldIds: number[]): string {
+  return [...worldIds].sort((a, b) => a - b).join(',')
+}
+
+/**
+ * Creates an empty TimeWindowStats object
+ */
+function createEmptyTimeWindowStats(): TimeWindowStats {
+  return {
+    totalSkirmishes: 0,
+    placements: { first: 0, second: 0, third: 0 },
+    averageScore: 0,
+    averageVP: 0,
+  }
+}
+
+/**
+ * Creates an empty AllianceStats object
+ */
+function createEmptyAllianceStats(worldIds: number[]): AllianceStats {
+  const allianceKey = createAllianceKey(worldIds)
+  return {
+    allianceKey,
+    worldIds: [...worldIds].sort((a, b) => a - b),
+    stats: createEmptyTimeWindowStats(),
+    statsByWindow: {
+      naPrime: createEmptyTimeWindowStats(),
+      euPrime: createEmptyTimeWindowStats(),
+      ocx: createEmptyTimeWindowStats(),
+      offHours: createEmptyTimeWindowStats(),
+    },
+    placementProbability: { first: 0.33, second: 0.34, third: 0.33 },
+    placementProbabilityByWindow: {
+      naPrime: { first: 0.33, second: 0.34, third: 0.33 },
+      euPrime: { first: 0.33, second: 0.34, third: 0.33 },
+      ocx: { first: 0.33, second: 0.34, third: 0.33 },
+      offHours: { first: 0.33, second: 0.34, third: 0.33 },
+    },
+  }
+}
 
 /**
  * Determines which time window a given timestamp falls into
@@ -107,6 +196,7 @@ export function getTimeWindow(timestamp: Date, region: 'na' | 'eu'): TimeWindow 
 
 /**
  * Analyzes historical skirmish data to calculate team statistics
+ * Now includes alliance composition tracking for better predictions during relinking
  */
 export function analyzeHistoricalPerformance(
   skirmishes: SkirmishResult[],
@@ -117,37 +207,12 @@ export function analyzeHistoricalPerformance(
   const stats: TeamHistoricalStats = {
     teamColor,
     teamName,
-    overall: {
-      totalSkirmishes: 0,
-      placements: { first: 0, second: 0, third: 0 },
-      averageScore: 0,
-      averageVP: 0,
-    },
+    overall: createEmptyTimeWindowStats(),
     byWindow: {
-      naPrime: {
-        totalSkirmishes: 0,
-        placements: { first: 0, second: 0, third: 0 },
-        averageScore: 0,
-        averageVP: 0,
-      },
-      euPrime: {
-        totalSkirmishes: 0,
-        placements: { first: 0, second: 0, third: 0 },
-        averageScore: 0,
-        averageVP: 0,
-      },
-      ocx: {
-        totalSkirmishes: 0,
-        placements: { first: 0, second: 0, third: 0 },
-        averageScore: 0,
-        averageVP: 0,
-      },
-      offHours: {
-        totalSkirmishes: 0,
-        placements: { first: 0, second: 0, third: 0 },
-        averageScore: 0,
-        averageVP: 0,
-      },
+      naPrime: createEmptyTimeWindowStats(),
+      euPrime: createEmptyTimeWindowStats(),
+      ocx: createEmptyTimeWindowStats(),
+      offHours: createEmptyTimeWindowStats(),
     },
     placementProbability: { first: 0, second: 0, third: 0 },
     placementProbabilityByWindow: {
@@ -156,6 +221,7 @@ export function analyzeHistoricalPerformance(
       ocx: { first: 0, second: 0, third: 0 },
       offHours: { first: 0, second: 0, third: 0 },
     },
+    byAlliance: new Map<string, AllianceStats>(),
   }
 
   if (skirmishes.length === 0) {
@@ -173,6 +239,9 @@ export function analyzeHistoricalPerformance(
   // Analyze each skirmish
   let totalScore = 0
   let totalVP = 0
+
+  // Track the most recent alliance composition
+  let mostRecentAlliance: { allianceKey: string; worldIds: number[] } | undefined
 
   for (const skirmish of skirmishes) {
     const window = getTimeWindow(skirmish.timestamp, region)
@@ -193,6 +262,38 @@ export function analyzeHistoricalPerformance(
     if (placement === 1) stats.byWindow[window].placements.first++
     else if (placement === 2) stats.byWindow[window].placements.second++
     else stats.byWindow[window].placements.third++
+
+    // Track alliance-specific performance
+    if (skirmish.alliances && skirmish.alliances[teamColor]) {
+      const allianceWorldIds = skirmish.alliances[teamColor]
+      const allianceKey = createAllianceKey(allianceWorldIds)
+
+      // Get or create alliance stats
+      if (!stats.byAlliance.has(allianceKey)) {
+        stats.byAlliance.set(allianceKey, createEmptyAllianceStats(allianceWorldIds))
+      }
+      const allianceStats = stats.byAlliance.get(allianceKey)!
+
+      // Update alliance overall stats
+      allianceStats.stats.totalSkirmishes++
+      if (placement === 1) allianceStats.stats.placements.first++
+      else if (placement === 2) allianceStats.stats.placements.second++
+      else allianceStats.stats.placements.third++
+
+      // Update alliance window-specific stats
+      allianceStats.statsByWindow[window].totalSkirmishes++
+      if (placement === 1) allianceStats.statsByWindow[window].placements.first++
+      else if (placement === 2) allianceStats.statsByWindow[window].placements.second++
+      else allianceStats.statsByWindow[window].placements.third++
+
+      // Track most recent alliance (for current match predictions)
+      mostRecentAlliance = { allianceKey, worldIds: allianceWorldIds }
+    }
+  }
+
+  // Set current alliance from the most recent skirmish
+  if (mostRecentAlliance) {
+    stats.currentAlliance = mostRecentAlliance
   }
 
   // Calculate averages
@@ -223,11 +324,40 @@ export function analyzeHistoricalPerformance(
     }
   }
 
+  // Calculate probabilities for each alliance composition
+  for (const [allianceKey, allianceStats] of stats.byAlliance.entries()) {
+    const allianceTotal = allianceStats.stats.totalSkirmishes
+    if (allianceTotal > 0) {
+      // Overall alliance probabilities
+      allianceStats.placementProbability = {
+        first: allianceStats.stats.placements.first / allianceTotal,
+        second: allianceStats.stats.placements.second / allianceTotal,
+        third: allianceStats.stats.placements.third / allianceTotal,
+      }
+
+      // Alliance probabilities by window
+      for (const window of windows) {
+        const allianceWindowTotal = allianceStats.statsByWindow[window].totalSkirmishes
+        if (allianceWindowTotal > 0) {
+          allianceStats.placementProbabilityByWindow[window] = {
+            first: allianceStats.statsByWindow[window].placements.first / allianceWindowTotal,
+            second: allianceStats.statsByWindow[window].placements.second / allianceWindowTotal,
+            third: allianceStats.statsByWindow[window].placements.third / allianceWindowTotal,
+          }
+        } else {
+          // No data for this window - use alliance overall probabilities
+          allianceStats.placementProbabilityByWindow[window] = allianceStats.placementProbability
+        }
+      }
+    }
+  }
+
   return stats
 }
 
 /**
  * Converts match skirmish data to SkirmishResult format
+ * Now includes alliance composition tracking
  */
 export function convertMatchSkirmishesToResults(
   skirmishes: Array<{
@@ -236,7 +366,12 @@ export function convertMatchSkirmishesToResults(
     vpTier?: { first: number; second: number; third: number }
   }>,
   matchStartDate: Date,
-  region: 'na' | 'eu'
+  region: 'na' | 'eu',
+  alliances?: {
+    red: number[]
+    blue: number[]
+    green: number[]
+  }
 ): SkirmishResult[] {
   return skirmishes.map((skirmish, index) => {
     // Calculate timestamp (each skirmish is 2 hours)
@@ -271,6 +406,12 @@ export function convertMatchSkirmishesToResults(
       placements,
       scores: skirmish.scores,
       vpAwarded,
+      // Include alliance composition if provided
+      alliances: alliances ? {
+        red: [...alliances.red],
+        blue: [...alliances.blue],
+        green: [...alliances.green],
+      } : undefined,
     }
   })
 }

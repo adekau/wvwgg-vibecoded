@@ -169,6 +169,39 @@ function ensureValidPlacements(placements: {
 }
 
 /**
+ * Gets the best probabilities to use for a team
+ * Prefers alliance-specific data if available and has sufficient sample size
+ *
+ * @param stats Team historical stats
+ * @param window Time window
+ * @returns Probability object to use for sampling
+ */
+function getBestProbabilities(
+  stats: TeamHistoricalStats,
+  window: 'naPrime' | 'euPrime' | 'ocx' | 'offHours'
+): { first: number; second: number; third: number } {
+  // If we have current alliance data and it has sufficient samples, use it
+  if (stats.currentAlliance) {
+    const allianceStats = stats.byAlliance.get(stats.currentAlliance.allianceKey)
+    if (allianceStats) {
+      const windowSamples = allianceStats.statsByWindow[window].totalSkirmishes
+      // Use alliance-specific data if we have at least 5 samples for this time window
+      // Otherwise fall back to overall historical data
+      if (windowSamples >= 5) {
+        return allianceStats.placementProbabilityByWindow[window]
+      }
+      // If we have overall alliance data (at least 10 samples), use that
+      if (allianceStats.stats.totalSkirmishes >= 10) {
+        return allianceStats.placementProbability
+      }
+    }
+  }
+
+  // Fall back to overall historical probabilities by window
+  return stats.placementProbabilityByWindow[window]
+}
+
+/**
  * Runs a single simulation
  *
  * This is the core simulation loop that predicts one possible outcome for the match.
@@ -178,6 +211,7 @@ function ensureValidPlacements(placements: {
  * 2. For each remaining skirmish:
  *    a. Determine time window (prime time NA/EU, off-hours, etc.)
  *    b. Sample placements for each team based on their historical performance in that window
+ *       - Now uses alliance-specific probabilities when available!
  *    c. Validate placements (ensure no duplicates)
  *    d. Award VP based on placements and skirmish tier (varies by time of day)
  * 3. Sort teams by final VP to determine standings
@@ -185,6 +219,11 @@ function ensureValidPlacements(placements: {
  * Key Insight: Teams perform differently at different times of day. For example:
  * - An OCX-focused team may dominate during off-hours but struggle during NA prime time
  * - This simulation captures that variance by using window-specific probabilities
+ *
+ * Enhancement: Alliance Tracking
+ * - After alliance relinking, teams may perform very differently
+ * - The simulator now uses alliance-specific historical data when available
+ * - This provides more accurate predictions during and after relinking periods
  *
  * @param currentVP Current VP totals (from completed skirmishes)
  * @param remainingSkirmishes Skirmishes yet to be played
@@ -217,11 +256,12 @@ function runSingleSimulation(
     const window = getTimeWindow(skirmish.startTime, region)
 
     // Sample placement for each team based on historical probabilities for this time window
+    // Now uses alliance-specific probabilities when available!
     // Each team is sampled independently, which may result in duplicate placements
     const rawPlacements = {
-      red: samplePlacement(historicalStats.red.placementProbabilityByWindow[window]),
-      blue: samplePlacement(historicalStats.blue.placementProbabilityByWindow[window]),
-      green: samplePlacement(historicalStats.green.placementProbabilityByWindow[window]),
+      red: samplePlacement(getBestProbabilities(historicalStats.red, window)),
+      blue: samplePlacement(getBestProbabilities(historicalStats.blue, window)),
+      green: samplePlacement(getBestProbabilities(historicalStats.green, window)),
     }
 
     // Ensure valid placements (no duplicates)

@@ -44,6 +44,12 @@ interface VPProbabilityAnalysisProps {
         tier: 'low' | 'medium' | 'high' | 'peak'
       }
     }>
+    // Alliance composition for tracking performance by alliance
+    allWorlds?: {
+      red: number[]
+      blue: number[]
+      green: number[]
+    }
   }
   remainingSkirmishes: SkirmishInfo[]
 }
@@ -117,7 +123,8 @@ export function VPProbabilityAnalysis({ matchId, match, remainingSkirmishes }: V
     const skirmishResults = convertMatchSkirmishesToResults(
       match.skirmishes,
       new Date(match.startDate),
-      region
+      region,
+      match.allWorlds
     )
 
     const stats = {
