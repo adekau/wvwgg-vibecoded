@@ -123,10 +123,7 @@ export class WvWGGSyncGameDataStepFunction extends Construct {
                 key: '{% $states.input.s3Key %}'
             }),
             itemBatcher: new sfn.ItemBatcher({
-                maxItemsPerBatch: 200, // GW2 API allows 200 items per request
-                batchInput: {
-                    tableName: this.props.tableName
-                }
+                maxItemsPerBatch: 200 // GW2 API allows 200 items per request
             }),
             outputs: {}, // Prevent output accumulation
             toleratedFailurePercentage: 5

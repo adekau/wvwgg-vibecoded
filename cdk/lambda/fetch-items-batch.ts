@@ -36,7 +36,6 @@ interface GW2Item {
 
 interface Event {
   Items: number[]; // Array of item IDs from S3
-  tableName: string;
 }
 
 interface Result {
