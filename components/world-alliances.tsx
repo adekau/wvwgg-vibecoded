@@ -43,7 +43,10 @@ export function WorldAlliances({ worlds, guilds }: WorldAlliancesProps) {
 
     // Find all alliances on this world based on the alliance's worldId
     // Member guilds inherit their alliance's world placement
-    const allAllianceGuilds = guilds.filter((guild) => guild.classification === 'alliance')
+    // Include both regular alliances and solo alliances
+    const allAllianceGuilds = guilds.filter((guild) =>
+      guild.classification === 'alliance' || guild.classification === 'solo-alliance'
+    )
     const relevantAlliances = allAllianceGuilds.filter((alliance) => {
       return alliance.worldId === world.id
     })
