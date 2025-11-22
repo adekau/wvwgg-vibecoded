@@ -379,12 +379,26 @@ async function _getMatchHistory(options: MatchHistoryOptions): Promise<Historica
 }
 
 // Cached version - revalidate every 2 minutes
-// Note: Cache key varies based on parameters
-export const getMatchHistory = unstable_cache(
-  _getMatchHistory,
-  ['match-history'],
-  { revalidate: CACHE_DURATIONS.MATCH_HISTORY, tags: ['match-history'] }
-);
+// Cache key must include parameters to avoid serving stale data across different queries
+export async function getMatchHistory(options: MatchHistoryOptions): Promise<HistoricalSnapshot[]> {
+  // Generate a unique cache key based on the query parameters
+  const cacheKey = [
+    'match-history',
+    options.matchId,
+    options.hours?.toString() || 'all',
+    options.startTime || 'none',
+    options.endTime || 'none',
+  ];
+
+  // Use unstable_cache with dynamic cache key
+  const cachedFn = unstable_cache(
+    async () => _getMatchHistory(options),
+    cacheKey,
+    { revalidate: CACHE_DURATIONS.MATCH_HISTORY, tags: ['match-history'] }
+  );
+
+  return cachedFn();
+}
 
 /**
  * Get pre-computed prime time statistics for a match
