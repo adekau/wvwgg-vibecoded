@@ -219,6 +219,156 @@ export async function PATCH(
       })
     )
 
+    // Handle bidirectional relationships for alliance/member guilds
+    // When updating an alliance guild's member list
+    if (body.memberGuildIds !== undefined) {
+      const oldMemberIds = currentGuild.Item.memberGuildIds || []
+      const newMemberIds = body.memberGuildIds || []
+
+      // Find added and removed members
+      const addedMembers = newMemberIds.filter((id: string) => !oldMemberIds.includes(id))
+      const removedMembers = oldMemberIds.filter((id: string) => !newMemberIds.includes(id))
+
+      // Update added member guilds to point to this alliance
+      for (const memberId of addedMembers) {
+        try {
+          await docClient.send(
+            new UpdateCommand({
+              TableName: process.env.TABLE_NAME,
+              Key: { type: 'guild', id: memberId },
+              UpdateExpression: 'SET #allianceGuildId = :allianceGuildId, #classification = :classification, #updatedAt = :updatedAt',
+              ExpressionAttributeNames: {
+                '#allianceGuildId': 'allianceGuildId',
+                '#classification': 'classification',
+                '#updatedAt': 'updatedAt',
+              },
+              ExpressionAttributeValues: {
+                ':allianceGuildId': guildId,
+                ':classification': 'member',
+                ':updatedAt': Date.now(),
+              },
+            })
+          )
+        } catch (error) {
+          console.error(`Failed to update member guild ${memberId}:`, error)
+        }
+      }
+
+      // Update removed member guilds to clear alliance reference
+      for (const memberId of removedMembers) {
+        try {
+          await docClient.send(
+            new UpdateCommand({
+              TableName: process.env.TABLE_NAME,
+              Key: { type: 'guild', id: memberId },
+              UpdateExpression: 'REMOVE #allianceGuildId SET #updatedAt = :updatedAt',
+              ExpressionAttributeNames: {
+                '#allianceGuildId': 'allianceGuildId',
+                '#updatedAt': 'updatedAt',
+              },
+              ExpressionAttributeValues: {
+                ':updatedAt': Date.now(),
+              },
+            })
+          )
+        } catch (error) {
+          console.error(`Failed to update removed member guild ${memberId}:`, error)
+        }
+      }
+    }
+
+    // When updating a member guild's alliance reference
+    if (body.allianceGuildId !== undefined) {
+      const oldAllianceId = currentGuild.Item.allianceGuildId
+      const newAllianceId = body.allianceGuildId
+
+      // Remove from old alliance if changed
+      if (oldAllianceId && oldAllianceId !== newAllianceId) {
+        try {
+          const oldAlliance = await docClient.send(
+            new GetCommand({
+              TableName: process.env.TABLE_NAME,
+              Key: { type: 'guild', id: oldAllianceId },
+            })
+          )
+
+          if (oldAlliance.Item?.memberGuildIds) {
+            const updatedMemberIds = oldAlliance.Item.memberGuildIds.filter((id: string) => id !== guildId)
+
+            if (updatedMemberIds.length > 0) {
+              await docClient.send(
+                new UpdateCommand({
+                  TableName: process.env.TABLE_NAME,
+                  Key: { type: 'guild', id: oldAllianceId },
+                  UpdateExpression: 'SET #memberGuildIds = :memberGuildIds, #updatedAt = :updatedAt',
+                  ExpressionAttributeNames: {
+                    '#memberGuildIds': 'memberGuildIds',
+                    '#updatedAt': 'updatedAt',
+                  },
+                  ExpressionAttributeValues: {
+                    ':memberGuildIds': updatedMemberIds,
+                    ':updatedAt': Date.now(),
+                  },
+                })
+              )
+            } else {
+              await docClient.send(
+                new UpdateCommand({
+                  TableName: process.env.TABLE_NAME,
+                  Key: { type: 'guild', id: oldAllianceId },
+                  UpdateExpression: 'REMOVE #memberGuildIds SET #updatedAt = :updatedAt',
+                  ExpressionAttributeNames: {
+                    '#memberGuildIds': 'memberGuildIds',
+                    '#updatedAt': 'updatedAt',
+                  },
+                  ExpressionAttributeValues: {
+                    ':updatedAt': Date.now(),
+                  },
+                })
+              )
+            }
+          }
+        } catch (error) {
+          console.error(`Failed to update old alliance ${oldAllianceId}:`, error)
+        }
+      }
+
+      // Add to new alliance if set
+      if (newAllianceId) {
+        try {
+          const newAlliance = await docClient.send(
+            new GetCommand({
+              TableName: process.env.TABLE_NAME,
+              Key: { type: 'guild', id: newAllianceId },
+            })
+          )
+
+          if (newAlliance.Item) {
+            const existingMemberIds = newAlliance.Item.memberGuildIds || []
+            if (!existingMemberIds.includes(guildId)) {
+              await docClient.send(
+                new UpdateCommand({
+                  TableName: process.env.TABLE_NAME,
+                  Key: { type: 'guild', id: newAllianceId },
+                  UpdateExpression: 'SET #memberGuildIds = :memberGuildIds, #updatedAt = :updatedAt',
+                  ExpressionAttributeNames: {
+                    '#memberGuildIds': 'memberGuildIds',
+                    '#updatedAt': 'updatedAt',
+                  },
+                  ExpressionAttributeValues: {
+                    ':memberGuildIds': [...existingMemberIds, guildId],
+                    ':updatedAt': Date.now(),
+                  },
+                })
+              )
+            }
+          }
+        } catch (error) {
+          console.error(`Failed to update new alliance ${newAllianceId}:`, error)
+        }
+      }
+    }
+
     // Revalidate the guilds cache
     revalidateTag('guilds')
 
