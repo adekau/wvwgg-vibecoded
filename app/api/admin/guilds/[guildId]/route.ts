@@ -220,6 +220,8 @@ export async function PATCH(
     )
 
     // Handle bidirectional relationships for alliance/member guilds
+    const errors: string[] = []
+
     // When updating an alliance guild's member list
     if (body.memberGuildIds !== undefined) {
       const oldMemberIds = currentGuild.Item.memberGuildIds || []
@@ -229,9 +231,12 @@ export async function PATCH(
       const addedMembers = newMemberIds.filter((id: string) => !oldMemberIds.includes(id))
       const removedMembers = oldMemberIds.filter((id: string) => !newMemberIds.includes(id))
 
+      console.log(`Processing member guild updates: added=${addedMembers.length}, removed=${removedMembers.length}`)
+
       // Update added member guilds to point to this alliance
       for (const memberId of addedMembers) {
         try {
+          console.log(`Updating member guild ${memberId} to point to alliance ${guildId}`)
           await docClient.send(
             new UpdateCommand({
               TableName: process.env.TABLE_NAME,
@@ -249,21 +254,26 @@ export async function PATCH(
               },
             })
           )
+          console.log(`Successfully updated member guild ${memberId}`)
         } catch (error) {
-          console.error(`Failed to update member guild ${memberId}:`, error)
+          const errorMsg = `Failed to update member guild ${memberId}: ${error instanceof Error ? error.message : String(error)}`
+          console.error(errorMsg, error)
+          errors.push(errorMsg)
         }
       }
 
       // Update removed member guilds to clear alliance reference
       for (const memberId of removedMembers) {
         try {
+          console.log(`Removing alliance reference from member guild ${memberId}`)
           await docClient.send(
             new UpdateCommand({
               TableName: process.env.TABLE_NAME,
               Key: { type: 'guild', id: memberId },
-              UpdateExpression: 'REMOVE #allianceGuildId SET #updatedAt = :updatedAt',
+              UpdateExpression: 'REMOVE #allianceGuildId, #classification SET #updatedAt = :updatedAt',
               ExpressionAttributeNames: {
                 '#allianceGuildId': 'allianceGuildId',
+                '#classification': 'classification',
                 '#updatedAt': 'updatedAt',
               },
               ExpressionAttributeValues: {
@@ -271,8 +281,11 @@ export async function PATCH(
               },
             })
           )
+          console.log(`Successfully removed alliance reference from member guild ${memberId}`)
         } catch (error) {
-          console.error(`Failed to update removed member guild ${memberId}:`, error)
+          const errorMsg = `Failed to update removed member guild ${memberId}: ${error instanceof Error ? error.message : String(error)}`
+          console.error(errorMsg, error)
+          errors.push(errorMsg)
         }
       }
     }
@@ -282,9 +295,12 @@ export async function PATCH(
       const oldAllianceId = currentGuild.Item.allianceGuildId
       const newAllianceId = body.allianceGuildId
 
+      console.log(`Processing alliance reference update: old=${oldAllianceId}, new=${newAllianceId}`)
+
       // Remove from old alliance if changed
       if (oldAllianceId && oldAllianceId !== newAllianceId) {
         try {
+          console.log(`Removing guild ${guildId} from old alliance ${oldAllianceId}`)
           const oldAlliance = await docClient.send(
             new GetCommand({
               TableName: process.env.TABLE_NAME,
@@ -327,15 +343,19 @@ export async function PATCH(
                 })
               )
             }
+            console.log(`Successfully removed guild from old alliance ${oldAllianceId}`)
           }
         } catch (error) {
-          console.error(`Failed to update old alliance ${oldAllianceId}:`, error)
+          const errorMsg = `Failed to update old alliance ${oldAllianceId}: ${error instanceof Error ? error.message : String(error)}`
+          console.error(errorMsg, error)
+          errors.push(errorMsg)
         }
       }
 
       // Add to new alliance if set
       if (newAllianceId) {
         try {
+          console.log(`Adding guild ${guildId} to new alliance ${newAllianceId}`)
           const newAlliance = await docClient.send(
             new GetCommand({
               TableName: process.env.TABLE_NAME,
@@ -361,10 +381,19 @@ export async function PATCH(
                   },
                 })
               )
+              console.log(`Successfully added guild to new alliance ${newAllianceId}`)
+            } else {
+              console.log(`Guild ${guildId} already in alliance ${newAllianceId} member list`)
             }
+          } else {
+            const errorMsg = `New alliance ${newAllianceId} not found in database`
+            console.error(errorMsg)
+            errors.push(errorMsg)
           }
         } catch (error) {
-          console.error(`Failed to update new alliance ${newAllianceId}:`, error)
+          const errorMsg = `Failed to update new alliance ${newAllianceId}: ${error instanceof Error ? error.message : String(error)}`
+          console.error(errorMsg, error)
+          errors.push(errorMsg)
         }
       }
     }
@@ -375,6 +404,7 @@ export async function PATCH(
     return NextResponse.json({
       success: true,
       guild: response.Attributes,
+      warnings: errors.length > 0 ? errors : undefined,
     })
   } catch (error) {
     console.error('Error updating guild:', error)
