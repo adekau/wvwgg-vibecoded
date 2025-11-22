@@ -3,6 +3,7 @@
 import { Moon, Sun, ChevronDown } from 'lucide-react'
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
+import Image from 'next/image'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -73,21 +74,13 @@ export function MatchesHeader() {
           <div className="flex items-center gap-8">
             <Link href="/matches" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
               <div className="relative">
-                <div className="w-10 h-10 rounded-md bg-primary flex items-center justify-center">
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="w-6 h-6 text-primary-foreground"
-                  >
-                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                    <path d="M2 17l10 5 10-5" />
-                    <path d="M2 12l10 5 10-5" />
-                  </svg>
-                </div>
+                <Image
+                  src="/logo.png"
+                  alt="WvW.gg Logo"
+                  width={40}
+                  height={40}
+                  className="rounded-md"
+                />
                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-accent rounded-full animate-pulse" />
               </div>
               <div>
