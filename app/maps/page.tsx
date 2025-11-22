@@ -2,8 +2,8 @@ import { MatchesHeader } from '@/components/matches-header'
 import { MapsPageClient } from '@/components/maps-page-client'
 import { getMatches } from '@/server/queries'
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+// Use ISR with 60 second revalidation to match data cache duration
+export const revalidate = 60;
 
 export default async function MapsPage() {
   // Fetch all matches
