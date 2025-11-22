@@ -24,6 +24,7 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Loader2, X, Search, History } from 'lucide-react'
 import { IGuild } from '@/server/queries'
+import { normalizeForSearch } from '@/lib/utils'
 
 // Common WvW primetime timezones
 const PRIMETIME_TIMEZONES = [
@@ -98,20 +99,22 @@ export function GuildEditModal({ guild, allGuilds, open, onClose, onSave }: Guil
   }, [guild])
 
   const allianceGuilds = useMemo(() => {
+    const normalizedSearch = normalizeForSearch(allianceSearch)
     return allGuilds.filter(g =>
       g.classification === 'alliance' &&
       g.id !== guild?.id &&
-      (g.name.toLowerCase().includes(allianceSearch.toLowerCase()) ||
-       g.tag.toLowerCase().includes(allianceSearch.toLowerCase()))
+      (normalizeForSearch(g.name).includes(normalizedSearch) ||
+       normalizeForSearch(g.tag).includes(normalizedSearch))
     ).slice(0, 10)
   }, [allGuilds, guild, allianceSearch])
 
   const memberCandidates = useMemo(() => {
+    const normalizedSearch = normalizeForSearch(memberSearch)
     return allGuilds.filter(g =>
       g.id !== guild?.id &&
       !memberGuildIds.includes(g.id) &&
-      (g.name.toLowerCase().includes(memberSearch.toLowerCase()) ||
-       g.tag.toLowerCase().includes(memberSearch.toLowerCase()))
+      (normalizeForSearch(g.name).includes(normalizedSearch) ||
+       normalizeForSearch(g.tag).includes(normalizedSearch))
     ).slice(0, 10)
   }, [allGuilds, guild, memberGuildIds, memberSearch])
 

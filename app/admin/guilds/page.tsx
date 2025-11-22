@@ -26,6 +26,7 @@ import { GuildEditModal } from '@/components/admin/guild-edit-modal'
 import { GuildSearchModal } from '@/components/guild-search-modal'
 import { useAuth } from '@/lib/auth-context'
 import { AdminSubNav } from '@/components/admin-sub-nav'
+import { normalizeForSearch } from '@/lib/utils'
 
 interface AdminGuild extends IGuild {
   classification?: 'alliance' | 'solo-alliance' | 'member' | 'independent'
@@ -93,11 +94,11 @@ export default function AdminGuildsPage() {
 
   const filteredGuilds = useMemo(() => {
     const filtered = guilds.filter(guild => {
-      // Search filter
-      const searchLower = searchTerm.toLowerCase()
+      // Search filter (case and accent insensitive)
+      const normalizedSearch = normalizeForSearch(searchTerm)
       const matchesSearch = !searchTerm ||
-        guild.name.toLowerCase().includes(searchLower) ||
-        guild.tag.toLowerCase().includes(searchLower)
+        normalizeForSearch(guild.name).includes(normalizedSearch) ||
+        normalizeForSearch(guild.tag).includes(normalizedSearch)
 
       // World filter
       const matchesWorld = worldFilter === 'all' || guild.worldId === parseInt(worldFilter)
