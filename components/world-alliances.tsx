@@ -41,12 +41,10 @@ export function WorldAlliances({ worlds, guilds }: WorldAlliancesProps) {
   const guildsByWorld = worlds.map((world) => {
     const worldGuilds = guilds.filter((guild) => guild.worldId === world.id)
 
-    // Find all alliances - either directly on this world OR that have member guilds on this world
+    // Find all alliances that have member guilds on this world
+    // Only use member guild worldIds, not the alliance's own worldId
     const allAllianceGuilds = guilds.filter((guild) => guild.classification === 'alliance')
     const relevantAlliances = allAllianceGuilds.filter((alliance) => {
-      // Alliance is directly on this world
-      if (alliance.worldId === world.id) return true
-
       // Alliance has member guilds on this world
       const hasMembers = guilds.some(
         (guild) =>
