@@ -20,19 +20,19 @@ const colorClasses = {
     bg: 'bg-chart-1/18',
     text: 'text-chart-1',
     border: 'border-chart-1/25',
-    badge: 'bg-chart-1/30 text-chart-1 border-chart-1/40',
+    badge: 'bg-chart-1/60 text-primary-foreground border-chart-1/70 font-medium',
   },
   blue: {
     bg: 'bg-chart-2/18',
     text: 'text-chart-2',
     border: 'border-chart-2/25',
-    badge: 'bg-chart-2/30 text-chart-2 border-chart-2/40',
+    badge: 'bg-chart-2/60 text-primary-foreground border-chart-2/70 font-medium',
   },
   green: {
     bg: 'bg-chart-3/18',
     text: 'text-chart-3',
     border: 'border-chart-3/25',
-    badge: 'bg-chart-3/30 text-chart-3 border-chart-3/40',
+    badge: 'bg-chart-3/60 text-primary-foreground border-chart-3/70 font-medium',
   },
 }
 
