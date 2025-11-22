@@ -22,24 +22,16 @@ export class WvWGGSyncGameDataStepFunction extends Construct {
         // Step 1: Sync ItemStats + Formulas (fast)
         const syncBaseDataTask = this.createSyncBaseDataTask();
 
-        // Step 2: Get UpgradeComponent IDs and write to S3
-        const getUpgradeIdsTask = this.createGetItemIdsTask('UpgradeComponent');
+        // Step 2: Get ALL item IDs (UpgradeComponents + Consumables)
+        const getAllItemIdsTask = this.createGetAllItemIdsTask();
 
-        // Step 3: Process UpgradeComponent batches
-        const processUpgradesMap = this.createProcessItemsMap('upgrade-components');
-
-        // Step 4: Get Consumable IDs and write to S3
-        const getConsumableIdsTask = this.createGetItemIdsTask('Consumable');
-
-        // Step 5: Process Consumable batches
-        const processConsumablesMap = this.createProcessItemsMap('consumables');
+        // Step 3: Process all items
+        const processItemsMap = this.createProcessItemsMap('all-items');
 
         // Chain the steps together
         const definition = syncBaseDataTask
-            .next(getUpgradeIdsTask)
-            .next(processUpgradesMap)
-            .next(getConsumableIdsTask)
-            .next(processConsumablesMap);
+            .next(getAllItemIdsTask)
+            .next(processItemsMap);
 
         this.stateMachine = new StateMachine(this, 'sync-game-data-state-machine', {
             definitionBody: DefinitionBody.fromChainable(definition),
@@ -79,15 +71,15 @@ export class WvWGGSyncGameDataStepFunction extends Construct {
     }
 
     /**
-     * Step 2/4: Get item IDs and write to S3
-     * Returns S3 key for batch processing
+     * Step 2: Get ALL item IDs (UpgradeComponents + Consumables) and write to S3
+     * Returns array of S3 keys for batch processing
      */
-    private createGetItemIdsTask(itemType: 'UpgradeComponent' | 'Consumable') {
-        const l = new lambdaNode.NodejsFunction(this, `get-${itemType.toLowerCase()}-ids-lambda`, {
-            entry: path.join(__dirname, '../../lambda/get-item-ids.ts'),
+    private createGetAllItemIdsTask() {
+        const l = new lambdaNode.NodejsFunction(this, 'get-all-item-ids-lambda', {
+            entry: path.join(__dirname, '../../lambda/get-all-item-ids.ts'),
             runtime: lambda.Runtime.NODEJS_22_X,
             handler: 'handler',
-            timeout: Duration.seconds(30),
+            timeout: Duration.seconds(60),  // Fetching both types
             memorySize: 256,
             environment: {
                 REGION: this.props.region,
@@ -98,14 +90,11 @@ export class WvWGGSyncGameDataStepFunction extends Construct {
         l.node.addDependency(this.props.bucket);
         this.props.bucket.grantWrite(l);
 
-        return new sfnTasks.LambdaInvoke(this, `get-${itemType.toLowerCase()}-ids`, {
+        return new sfnTasks.LambdaInvoke(this, 'get-all-item-ids', {
             lambdaFunction: l,
             queryLanguage: QueryLanguage.JSONATA,
-            payload: sfn.TaskInput.fromObject({
-                itemType: itemType
-            }),
             outputs: '{% $states.result.Payload.body.fileNames %}',  // Return array of S3 keys
-            comment: `Get ${itemType} IDs and write to S3`
+            comment: 'Get all item IDs (UpgradeComponents + Consumables) and write to S3'
         });
     }
 
@@ -179,12 +168,9 @@ export class WvWGGSyncGameDataStepFunction extends Construct {
             }
         });
 
-        // Store references to Lambdas for DynamoDB permission grants
-        if (mapName === 'upgrade-components') {
-            this.fetchItemsBatchUpgradeLambda = lambdaFn;
-        } else if (mapName === 'consumables') {
-            this.fetchItemsBatchConsumableLambda = lambdaFn;
-        }
+        // Store reference to Lambda for DynamoDB permission grants
+        this.fetchItemsBatchUpgradeLambda = lambdaFn;
+        this.fetchItemsBatchConsumableLambda = lambdaFn;  // Same Lambda for both
 
         return new sfnTasks.LambdaInvoke(this, `fetch-items-batch-${mapName}`, {
             lambdaFunction: lambdaFn,
