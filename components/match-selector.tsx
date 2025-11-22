@@ -106,9 +106,9 @@ export function MatchSelector({ currentMatchId, matches, className }: MatchSelec
                 value={match.id}
                 className={cn(
                   'cursor-pointer py-2.5 px-3',
-                  'hover:bg-accent/80',
-                  'transition-colors duration-150',
-                  match.id === currentMatchId && 'bg-accent/50'
+                  'hover:bg-primary/5 hover:border-l-2 hover:border-primary/30',
+                  'transition-all duration-150',
+                  match.id === currentMatchId && 'bg-accent/50 border-l-2 border-primary/50'
                 )}
               >
                 <div className="flex flex-col gap-1 w-full">
