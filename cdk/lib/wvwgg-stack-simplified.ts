@@ -34,8 +34,9 @@ export class WvWGGStack extends cdk.Stack {
       sortKey: { name: 'id', type: cdk.aws_dynamodb.AttributeType.STRING },
       billing: cdk.aws_dynamodb.Billing.onDemand(),
       removalPolicy: props.stage === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
-      // GSI for efficient querying by type + interval (for match-history)
+      // GSI for efficient querying
       globalSecondaryIndexes: [
+        // Match history queries
         {
           indexName: 'type-interval-index',
           partitionKey: { name: 'type', type: cdk.aws_dynamodb.AttributeType.STRING },
@@ -45,6 +46,24 @@ export class WvWGGStack extends cdk.Stack {
           indexName: 'matchId-interval-index',
           partitionKey: { name: 'matchId', type: cdk.aws_dynamodb.AttributeType.STRING },
           sortKey: { name: 'interval', type: cdk.aws_dynamodb.AttributeType.NUMBER },
+        },
+        // Build system queries - Version tracking
+        {
+          indexName: 'gameVersion-validFrom-index',
+          partitionKey: { name: 'gameVersion', type: cdk.aws_dynamodb.AttributeType.STRING },
+          sortKey: { name: 'validFrom', type: cdk.aws_dynamodb.AttributeType.STRING },
+        },
+        // Build system queries - Item categorization
+        {
+          indexName: 'itemCategory-gameVersion-index',
+          partitionKey: { name: 'itemCategory', type: cdk.aws_dynamodb.AttributeType.STRING },
+          sortKey: { name: 'gameVersion', type: cdk.aws_dynamodb.AttributeType.STRING },
+        },
+        // Build system queries - Modifier source lookup
+        {
+          indexName: 'sourceType-sourceId-index',
+          partitionKey: { name: 'sourceType', type: cdk.aws_dynamodb.AttributeType.STRING },
+          sortKey: { name: 'sourceId', type: cdk.aws_dynamodb.AttributeType.STRING },
         }
       ]
     });
