@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import NextTopLoader from 'nextjs-toploader'
 import './globals.css'
@@ -7,8 +6,8 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { AuthProvider } from '@/lib/auth-context'
 import { QueryProvider } from '@/components/query-provider'
 
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
+// Google Fonts are loaded via Tailwind CSS fallback configuration
+// This avoids build-time network dependencies
 
 export const metadata: Metadata = {
   title: 'WvW.gg - Guild Wars 2 World vs World Matches',

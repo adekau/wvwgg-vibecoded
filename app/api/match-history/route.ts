@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getMatchHistory, getMatches } from '@/server/queries';
 
+// Force dynamic rendering since we use searchParams
+export const dynamic = 'force-dynamic';
+
 // Cache for 2 minutes to match server query cache duration
 export const revalidate = 120;
 
