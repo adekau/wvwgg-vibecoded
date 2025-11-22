@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import { unstable_cache } from 'next/cache'
 import { getAllTraits, getTraits } from '@/lib/gw2/api'
 
+// Force dynamic rendering since we use request.url for query params
+export const dynamic = 'force-dynamic'
+
 // GW2 traits rarely change, cache for 7 days
 export const revalidate = 604800
 export const maxDuration = 300 // 5 minutes max execution time for Vercel
