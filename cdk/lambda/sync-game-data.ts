@@ -956,68 +956,93 @@ export async function handler(event: any): Promise<SyncResult> {
   const startTime = Date.now();
   const errors: string[] = [];
 
+  // Allow selective syncing via event parameters
+  const syncItemStats = event.syncItemStats !== false; // default true
+  const syncItems = event.syncItems === true; // default false (too slow)
+  const syncFormulas = event.syncFormulas !== false; // default true
+
   console.log('Starting game data sync...');
+  console.log(`Options: itemStats=${syncItemStats}, items=${syncItems}, formulas=${syncFormulas}`);
 
   try {
+    let itemStatEntities: ItemStatEntity[] = [];
+
     // 1. Fetch ItemStats
-    console.log('\n=== PHASE 1: ItemStats ===');
-    const gw2ItemStats = await fetchAllItemStats();
-    const itemStatEntities = gw2ItemStats.map(processItemStat);
-    await batchWrite(itemStatEntities);
-    console.log(`✅ Synced ${itemStatEntities.length} itemstats`);
-
-    // 2. Fetch Upgrade Components (Runes, Sigils, Infusions)
-    console.log('\n=== PHASE 2: Upgrade Components ===');
-    const upgradeComponents = await fetchItemsByType('UpgradeComponent');
-
-    // Process upgrade components and extract modifiers
-    const upgradeEntities: EnhancedItemEntity[] = [];
-    const upgradeModifiers: StatModifierEntity[] = [];
-
-    for (const item of upgradeComponents) {
-      const modifiers = extractModifiersFromItem(item);
-      const entity = processItem(item, modifiers);
-
-      if (entity) {
-        upgradeEntities.push(entity);
-        upgradeModifiers.push(...modifiers);
-      }
+    if (syncItemStats) {
+      console.log('\n=== PHASE 1: ItemStats ===');
+      const gw2ItemStats = await fetchAllItemStats();
+      itemStatEntities = gw2ItemStats.map(processItemStat);
+      await batchWrite(itemStatEntities);
+      console.log(`✅ Synced ${itemStatEntities.length} itemstats`);
+    } else {
+      console.log('\n⏭️  Skipping ItemStats (disabled via event)');
     }
 
-    await batchWrite(upgradeEntities);
-    console.log(`✅ Synced ${upgradeEntities.length} upgrade components`);
+    let upgradeEntities: EnhancedItemEntity[] = [];
+    let consumableEntities: EnhancedItemEntity[] = [];
+    let allModifiers: StatModifierEntity[] = [];
 
-    // 3. Fetch Consumables (Food, Utility)
-    console.log('\n=== PHASE 3: Consumables ===');
-    const consumables = await fetchItemsByType('Consumable');
+    // 2. Fetch Items (SLOW - disabled by default)
+    if (syncItems) {
+      console.log('\n=== PHASE 2: Upgrade Components ===');
+      const upgradeComponents = await fetchItemsByType('UpgradeComponent');
 
-    const consumableEntities: EnhancedItemEntity[] = [];
-    const consumableModifiers: StatModifierEntity[] = [];
+      // Process upgrade components and extract modifiers
+      const upgradeModifiers: StatModifierEntity[] = [];
 
-    for (const item of consumables) {
-      const modifiers = extractModifiersFromItem(item);
-      const entity = processItem(item, modifiers);
+      for (const item of upgradeComponents) {
+        const modifiers = extractModifiersFromItem(item);
+        const entity = processItem(item, modifiers);
 
-      if (entity) {
-        consumableEntities.push(entity);
-        consumableModifiers.push(...modifiers);
+        if (entity) {
+          upgradeEntities.push(entity);
+          upgradeModifiers.push(...modifiers);
+        }
       }
+
+      await batchWrite(upgradeEntities);
+      console.log(`✅ Synced ${upgradeEntities.length} upgrade components`);
+
+      // 3. Fetch Consumables (Food, Utility)
+      console.log('\n=== PHASE 3: Consumables ===');
+      const consumables = await fetchItemsByType('Consumable');
+
+      const consumableModifiers: StatModifierEntity[] = [];
+
+      for (const item of consumables) {
+        const modifiers = extractModifiersFromItem(item);
+        const entity = processItem(item, modifiers);
+
+        if (entity) {
+          consumableEntities.push(entity);
+          consumableModifiers.push(...modifiers);
+        }
+      }
+
+      await batchWrite(consumableEntities);
+      console.log(`✅ Synced ${consumableEntities.length} consumables`);
+
+      // 4. Write Modifiers
+      console.log('\n=== PHASE 4: Modifiers ===');
+      allModifiers = [...upgradeModifiers, ...consumableModifiers];
+      await batchWrite(allModifiers);
+      console.log(`✅ Synced ${allModifiers.length} modifiers`);
+    } else {
+      console.log('\n⏭️  Skipping Items (disabled via event - takes >10min)');
+      console.log('   To sync items later, invoke with: {"syncItems": true}');
     }
-
-    await batchWrite(consumableEntities);
-    console.log(`✅ Synced ${consumableEntities.length} consumables`);
-
-    // 4. Write Modifiers
-    console.log('\n=== PHASE 4: Modifiers ===');
-    const allModifiers = [...upgradeModifiers, ...consumableModifiers];
-    await batchWrite(allModifiers);
-    console.log(`✅ Synced ${allModifiers.length} modifiers`);
 
     // 5. Create Stat Formulas
-    console.log('\n=== PHASE 5: Stat Formulas ===');
-    const formulas = createStatFormulas();
-    await batchWrite(formulas);
-    console.log(`✅ Created ${formulas.length} stat formulas`);
+    let formulasCount = 0;
+    if (syncFormulas) {
+      console.log('\n=== PHASE 5: Stat Formulas ===');
+      const formulas = createStatFormulas();
+      await batchWrite(formulas);
+      formulasCount = formulas.length;
+      console.log(`✅ Created ${formulas.length} stat formulas`);
+    } else {
+      console.log('\n⏭️  Skipping Stat Formulas (disabled via event)');
+    }
 
     // 6. Create Game Version Record
     console.log('\n=== PHASE 6: Game Version ===');
@@ -1025,7 +1050,7 @@ export async function handler(event: any): Promise<SyncResult> {
       itemStatEntities.length,
       upgradeEntities.length + consumableEntities.length,
       allModifiers.length,
-      formulas.length
+      formulasCount
     );
 
     const duration = Date.now() - startTime;
@@ -1037,7 +1062,7 @@ export async function handler(event: any): Promise<SyncResult> {
       itemStatsProcessed: itemStatEntities.length,
       itemsProcessed: upgradeEntities.length + consumableEntities.length,
       modifiersExtracted: allModifiers.length,
-      formulasCreated: formulas.length,
+      formulasCreated: formulasCount,
       errors,
       duration,
     };
