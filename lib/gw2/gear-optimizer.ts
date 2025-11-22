@@ -197,3 +197,49 @@ export function getStatRecommendations(
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
 }
+
+/**
+ * Get optimization presets for gear optimization
+ */
+export function getOptimizationPresets(): Array<{
+  name: string
+  description: string
+  goal: { type: string; constraints: any[] }
+}> {
+  return [
+    {
+      name: 'Max Damage (EP)',
+      description: 'Maximize Effective Power for pure DPS',
+      goal: {
+        type: 'maximize-ep',
+        constraints: [],
+      },
+    },
+    {
+      name: 'Max Tankiness (EH)',
+      description: 'Maximize Effective Health for survivability',
+      goal: {
+        type: 'maximize-eh',
+        constraints: [],
+      },
+    },
+    {
+      name: 'Balanced Bruiser (EHP)',
+      description: 'Balance damage and tankiness (EP × EH)',
+      goal: {
+        type: 'maximize-ehp',
+        constraints: [],
+      },
+    },
+    {
+      name: 'Glass Cannon',
+      description: 'Max damage with minimum health threshold',
+      goal: {
+        type: 'maximize-ep',
+        constraints: [
+          { stat: 'vitality', min: 1000 }, // Min 11k health
+        ],
+      },
+    },
+  ]
+}
