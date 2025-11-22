@@ -4,7 +4,7 @@
 
 import { NextResponse } from 'next/server'
 import { getAllItemStats } from '@/server/build-queries'
-import { optimizeGear, type TargetStats } from '@/lib/gw2/gear-optimizer'
+import { optimizeGear, type TargetStats } from '@/lib/gw2/simple-gear-optimizer'
 
 export async function POST(request: Request) {
   try {

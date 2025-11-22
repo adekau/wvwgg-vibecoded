@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import type { OptimizedBuild, TargetStats } from '@/lib/gw2/gear-optimizer'
+import type { OptimizedBuild, TargetStats } from '@/lib/gw2/simple-gear-optimizer'
 
 export default function SimpleOptimizerPage() {
   const [targetStats, setTargetStats] = useState<TargetStats>({
