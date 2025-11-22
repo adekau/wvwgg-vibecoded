@@ -17,6 +17,8 @@ import {
   getTeamStatus,
   calculatePPTRange,
   getTimeRemainingInSkirmish,
+  getCurrentSkirmishInfo,
+  getTicksRemainingInSkirmish,
   calculateRequiredPPTToOvertake,
   getMaximumPossiblePPT,
   calculateMaxAchievablePPT,
@@ -313,6 +315,72 @@ describe('PPT Calculator', () => {
       const remaining = getTimeRemainingInSkirmish(skirmishStart)
       expect(remaining).toBeGreaterThanOrEqual(119) // Allow for small timing differences
       expect(remaining).toBeLessThanOrEqual(120)
+    })
+
+    it('should preserve second-level precision', () => {
+      // 119 minutes and 22 seconds ago (38 seconds remaining in a 120-minute skirmish)
+      const skirmishStart = new Date(Date.now() - (119 * 60 + 22) * 1000)
+      const remaining = getTimeRemainingInSkirmish(skirmishStart)
+      // Should be approximately 0.633 minutes (38 seconds)
+      expect(remaining).toBeGreaterThan(0.6)
+      expect(remaining).toBeLessThan(0.7)
+    })
+  })
+
+  describe('getCurrentSkirmishInfo', () => {
+    it('should calculate current skirmish number correctly', () => {
+      // Match started 3 hours ago (1.5 skirmishes)
+      const matchStart = new Date(Date.now() - 3 * 60 * 60 * 1000)
+      const info = getCurrentSkirmishInfo(matchStart)
+      expect(info.skirmishNumber).toBe(1) // 0-indexed: skirmish 0 ended, now in skirmish 1
+    })
+
+    it('should calculate ticks remaining with second precision', () => {
+      // Match started 119 minutes and 22 seconds ago (38 seconds remaining in first skirmish)
+      const matchStart = new Date(Date.now() - (119 * 60 + 22) * 1000)
+      const info = getCurrentSkirmishInfo(matchStart)
+      expect(info.ticksRemaining).toBe(1) // Should have 1 tick remaining (Math.ceil(0.633 / 5))
+      expect(info.minutesRemaining).toBeGreaterThan(0.6)
+      expect(info.minutesRemaining).toBeLessThan(0.7)
+    })
+
+    it('should return 0 ticks when skirmish is complete', () => {
+      // Match started 125 minutes ago (skirmish ended 5 minutes ago)
+      const matchStart = new Date(Date.now() - 125 * 60 * 1000)
+      const info = getCurrentSkirmishInfo(matchStart)
+      expect(info.ticksRemaining).toBe(0)
+      expect(info.minutesRemaining).toBe(0)
+    })
+
+    it('should handle multiple skirmishes correctly', () => {
+      // Match started 250 minutes ago (2 hours 10 minutes = into 2nd skirmish)
+      const matchStart = new Date(Date.now() - 250 * 60 * 1000)
+      const info = getCurrentSkirmishInfo(matchStart)
+      expect(info.skirmishNumber).toBe(2) // 0-indexed: skirmish 0, 1 ended, now in skirmish 2
+      expect(info.minutesRemaining).toBeGreaterThanOrEqual(109)
+      expect(info.minutesRemaining).toBeLessThanOrEqual(110)
+      expect(info.ticksRemaining).toBe(22) // Math.ceil(110 / 5) = 22
+    })
+  })
+
+  describe('getTicksRemainingInSkirmish', () => {
+    it('should return ticks remaining for current skirmish', () => {
+      const matchStart = new Date(Date.now() - 30 * 60 * 1000) // 30 minutes ago
+      const ticks = getTicksRemainingInSkirmish(matchStart)
+      expect(ticks).toBe(18) // Math.ceil(90 / 5) = 18
+    })
+
+    it('should return 1 tick when less than 5 minutes remain', () => {
+      // 119 minutes and 22 seconds ago (38 seconds remaining)
+      const matchStart = new Date(Date.now() - (119 * 60 + 22) * 1000)
+      const ticks = getTicksRemainingInSkirmish(matchStart)
+      expect(ticks).toBe(1) // Even with < 1 minute, should round up to 1 tick
+    })
+
+    it('should return 0 ticks when skirmish is complete', () => {
+      const matchStart = new Date(Date.now() - 125 * 60 * 1000) // 125 minutes ago
+      const ticks = getTicksRemainingInSkirmish(matchStart)
+      expect(ticks).toBe(0)
     })
   })
 
