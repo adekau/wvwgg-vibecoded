@@ -123,7 +123,7 @@ export function MatchesHeader() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
                     align="start"
-                    className="w-[340px] bg-popover/95 backdrop-blur-md border-border/40 shadow-xl rounded-xl"
+                    className="w-[340px] bg-popover/95 backdrop-blur-[3px] border-border/40 shadow-xl rounded-xl"
                     sideOffset={8}
                   >
                     {sortedRegions.map((region) => (
@@ -137,7 +137,7 @@ export function MatchesHeader() {
                             onClick={() => {
                               router.push(`/matches/${match.id}`)
                             }}
-                            className="cursor-pointer py-2.5 px-4 mx-1.5 mb-1 rounded-lg focus:bg-accent/40 hover:bg-accent/30 transition-colors"
+                            className="cursor-pointer py-2.5 px-4 mx-1.5 mb-1 rounded-lg focus:bg-accent/50 hover:bg-accent/40 hover:ring-1 hover:ring-accent/50 hover:shadow-md transition-all duration-200"
                           >
                             <div className="flex flex-col gap-1 w-full">
                               <div className="flex items-center justify-between">
