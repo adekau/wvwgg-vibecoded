@@ -123,7 +123,7 @@ export class WvWGGSyncGameDataStepFunction extends Construct {
                 key: '{% $states.input.s3Key %}'
             }),
             itemBatcher: new sfn.ItemBatcher({
-                maxItemsPerBatch: 200 // GW2 API allows 200 items per request
+                maxItemsPerBatch: 100 // Reduced from 200 to avoid timeouts
             }),
             outputs: {}, // Prevent output accumulation
             toleratedFailurePercentage: 5
@@ -157,7 +157,7 @@ export class WvWGGSyncGameDataStepFunction extends Construct {
             entry: path.join(__dirname, '../../lambda/fetch-items-batch.ts'),
             runtime: lambda.Runtime.NODEJS_22_X,
             handler: 'handler',
-            timeout: Duration.seconds(30),
+            timeout: Duration.seconds(60), // Increased from 30s to handle larger batches
             memorySize: 512,
             environment: {
                 // TABLE_NAME will be added later by WvWGGStack

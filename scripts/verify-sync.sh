@@ -43,7 +43,7 @@ query_count() {
     ${AWS_PROFILE} \
     --output json | jq -r .Count)
 
-  printf "  %-25s %5d items\n" "${LABEL}:" "${COUNT}"
+  printf "  %-25s %5d items\n" "${LABEL}:" "${COUNT}" >&2
 
   echo "${COUNT}"
 }
@@ -64,7 +64,7 @@ query_gsi_count() {
     ${AWS_PROFILE} \
     --output json | jq -r .Count)
 
-  printf "  %-25s %5d items\n" "${LABEL}:" "${COUNT}"
+  printf "  %-25s %5d items\n" "${LABEL}:" "${COUNT}" >&2
 
   echo "${COUNT}"
 }
