@@ -64,6 +64,7 @@ export function MatchesHeader() {
   const navLinks = [
     { href: '/maps', label: 'Maps' },
     { href: '/guilds', label: 'Guilds' },
+    { href: '/ratings', label: 'Rankings' },
     { href: '/legend', label: 'Legend' },
   ]
 

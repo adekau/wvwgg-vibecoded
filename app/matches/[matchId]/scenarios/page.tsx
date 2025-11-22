@@ -56,6 +56,12 @@ export default async function MatchScenariosPage({ params }: PageProps) {
         victoryPoints: matchData.green?.victoryPoints || 0,
       },
     ],
+    // Include alliance composition for better predictions
+    allWorlds: matchData.all_worlds ? {
+      red: matchData.all_worlds.filter((w: any) => w.color === 'red').map((w: any) => w.id),
+      blue: matchData.all_worlds.filter((w: any) => w.color === 'blue').map((w: any) => w.id),
+      green: matchData.all_worlds.filter((w: any) => w.color === 'green').map((w: any) => w.id),
+    } : undefined,
   };
 
   // Calculate remaining skirmishes

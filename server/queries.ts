@@ -92,6 +92,14 @@ export interface IGuild {
   contact_info?: string;
   recruitment_status?: 'open' | 'closed' | 'by_application';
   primetimeTimezones?: string[];
+  // Glicko-2 rating system fields (for alliance guilds)
+  glickoRating?: {
+    rating: number           // Skill rating (default: 1500)
+    ratingDeviation: number  // Uncertainty (default: 350, min: 30)
+    volatility: number       // Consistency (default: 0.06)
+    lastUpdated?: string     // ISO date string
+    matchCount?: number      // Number of matches played
+  };
 }
 
 // DynamoDB Client Setup
