@@ -128,10 +128,10 @@ export class WvWGGSyncGameDataStepFunction extends Construct {
             itemBatcher: new sfn.ItemBatcher({
                 maxItemsPerBatch: 100 // Reduced from 200 to avoid timeouts
             }),
-            resultWriter: new sfn.ResultWriter({
-                bucket: this.props.bucket,
-                prefix: `game-data-sync/results/${mapName}/`
-            }),
+            resultPath: sfn.JsonPath.DISCARD, // Don't pass results to next state
+            resultSelector: {
+                'result': 'Map completed successfully'
+            },
             toleratedFailurePercentage: 5
         });
 
