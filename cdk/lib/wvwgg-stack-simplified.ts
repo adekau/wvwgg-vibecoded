@@ -47,24 +47,26 @@ export class WvWGGStack extends cdk.Stack {
           partitionKey: { name: 'matchId', type: cdk.aws_dynamodb.AttributeType.STRING },
           sortKey: { name: 'interval', type: cdk.aws_dynamodb.AttributeType.NUMBER },
         },
-        // Build system queries - Version tracking
+        // Build system queries - DEPLOY PHASE 1: Version tracking
         {
           indexName: 'gameVersion-validFrom-index',
           partitionKey: { name: 'gameVersion', type: cdk.aws_dynamodb.AttributeType.STRING },
           sortKey: { name: 'validFrom', type: cdk.aws_dynamodb.AttributeType.STRING },
-        },
-        // Build system queries - Item categorization
-        {
-          indexName: 'itemCategory-gameVersion-index',
-          partitionKey: { name: 'itemCategory', type: cdk.aws_dynamodb.AttributeType.STRING },
-          sortKey: { name: 'gameVersion', type: cdk.aws_dynamodb.AttributeType.STRING },
-        },
-        // Build system queries - Modifier source lookup
-        {
-          indexName: 'sourceType-sourceId-index',
-          partitionKey: { name: 'sourceType', type: cdk.aws_dynamodb.AttributeType.STRING },
-          sortKey: { name: 'sourceId', type: cdk.aws_dynamodb.AttributeType.STRING },
         }
+        // Build system queries - DEPLOY PHASE 2: Item categorization
+        // UNCOMMENT AFTER PHASE 1 COMPLETES (wait for gameVersion-validFrom-index to be ACTIVE)
+        // {
+        //   indexName: 'itemCategory-gameVersion-index',
+        //   partitionKey: { name: 'itemCategory', type: cdk.aws_dynamodb.AttributeType.STRING },
+        //   sortKey: { name: 'gameVersion', type: cdk.aws_dynamodb.AttributeType.STRING },
+        // },
+        // Build system queries - DEPLOY PHASE 3: Modifier source lookup
+        // UNCOMMENT AFTER PHASE 2 COMPLETES (wait for itemCategory-gameVersion-index to be ACTIVE)
+        // {
+        //   indexName: 'sourceType-sourceId-index',
+        //   partitionKey: { name: 'sourceType', type: cdk.aws_dynamodb.AttributeType.STRING },
+        //   sortKey: { name: 'sourceId', type: cdk.aws_dynamodb.AttributeType.STRING },
+        // }
       ]
     });
 
