@@ -1,12 +1,32 @@
 #!/bin/bash
 # invoke-sync.sh - Invoke the Sync Game Data Lambda
+# Usage: ./invoke-sync.sh [stage] [--profile profile-name]
 
 set -e
 
-STAGE="${1:-prod}"
+# Parse arguments
+STAGE="prod"
+AWS_PROFILE=""
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --profile)
+      AWS_PROFILE="--profile $2"
+      shift 2
+      ;;
+    *)
+      STAGE="$1"
+      shift
+      ;;
+  esac
+done
+
 FUNCTION_NAME="WvWGGSyncGameDataLambda-${STAGE}"
 
 echo "🚀 Invoking ${FUNCTION_NAME}..."
+if [ -n "$AWS_PROFILE" ]; then
+  echo "   Using AWS profile: ${AWS_PROFILE#--profile }"
+fi
 echo ""
 echo "This will:"
 echo "  - Fetch ~150 itemstats from GW2 API"
@@ -25,6 +45,7 @@ aws lambda invoke \
   --payload '{}' \
   --cli-binary-format raw-in-base64-out \
   --log-type Tail \
+  ${AWS_PROFILE} \
   response.json
 
 echo ""
@@ -60,7 +81,11 @@ else
   cat response.json | jq .errors
   echo ""
   echo "Check CloudWatch Logs for details:"
-  echo "  aws logs tail /aws/lambda/${FUNCTION_NAME} --follow"
+  if [ -n "$AWS_PROFILE" ]; then
+    echo "  aws logs tail /aws/lambda/${FUNCTION_NAME} --follow ${AWS_PROFILE}"
+  else
+    echo "  aws logs tail /aws/lambda/${FUNCTION_NAME} --follow"
+  fi
 fi
 
 # Clean up

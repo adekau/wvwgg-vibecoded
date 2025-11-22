@@ -1,12 +1,32 @@
 #!/bin/bash
 # verify-sync.sh - Verify that game data was synced successfully
+# Usage: ./verify-sync.sh [stage] [--profile profile-name]
 
 set -e
 
-STAGE="${1:-prod}"
+# Parse arguments
+STAGE="prod"
+AWS_PROFILE=""
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --profile)
+      AWS_PROFILE="--profile $2"
+      shift 2
+      ;;
+    *)
+      STAGE="$1"
+      shift
+      ;;
+  esac
+done
+
 TABLE_NAME="wvwgg-${STAGE}"
 
 echo "🔍 Verifying game data sync in ${TABLE_NAME}..."
+if [ -n "$AWS_PROFILE" ]; then
+  echo "   Using AWS profile: ${AWS_PROFILE#--profile }"
+fi
 echo ""
 
 # Function to query and count
@@ -20,6 +40,7 @@ query_count() {
     --expression-attribute-names '{"#type":"type"}' \
     --expression-attribute-values "{\":type\":{\"S\":\"${TYPE}\"}}" \
     --select COUNT \
+    ${AWS_PROFILE} \
     --output json | jq -r .Count)
 
   printf "  %-25s %5d items\n" "${LABEL}:" "${COUNT}"
@@ -40,6 +61,7 @@ query_gsi_count() {
     --key-condition-expression "${KEY} = :value" \
     --expression-attribute-values "{\":value\":{\"S\":\"${VALUE}\"}}" \
     --select COUNT \
+    ${AWS_PROFILE} \
     --output json | jq -r .Count)
 
   printf "  %-25s %5d items\n" "${LABEL}:" "${COUNT}"
@@ -76,6 +98,7 @@ echo "  Berserker Stats (id: 584):"
 BERSERKER=$(aws dynamodb get-item \
   --table-name "${TABLE_NAME}" \
   --key '{"type":{"S":"itemstat"},"id":{"S":"584"}}' \
+  ${AWS_PROFILE} \
   --output json 2>/dev/null | jq -r '.Item.name.S // "Not found"')
 
 if [ "$BERSERKER" = "Berserker" ]; then
@@ -89,6 +112,7 @@ echo "  Superior Rune of the Scholar (id: 24836):"
 SCHOLAR=$(aws dynamodb get-item \
   --table-name "${TABLE_NAME}" \
   --key '{"type":{"S":"enhanced-item"},"id":{"S":"24836"}}' \
+  ${AWS_PROFILE} \
   --output json 2>/dev/null | jq -r '.Item.gw2Data.M.name.S // "Not found"')
 
 if [ "$SCHOLAR" = "Superior Rune of the Scholar" ]; then
@@ -102,6 +126,7 @@ echo "  Critical Chance Formula:"
 CRIT_FORMULA=$(aws dynamodb get-item \
   --table-name "${TABLE_NAME}" \
   --key '{"type":{"S":"stat-formula"},"id":{"S":"formula-critChance"}}' \
+  ${AWS_PROFILE} \
   --output json 2>/dev/null | jq -r '.Item.baseFormula.S // "Not found"')
 
 if [ "$CRIT_FORMULA" = "(precision - 895) / 21" ]; then
@@ -157,10 +182,17 @@ if [ "$TOTAL_ISSUES" -eq 0 ]; then
 else
   echo ""
   echo "⚠️  Found $TOTAL_ISSUES issue(s). Check CloudWatch Logs:"
-  echo "    aws logs tail /aws/lambda/WvWGGSyncGameDataLambda-${STAGE} --follow"
-  echo ""
-  echo "To re-run sync:"
-  echo "    ./scripts/invoke-sync.sh ${STAGE}"
+  if [ -n "$AWS_PROFILE" ]; then
+    echo "    aws logs tail /aws/lambda/WvWGGSyncGameDataLambda-${STAGE} --follow ${AWS_PROFILE}"
+    echo ""
+    echo "To re-run sync:"
+    echo "    ./scripts/invoke-sync.sh ${STAGE} ${AWS_PROFILE}"
+  else
+    echo "    aws logs tail /aws/lambda/WvWGGSyncGameDataLambda-${STAGE} --follow"
+    echo ""
+    echo "To re-run sync:"
+    echo "    ./scripts/invoke-sync.sh ${STAGE}"
+  fi
 fi
 
 echo ""
