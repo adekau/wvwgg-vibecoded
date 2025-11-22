@@ -1,13 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useAuth } from '@/lib/auth-context'
-import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Shield, Users, CheckCircle, AlertCircle, LogOut, List } from 'lucide-react'
+import { Shield, Users, CheckCircle, AlertCircle, List } from 'lucide-react'
 import { AdminSubNav } from '@/components/admin-sub-nav'
+import { useRouter } from 'next/navigation'
 
 interface DashboardStats {
   totalGuilds: number
@@ -18,7 +17,6 @@ interface DashboardStats {
 }
 
 export default function AdminDashboard() {
-  const { user, logout } = useAuth()
   const router = useRouter()
   const [stats, setStats] = useState<DashboardStats>({
     totalGuilds: 0,
@@ -46,46 +44,21 @@ export default function AdminDashboard() {
     fetchStats()
   }, [])
 
-  const handleLogout = () => {
-    logout()
-    router.push('/admin/login')
-  }
-
-  const getUsername = () => {
-    if (!user) return ''
-    return user.getUsername()
-  }
-
   return (
     <div className="min-h-screen">
-      {/* Header */}
-      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-accent/10">
-              <Shield className="h-6 w-6 text-accent" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold">Guild Admin Panel</h1>
-              <p className="text-sm text-muted-foreground">Manage WvW guilds and classifications</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right">
-              <p className="text-sm font-medium">{getUsername()}</p>
-              <p className="text-xs text-muted-foreground">Administrator</p>
-            </div>
-            <Button variant="outline" size="sm" onClick={handleLogout}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
-          </div>
-        </div>
-      </header>
-
       <AdminSubNav />
 
       <main className="container mx-auto px-4 py-8 space-y-8">
+        {/* Page Header */}
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-accent/10">
+            <Shield className="h-6 w-6 text-accent" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">Guild Admin Panel</h1>
+            <p className="text-sm text-muted-foreground">Manage WvW guilds and classifications</p>
+          </div>
+        </div>
         {/* Stats Grid */}
         <div>
           <h2 className="text-2xl font-bold mb-4">Overview</h2>
