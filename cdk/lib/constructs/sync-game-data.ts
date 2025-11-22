@@ -123,7 +123,7 @@ export class WvWGGSyncGameDataStepFunction extends Construct {
                 key: '{% $states.input.s3Key %}'
             }),
             itemBatcher: new sfn.ItemBatcher({
-                maxItemsPerBatch: 100 // Reduced from 200 to avoid timeouts
+                maxItemsPerBatch: 200
             }),
             outputs: {}, // Discard outputs to prevent 256KB limit (JSONata compatible)
             toleratedFailurePercentage: 5
