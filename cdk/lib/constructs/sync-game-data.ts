@@ -46,6 +46,9 @@ export class WvWGGSyncGameDataStepFunction extends Construct {
             queryLanguage: QueryLanguage.JSONATA,
             timeout: Duration.hours(2) // Allow for long sync
         });
+
+        // Grant State Machine permission to write results to S3
+        this.props.bucket.grantWrite(this.stateMachine);
     }
 
     /**
