@@ -23,6 +23,7 @@ interface VerifyOwnershipRequest {
   description?: string
   contact_info?: string
   recruitment_status?: 'open' | 'closed' | 'by_application'
+  primetimeTimezones?: string[]
   memberGuildIds?: string[]
   addNew?: boolean // Flag to indicate this is a new guild being added
 }
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
   try {
     const body: VerifyOwnershipRequest = await request.json()
     apiKey = body.apiKey
-    const { guildId, description, contact_info, recruitment_status, memberGuildIds, addNew } = body
+    const { guildId, description, contact_info, recruitment_status, primetimeTimezones, memberGuildIds, addNew } = body
 
     if (!guildId || !apiKey) {
       return NextResponse.json(
@@ -175,6 +176,7 @@ export async function POST(request: NextRequest) {
             description: description || undefined,
             contact_info: contact_info || undefined,
             recruitment_status: recruitment_status || undefined,
+            primetimeTimezones: primetimeTimezones || undefined,
             updatedAt: now,
             auditLog: [
               {
@@ -187,6 +189,7 @@ export async function POST(request: NextRequest) {
                   ...(description && { description: { from: null, to: description } }),
                   ...(contact_info && { contact_info: { from: null, to: contact_info } }),
                   ...(recruitment_status && { recruitment_status: { from: null, to: recruitment_status } }),
+                  ...(primetimeTimezones && { primetimeTimezones: { from: null, to: primetimeTimezones } }),
                 },
               },
             ],
@@ -241,6 +244,14 @@ export async function POST(request: NextRequest) {
       expressionAttributeNames['#recruitmentStatus'] = 'recruitment_status'
       expressionAttributeValues[':recruitmentStatus'] = recruitment_status || null
       changes.recruitment_status = { from: 'unknown', to: recruitment_status }
+    }
+
+    // Update primetimeTimezones if provided
+    if (primetimeTimezones !== undefined) {
+      updateExpressions.push('#primetimeTimezones = :primetimeTimezones')
+      expressionAttributeNames['#primetimeTimezones'] = 'primetimeTimezones'
+      expressionAttributeValues[':primetimeTimezones'] = primetimeTimezones.length > 0 ? primetimeTimezones : null
+      changes.primetimeTimezones = { from: existingGuild?.primetimeTimezones || [], to: primetimeTimezones }
     }
 
     // Update memberGuildIds if provided AND guild is an alliance

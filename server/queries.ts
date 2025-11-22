@@ -85,12 +85,13 @@ export interface IGuild {
   favor?: number;
   member_count?: number;
   emblem?: any;
-  classification?: 'alliance' | 'member' | 'independent';
+  classification?: 'alliance' | 'solo-alliance' | 'member' | 'independent';
   allianceGuildId?: string;
   memberGuildIds?: string[];
   description?: string;
   contact_info?: string;
   recruitment_status?: 'open' | 'closed' | 'by_application';
+  primetimeTimezones?: string[];
 }
 
 // DynamoDB Client Setup
