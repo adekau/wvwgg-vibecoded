@@ -1,5 +1,5 @@
 import { DynamoDB } from "@aws-sdk/client-dynamodb";
-import { BatchWriteCommandInput, DynamoDBDocument } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocument, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { IBaseGuild } from "../../shared/interfaces/base-guild.interface";
 import { IGuildResponse } from "../../shared/interfaces/guild-response.interface";
 import { IGuild } from "../../shared/interfaces/guild.interface";
@@ -40,31 +40,41 @@ export async function handler(event: IGuildBatchEvent) {
                 }))
         );
 
-        const putRequests = guilds
-            .filter((guild) => guild != null)
-            .map((guild) => {
-                return {
-                    PutRequest: {
-                        Item: {
-                            type: 'guild',
-                            id: guild.id,
-                            data: guild,
-                            updatedAt: Date.now()
-                        }
+        // Use UpdateCommand to preserve custom fields (classification, alliance relationships, etc.)
+        // This approach only updates the 'data' field with GW2 API data while keeping all other fields intact
+        const validGuilds = guilds.filter((guild) => guild != null);
+        const now = Date.now();
+
+        // Process updates for each table
+        for (const tableName of tableNames) {
+            await Promise.all(
+                validGuilds.map(async (guild) => {
+                    try {
+                        await dynamoDb.send(
+                            new UpdateCommand({
+                                TableName: tableName,
+                                Key: {
+                                    type: 'guild',
+                                    id: guild.id
+                                },
+                                UpdateExpression: 'SET #data = :data, #updatedAt = :updatedAt',
+                                ExpressionAttributeNames: {
+                                    '#data': 'data',
+                                    '#updatedAt': 'updatedAt'
+                                },
+                                ExpressionAttributeValues: {
+                                    ':data': guild,
+                                    ':updatedAt': now
+                                }
+                            })
+                        );
+                    } catch (error) {
+                        console.error(`Failed to update guild ${guild.id} in table ${tableName}:`, error);
+                        // Continue processing other guilds even if one fails
                     }
-                }
-            });
-
-        const requestItemsPerTable = tableNames.reduce((acc, tableName) => {
-            return {
-                ...acc,
-                [tableName]: putRequests
-            };
-        }, {} as BatchWriteCommandInput['RequestItems'])
-
-        await dynamoDb.batchWrite({
-            RequestItems: requestItemsPerTable
-        });
+                })
+            );
+        }
     } catch (error) {
         console.error(error);
         return {

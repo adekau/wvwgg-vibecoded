@@ -40,7 +40,7 @@ import { PPTBreakdown } from '@/components/ppt-breakdown'
 import { WorldAlliances } from '@/components/world-alliances'
 import { SkirmishWinScenarioModal } from '@/components/skirmish-win-scenario-modal'
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { calculateMatchPPT, getPPTTrend, calculateTicksBehind, ticksToTimeString, getTeamStatus, calculateRequiredPPTToOvertake, calculateMaxAchievablePPT } from '@/lib/ppt-calculator'
+import { calculateMatchPPT, getPPTTrend, calculateTicksBehind, ticksToTimeString, getTeamStatus, calculateRequiredPPTToOvertake, calculateMaxAchievablePPT, getCurrentSkirmishInfo } from '@/lib/ppt-calculator'
 import { IGuild } from '@/server/queries'
 import { SKIRMISH_DURATION_MS, POLL_INTERVALS_MS } from '@/lib/game-constants'
 
@@ -457,14 +457,9 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
     let requiredPPT: number | null = null
     let ticksRemaining = 0
     if ((teamStatus.status === 'falling-behind' || teamStatus.status === 'maintaining-gap') && pointsBehind > 0) {
-      const matchStart = new Date(match.startDate)
-      const now = new Date()
-      const elapsedMinutes = Math.floor((now.getTime() - matchStart.getTime()) / (1000 * 60))
-      const skirmishNumber = Math.floor(elapsedMinutes / 120)
-      const skirmishStartTime = new Date(matchStart.getTime() + (skirmishNumber * 120 * 60 * 1000))
-      const skirmishElapsed = Math.floor((now.getTime() - skirmishStartTime.getTime()) / (1000 * 60))
-      const minutesRemaining = Math.max(0, 120 - skirmishElapsed)
-      ticksRemaining = Math.ceil(minutesRemaining / 5)
+      const skirmishInfo = getCurrentSkirmishInfo(match.startDate)
+      ticksRemaining = skirmishInfo.ticksRemaining
+      const minutesRemaining = skirmishInfo.minutesRemaining
 
       requiredPPT = calculateRequiredPPTToOvertake(
         pointsBehind,
@@ -542,14 +537,9 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
           let ticksNeeded: number | null = null
           if (pointsBehind > 0) {
             // Calculate time remaining in current skirmish
-            const matchStart = new Date(match.startDate)
-            const now = new Date()
-            const elapsedMinutes = Math.floor((now.getTime() - matchStart.getTime()) / (1000 * 60))
-            const skirmishNumber = Math.floor(elapsedMinutes / 120) // Each skirmish is 120 minutes
-            const skirmishStartTime = new Date(matchStart.getTime() + (skirmishNumber * 120 * 60 * 1000))
-            const skirmishElapsed = Math.floor((now.getTime() - skirmishStartTime.getTime()) / (1000 * 60))
-            const minutesRemaining = Math.max(0, 120 - skirmishElapsed)
-            ticksRemaining = Math.ceil(minutesRemaining / 5) // Ticks are every 5 minutes
+            const skirmishInfo = getCurrentSkirmishInfo(match.startDate)
+            ticksRemaining = skirmishInfo.ticksRemaining
+            const minutesRemaining = skirmishInfo.minutesRemaining
 
             requiredPPT = calculateRequiredPPTToOvertake(
               pointsBehind,

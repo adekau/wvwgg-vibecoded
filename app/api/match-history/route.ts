@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getMatchHistory, getMatches } from '@/server/queries';
 
+// Force dynamic rendering since we use searchParams
 export const dynamic = 'force-dynamic';
+
+// Cache for 2 minutes to match server query cache duration
+export const revalidate = 120;
 
 export async function GET(request: NextRequest) {
   try {
@@ -91,6 +95,10 @@ export async function GET(request: NextRequest) {
       dataPoints: matchHistory.length,
       matchStartTime: matchData.start_time,
       matchEndTime: matchData.end_time,
+    }, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=240',
+      },
     });
   } catch (error) {
     console.error('Error fetching match history:', error);

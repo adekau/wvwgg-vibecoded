@@ -2,6 +2,7 @@
 
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { Users, Shield } from 'lucide-react'
 import { IGuild } from '@/server/queries'
 import Link from 'next/link'
@@ -20,19 +21,19 @@ const colorClasses = {
     bg: 'bg-chart-1/18',
     text: 'text-chart-1',
     border: 'border-chart-1/25',
-    badge: 'bg-chart-1/30 text-chart-1 border-chart-1/40',
+    badge: 'bg-chart-1/60 text-primary-foreground border-chart-1/70 font-medium',
   },
   blue: {
     bg: 'bg-chart-2/18',
     text: 'text-chart-2',
     border: 'border-chart-2/25',
-    badge: 'bg-chart-2/30 text-chart-2 border-chart-2/40',
+    badge: 'bg-chart-2/60 text-primary-foreground border-chart-2/70 font-medium',
   },
   green: {
     bg: 'bg-chart-3/18',
     text: 'text-chart-3',
     border: 'border-chart-3/25',
-    badge: 'bg-chart-3/30 text-chart-3 border-chart-3/40',
+    badge: 'bg-chart-3/60 text-primary-foreground border-chart-3/70 font-medium',
   },
 }
 
@@ -41,31 +42,29 @@ export function WorldAlliances({ worlds, guilds }: WorldAlliancesProps) {
   const guildsByWorld = worlds.map((world) => {
     const worldGuilds = guilds.filter((guild) => guild.worldId === world.id)
 
-    // Find all alliances - either directly on this world OR that have member guilds on this world
-    const allAllianceGuilds = guilds.filter((guild) => guild.classification === 'alliance')
+    // Find all alliances on this world based on the alliance's worldId
+    // Member guilds inherit their alliance's world placement
+    // Include both regular alliances and solo alliances
+    const allAllianceGuilds = guilds.filter((guild) =>
+      guild.classification === 'alliance' || guild.classification === 'solo-alliance'
+    )
     const relevantAlliances = allAllianceGuilds.filter((alliance) => {
-      // Alliance is directly on this world
-      if (alliance.worldId === world.id) return true
-
-      // Alliance has member guilds on this world
-      const hasMembers = guilds.some(
-        (guild) =>
-          guild.classification === 'member' &&
-          guild.allianceGuildId === alliance.id &&
-          guild.worldId === world.id
-      )
-      return hasMembers
+      return alliance.worldId === world.id
     })
 
     const independents = worldGuilds.filter((guild) => guild.classification === 'independent')
 
     // Get member guilds for each alliance
+    // IMPORTANT: Member guilds are ALWAYS shown under their alliance regardless of
+    // what worldId the member guild has assigned. We filter by allianceGuildId ONLY,
+    // not by worldId. This ensures member guild tags appear under their alliance
+    // even if the member guild's worldId differs from the alliance's worldId.
     const alliancesWithMembers = relevantAlliances.map((alliance) => {
       const members = guilds.filter(
         (guild) =>
           guild.classification === 'member' &&
-          guild.allianceGuildId === alliance.id &&
-          guild.worldId === world.id
+          guild.allianceGuildId === alliance.id
+          // Note: We deliberately do NOT filter by worldId here
       )
       return {
         ...alliance,
@@ -115,32 +114,38 @@ export function WorldAlliances({ worlds, guilds }: WorldAlliancesProps) {
                       <div className="space-y-2">
                         {world.alliances.map((alliance) => (
                           <div key={alliance.id} className="space-y-1">
-                            <Link
-                              href={`/guilds/${alliance.id}`}
-                              className="flex items-center gap-2 hover:underline"
-                            >
-                              <Shield className="h-3 w-3" />
-                              <span className="font-semibold text-sm">
-                                [{alliance.tag}] {alliance.name}
-                              </span>
-                            </Link>
-                            {alliance.members.length > 0 && (
-                              <div className="ml-5 flex flex-wrap gap-1">
-                                {alliance.members.map((member) => (
-                                  <Link
-                                    key={member.id}
-                                    href={`/guilds/${member.id}`}
-                                  >
+                            <div className="flex items-center gap-2">
+                              <Link
+                                href={`/guilds/${alliance.id}`}
+                                className="flex items-center gap-2 hover:underline"
+                              >
+                                <Shield className="h-3 w-3" />
+                                <span className="font-semibold text-sm">
+                                  [{alliance.tag}] {alliance.name}
+                                </span>
+                              </Link>
+                              {alliance.members.length > 0 && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
                                     <Badge
                                       variant="outline"
-                                      className={`text-xs h-5 ${classes.badge} border cursor-pointer hover:opacity-80 transition-opacity`}
+                                      className={`text-xs h-5 ${classes.badge} border cursor-help`}
                                     >
-                                      [{member.tag}]
+                                      {alliance.members.length} {alliance.members.length === 1 ? 'guild' : 'guilds'}
                                     </Badge>
-                                  </Link>
-                                ))}
-                              </div>
-                            )}
+                                  </TooltipTrigger>
+                                  <TooltipContent side="right" className="max-w-xs">
+                                    <div className="text-xs space-y-1">
+                                      {alliance.members.map((member) => (
+                                        <div key={member.id}>
+                                          [{member.tag}] {member.name}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>

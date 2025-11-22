@@ -244,14 +244,62 @@ export function calculatePPTRange(objectives: ObjectivesCount): {
 }
 
 /**
- * Calculate time remaining in current skirmish (in minutes)
+ * Calculate time remaining in current skirmish (in minutes with decimal precision)
  * Skirmishes are 2 hours (120 minutes) long
  */
 export function getTimeRemainingInSkirmish(skirmishStartTime: Date): number {
   const now = new Date();
-  const elapsedMinutes = Math.floor((now.getTime() - skirmishStartTime.getTime()) / (1000 * 60));
-  const remainingMinutes = Math.max(0, SKIRMISH_DURATION_MINUTES - elapsedMinutes);
+  const elapsedMs = now.getTime() - skirmishStartTime.getTime();
+  const remainingMs = Math.max(0, (SKIRMISH_DURATION_MINUTES * 60 * 1000) - elapsedMs);
+  const remainingMinutes = remainingMs / (1000 * 60);
   return remainingMinutes;
+}
+
+/**
+ * Get comprehensive information about the current skirmish
+ * @param matchStartDate - Match start date (string or Date)
+ * @returns Current skirmish info including number, start time, and time remaining
+ */
+export function getCurrentSkirmishInfo(matchStartDate: string | Date): {
+  skirmishNumber: number;
+  skirmishStartTime: Date;
+  minutesRemaining: number;
+  ticksRemaining: number;
+} {
+  const matchStart = new Date(matchStartDate);
+  const now = new Date();
+
+  // Calculate which skirmish we're in (0-indexed internally, but can be converted to 1-indexed for display)
+  const elapsedMinutes = Math.floor((now.getTime() - matchStart.getTime()) / (1000 * 60));
+  const skirmishNumber = Math.floor(elapsedMinutes / SKIRMISH_DURATION_MINUTES);
+
+  // Calculate when current skirmish started
+  const skirmishStartTime = new Date(matchStart.getTime() + (skirmishNumber * SKIRMISH_DURATION_MINUTES * 60 * 1000));
+
+  // Calculate time remaining with millisecond precision
+  const skirmishElapsedMs = now.getTime() - skirmishStartTime.getTime();
+  const skirmishRemainingMs = Math.max(0, (SKIRMISH_DURATION_MINUTES * 60 * 1000) - skirmishElapsedMs);
+  const minutesRemaining = skirmishRemainingMs / (1000 * 60);
+
+  // Calculate ticks remaining (always round up - even 1 second = 1 tick)
+  const ticksRemaining = Math.ceil(minutesRemaining / PPT_TICK_INTERVAL_MINUTES);
+
+  return {
+    skirmishNumber,
+    skirmishStartTime,
+    minutesRemaining,
+    ticksRemaining,
+  };
+}
+
+/**
+ * Calculate ticks remaining in current skirmish from match start date
+ * @param matchStartDate - Match start date (string or Date)
+ * @returns Number of ticks remaining (0 if skirmish ended)
+ */
+export function getTicksRemainingInSkirmish(matchStartDate: string | Date): number {
+  const { ticksRemaining } = getCurrentSkirmishInfo(matchStartDate);
+  return ticksRemaining;
 }
 
 /**

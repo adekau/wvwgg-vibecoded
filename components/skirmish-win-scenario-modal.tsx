@@ -75,12 +75,13 @@ export function SkirmishWinScenarioModal({
   // Calculate leader's PPT (derived from requiredPPT calculation)
   // requiredPPT = leaderPPT + ceil((pointsBehind + 1) / ticksRemaining)
   // Therefore: leaderPPT = requiredPPT - ceil((pointsBehind + 1) / ticksRemaining)
-  const pptDifferentialNeeded = Math.ceil((pointsBehind + 1) / ticksRemaining)
+  // Handle edge case: when ticksRemaining is 0, no points can be gained from ticks
+  const pptDifferentialNeeded = ticksRemaining > 0 ? Math.ceil((pointsBehind + 1) / ticksRemaining) : 0
   const leaderPPT = requiredPPT - pptDifferentialNeeded
 
   // Calculate NET points from ticks remaining (relative to leader)
   // This accounts for both our gains AND the leader's gains
-  const pointsFromTicks = (maxAchievablePPT - leaderPPT) * ticksRemaining
+  const pointsFromTicks = ticksRemaining > 0 ? (maxAchievablePPT - leaderPPT) * ticksRemaining : 0
 
   // Calculate gap that needs to be filled beyond objectives
   const totalObjectivePoints = flipPoints + pointsFromTicks

@@ -4,8 +4,8 @@ import { AutoRefresh } from '@/components/auto-refresh'
 import { getMatches, getWorlds } from '@/server/queries'
 import { TOTAL_SKIRMISHES_PER_MATCH, SKIRMISH_DURATION_MS } from '@/lib/game-constants'
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+// Use ISR with 60 second revalidation to match data cache duration
+export const revalidate = 60;
 
 export default async function MatchesPage() {
   // Fetch real data from DynamoDB

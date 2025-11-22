@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { getMatches } from '@/server/queries'
 
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+// Cache for 60 seconds to match server query cache duration
+export const revalidate = 60
 
 export async function GET() {
   try {
@@ -36,7 +36,11 @@ export async function GET() {
         return parseInt(a.tier) - parseInt(b.tier)
       })
 
-    return NextResponse.json(matches)
+    return NextResponse.json(matches, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
+      },
+    })
   } catch (error) {
     console.error('Error fetching matches:', error)
     return NextResponse.json(

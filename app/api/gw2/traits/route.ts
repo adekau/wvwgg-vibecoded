@@ -2,8 +2,11 @@ import { NextResponse } from 'next/server'
 import { unstable_cache } from 'next/cache'
 import { getAllTraits, getTraits } from '@/lib/gw2/api'
 
+// Force dynamic rendering since we use request.url for query params
 export const dynamic = 'force-dynamic'
-export const revalidate = 604800 // 7 days
+
+// GW2 traits rarely change, cache for 7 days
+export const revalidate = 604800
 export const maxDuration = 300 // 5 minutes max execution time for Vercel
 
 // Cache all traits for 7 days since game data rarely changes
@@ -34,11 +37,19 @@ export async function GET(request: Request) {
     if (idsParam) {
       const ids = idsParam.split(',').map(id => parseInt(id, 10))
       const traits = await getTraits(ids)
-      return NextResponse.json(traits)
+      return NextResponse.json(traits, {
+        headers: {
+          'Cache-Control': 'public, s-maxage=604800, stale-while-revalidate=1209600',
+        },
+      })
     }
 
     const traits = await getCachedAllTraits()
-    return NextResponse.json(traits)
+    return NextResponse.json(traits, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=604800, stale-while-revalidate=1209600',
+      },
+    })
   } catch (error) {
     console.error('Error fetching traits:', error)
     return NextResponse.json(

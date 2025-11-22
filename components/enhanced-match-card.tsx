@@ -80,7 +80,7 @@ export function EnhancedMatchCard({ tier, region, worlds }: EnhancedMatchCardPro
       <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h3 className="font-bold text-lg group-hover:text-primary transition-colors">{tier}</h3>
+          <h3 className="font-bold text-lg group-hover:text-primary transition-colors">{region} - Tier {tierNumber}</h3>
           <Badge variant="outline" className="font-mono">
             <span className="relative flex h-2 w-2 mr-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -109,7 +109,7 @@ export function EnhancedMatchCard({ tier, region, worlds }: EnhancedMatchCardPro
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-lg">{getRankIcon(vpRank)}</span>
-                      <h4 className="font-semibold">{region} - Tier {tierNumber}</h4>
+                      <h4 className="font-semibold">{world.name}</h4>
                     </div>
 
                     {/* Stats Row */}

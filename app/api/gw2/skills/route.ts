@@ -2,8 +2,11 @@ import { NextResponse } from 'next/server'
 import { unstable_cache } from 'next/cache'
 import { getAllSkills, getSkills } from '@/lib/gw2/api'
 
+// Force dynamic rendering since we use request.url for query params
 export const dynamic = 'force-dynamic'
-export const revalidate = 604800 // 7 days
+
+// GW2 skills rarely change, cache for 7 days
+export const revalidate = 604800
 export const maxDuration = 300 // 5 minutes max execution time for Vercel
 
 // Cache all skills for 7 days since game data rarely changes
@@ -34,11 +37,19 @@ export async function GET(request: Request) {
     if (idsParam) {
       const ids = idsParam.split(',').map(id => parseInt(id, 10))
       const skills = await getSkills(ids)
-      return NextResponse.json(skills)
+      return NextResponse.json(skills, {
+        headers: {
+          'Cache-Control': 'public, s-maxage=604800, stale-while-revalidate=1209600',
+        },
+      })
     }
 
     const skills = await getCachedAllSkills()
-    return NextResponse.json(skills)
+    return NextResponse.json(skills, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=604800, stale-while-revalidate=1209600',
+      },
+    })
   } catch (error) {
     console.error('Error fetching skills:', error)
     return NextResponse.json(

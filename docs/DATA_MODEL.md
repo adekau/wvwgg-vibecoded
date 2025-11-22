@@ -679,6 +679,7 @@ export interface IGuild {
 - [HYBRID_ARCHITECTURE.md](./HYBRID_ARCHITECTURE.md) - System architecture overview
 - [snapshot-architecture.md](./snapshot-architecture.md) - Snapshot collection design
 - [API_REFERENCE.md](./API_REFERENCE.md) - API endpoint documentation
+- [BUILD_DATABASE_SCHEMA.md](./BUILD_DATABASE_SCHEMA.md) - Build system database schema (NEW)
 
 ---
 

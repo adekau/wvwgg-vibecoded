@@ -1,9 +1,9 @@
 import { MatchesHeader } from '@/components/matches-header'
-import { MapsPageClient } from '@/components/maps-page-client'
+import { MapsPageWrapper } from '@/components/maps-page-wrapper'
 import { getMatches } from '@/server/queries'
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+// Use ISR with 60 second revalidation to match data cache duration
+export const revalidate = 60;
 
 export default async function MapsPage() {
   // Fetch all matches
@@ -66,7 +66,7 @@ export default async function MapsPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <MatchesHeader />
-      <MapsPageClient matches={allMatches} defaultMatchId={defaultMatchId} />
+      <MapsPageWrapper matches={allMatches} defaultMatchId={defaultMatchId} />
     </div>
   );
 }
