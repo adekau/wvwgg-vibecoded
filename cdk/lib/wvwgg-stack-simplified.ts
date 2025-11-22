@@ -110,6 +110,7 @@ export class WvWGGStack extends cdk.Stack {
       handler: 'handler',
       timeout: cdk.Duration.minutes(10), // Long timeout for GW2 API fetches
       memorySize: 512, // More memory for processing
+      reservedConcurrentExecutions: 1, // Prevent concurrent executions
       environment: {
         TABLE_NAME: this.dynamoDbTable.tableName,
         REGION: this.region
