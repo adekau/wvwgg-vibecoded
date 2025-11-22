@@ -100,6 +100,56 @@ export class WvWGGStack extends cdk.Stack {
     });
     fetchWorldsRule.node.addDependency(fetchWorldsLambda);
 
+    // Lambda: Update Glicko Ratings (runs weekly on Fridays at 18:05 UTC, 5 minutes after match reset)
+    const updateGlickoRatingsLambda = new lambdaNodejs.NodejsFunction(this, `WvWGGUpdateGlickoRatingsLambda-${props.stage}`, {
+      entry: path.join(__dirname, '../lambda/update-glicko-ratings.ts'),
+      runtime: lambda.Runtime.NODEJS_22_X,
+      handler: 'handler',
+      timeout: cdk.Duration.minutes(10), // Allow time to process all matches and guilds
+      memorySize: 512, // Increase memory for complex rating calculations
+      environment: {
+        TABLE_NAME: this.dynamoDbTable.tableName,
+        REGION: this.region
+      }
+    });
+    updateGlickoRatingsLambda.node.addDependency(this.dynamoDbTable);
+    this.dynamoDbTable.grantReadWriteData(updateGlickoRatingsLambda);
+
+    // EventBridge Rule: Trigger updateGlickoRatingsLambda weekly on Fridays at 18:05 UTC
+    // WvW matches reset on Fridays at 18:00 UTC, so we wait 5 minutes for data to be collected
+    const updateGlickoRatingsRule = new events.Rule(this, `WvWGGUpdateGlickoRatingsRule-${props.stage}`, {
+      schedule: events.Schedule.cron({
+        weekDay: 'FRI',
+        hour: '18',
+        minute: '5'
+      }),
+      targets: [new eventTargets.LambdaFunction(updateGlickoRatingsLambda)]
+    });
+    updateGlickoRatingsRule.node.addDependency(updateGlickoRatingsLambda);
+
+    // Lambda: Populate Initial Glicko Ratings (manual invocation only)
+    // This is a one-time setup function to initialize default ratings for alliance guilds
+    const populateInitialGlickoRatingsLambda = new lambdaNodejs.NodejsFunction(this, `WvWGGPopulateInitialGlickoRatingsLambda-${props.stage}`, {
+      entry: path.join(__dirname, '../lambda/populate-initial-glicko-ratings.ts'),
+      runtime: lambda.Runtime.NODEJS_22_X,
+      handler: 'handler',
+      timeout: cdk.Duration.minutes(15), // Allow time to process all guilds
+      memorySize: 512,
+      environment: {
+        TABLE_NAME: this.dynamoDbTable.tableName,
+        REGION: this.region
+      }
+    });
+    populateInitialGlickoRatingsLambda.node.addDependency(this.dynamoDbTable);
+    this.dynamoDbTable.grantReadWriteData(populateInitialGlickoRatingsLambda);
+
+    // Output the Lambda ARN for manual invocation
+    new cdk.CfnOutput(this, `PopulateInitialGlickoRatingsLambdaArn-${props.stage}`, {
+      value: populateInitialGlickoRatingsLambda.functionArn,
+      description: 'ARN of the Lambda function to populate initial Glicko ratings (invoke manually)',
+      exportName: `WvWGG-PopulateInitialGlickoRatingsLambdaArn-${props.stage}`
+    });
+
     // ===== Vercel OIDC Setup =====
     // OIDC provider URL and audience
     const oidcProviderUrl = props.vercelTeamSlug
