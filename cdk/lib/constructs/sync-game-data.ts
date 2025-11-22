@@ -46,9 +46,6 @@ export class WvWGGSyncGameDataStepFunction extends Construct {
             queryLanguage: QueryLanguage.JSONATA,
             timeout: Duration.hours(2) // Allow for long sync
         });
-
-        // Grant State Machine permission to write results to S3
-        this.props.bucket.grantWrite(this.stateMachine);
     }
 
     /**
@@ -128,10 +125,7 @@ export class WvWGGSyncGameDataStepFunction extends Construct {
             itemBatcher: new sfn.ItemBatcher({
                 maxItemsPerBatch: 100 // Reduced from 200 to avoid timeouts
             }),
-            resultPath: sfn.JsonPath.DISCARD, // Don't pass results to next state
-            resultSelector: {
-                'result': 'Map completed successfully'
-            },
+            outputs: {}, // Discard outputs to prevent 256KB limit (JSONata compatible)
             toleratedFailurePercentage: 5
         });
 
