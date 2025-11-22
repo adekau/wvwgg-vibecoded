@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Shield, Users, CheckCircle, AlertCircle, LogOut, List } from 'lucide-react'
+import { AdminSubNav } from '@/components/admin-sub-nav'
 
 interface DashboardStats {
   totalGuilds: number
@@ -29,18 +30,20 @@ export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // TODO: Fetch actual stats from API
-    // For now, using mock data
-    setTimeout(() => {
-      setStats({
-        totalGuilds: 1234,
-        needsReview: 856,
-        allianceGuilds: 45,
-        memberGuilds: 178,
-        independentGuilds: 155,
-      })
-      setIsLoading(false)
-    }, 500)
+    const fetchStats = async () => {
+      try {
+        const response = await fetch('/api/admin/stats')
+        if (!response.ok) throw new Error('Failed to fetch stats')
+        const data = await response.json()
+        setStats(data)
+      } catch (error) {
+        console.error('Error fetching stats:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchStats()
   }, [])
 
   const handleLogout = () => {
@@ -79,6 +82,8 @@ export default function AdminDashboard() {
           </div>
         </div>
       </header>
+
+      <AdminSubNav />
 
       <main className="container mx-auto px-4 py-8 space-y-8">
         {/* Stats Grid */}
