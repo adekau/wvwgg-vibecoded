@@ -462,8 +462,9 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
       const elapsedMinutes = Math.floor((now.getTime() - matchStart.getTime()) / (1000 * 60))
       const skirmishNumber = Math.floor(elapsedMinutes / 120)
       const skirmishStartTime = new Date(matchStart.getTime() + (skirmishNumber * 120 * 60 * 1000))
-      const skirmishElapsed = Math.floor((now.getTime() - skirmishStartTime.getTime()) / (1000 * 60))
-      const minutesRemaining = Math.max(0, 120 - skirmishElapsed)
+      const skirmishElapsedMs = now.getTime() - skirmishStartTime.getTime()
+      const skirmishRemainingMs = Math.max(0, (120 * 60 * 1000) - skirmishElapsedMs)
+      const minutesRemaining = skirmishRemainingMs / (1000 * 60)
       ticksRemaining = Math.ceil(minutesRemaining / 5)
 
       requiredPPT = calculateRequiredPPTToOvertake(
@@ -547,8 +548,9 @@ export function MatchDashboard({ match, matchId, guilds, detailedObjectives, pri
             const elapsedMinutes = Math.floor((now.getTime() - matchStart.getTime()) / (1000 * 60))
             const skirmishNumber = Math.floor(elapsedMinutes / 120) // Each skirmish is 120 minutes
             const skirmishStartTime = new Date(matchStart.getTime() + (skirmishNumber * 120 * 60 * 1000))
-            const skirmishElapsed = Math.floor((now.getTime() - skirmishStartTime.getTime()) / (1000 * 60))
-            const minutesRemaining = Math.max(0, 120 - skirmishElapsed)
+            const skirmishElapsedMs = now.getTime() - skirmishStartTime.getTime()
+            const skirmishRemainingMs = Math.max(0, (120 * 60 * 1000) - skirmishElapsedMs)
+            const minutesRemaining = skirmishRemainingMs / (1000 * 60)
             ticksRemaining = Math.ceil(minutesRemaining / 5) // Ticks are every 5 minutes
 
             requiredPPT = calculateRequiredPPTToOvertake(
