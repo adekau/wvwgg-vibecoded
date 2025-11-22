@@ -102,6 +102,21 @@ export class WvWGGStack extends cdk.Stack {
     fetchWorldsLambda.node.addDependency(this.dynamoDbTable);
     this.dynamoDbTable.grantReadWriteData(fetchWorldsLambda);
 
+    // Lambda: Sync Game Data (builds system - manual/daily trigger)
+    const syncGameDataLambda = new lambdaNodejs.NodejsFunction(this, `WvWGGSyncGameDataLambda-${props.stage}`, {
+      entry: path.join(__dirname, '../lambda/sync-game-data.ts'),
+      runtime: lambda.Runtime.NODEJS_22_X,
+      handler: 'handler',
+      timeout: cdk.Duration.minutes(10), // Long timeout for GW2 API fetches
+      memorySize: 512, // More memory for processing
+      environment: {
+        TABLE_NAME: this.dynamoDbTable.tableName,
+        REGION: this.region
+      }
+    });
+    syncGameDataLambda.node.addDependency(this.dynamoDbTable);
+    this.dynamoDbTable.grantReadWriteData(syncGameDataLambda);
+
     // EventBridge Rule: Trigger fetchMatchesLambda every 60 seconds
     const fetchMatchesRule = new events.Rule(this, `WvWGGFetchMatchesRule-${props.stage}`, {
       schedule: events.Schedule.rate(cdk.Duration.seconds(60)),
@@ -180,6 +195,12 @@ export class WvWGGStack extends cdk.Stack {
       value: this.dynamoDbTable.tableName,
       description: `DynamoDB table name for ${props.stage} environment`,
       exportName: `WvWGGTableName-${props.stage}`
+    });
+
+    new cdk.CfnOutput(this, `SyncGameDataLambdaArn-${props.stage}`, {
+      value: syncGameDataLambda.functionArn,
+      description: `Sync Game Data Lambda ARN for ${props.stage} (invoke to sync build data from GW2 API)`,
+      exportName: `WvWGGSyncGameDataLambdaArn-${props.stage}`
     });
   }
 }
