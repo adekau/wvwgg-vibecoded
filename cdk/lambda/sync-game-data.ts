@@ -125,26 +125,85 @@ async function fetchItemsByType(type: 'UpgradeComponent' | 'Consumable'): Promis
   }
 
   const ids = await response.json() as number[];
-  console.log(`Found ${ids.length} ${type} items`);
+  console.log(`Found ${ids.length} ${type} items (unfiltered)`);
 
-  // Fetch in batches
+  // Fetch in batches and filter as we go
   const batchSize = 200;
   const items: GW2Item[] = [];
+  let fetchedCount = 0;
 
   for (let i = 0; i < ids.length; i += batchSize) {
     const batch = ids.slice(i, i + batchSize);
     const batchData = await fetchFromGW2API<GW2Item[]>(
       `/items?ids=${batch.join(',')}`
     );
-    items.push(...batchData);
 
-    console.log(`Fetched ${items.length}/${ids.length} ${type} items`);
+    // Filter items immediately to reduce memory usage
+    const filtered = batchData.filter(item => isRelevantItem(item));
+    items.push(...filtered);
+    fetchedCount += batchData.length;
+
+    console.log(`Fetched ${fetchedCount}/${ids.length} ${type} items (${items.length} relevant)`);
 
     // Rate limiting
     await new Promise(resolve => setTimeout(resolve, 100));
   }
 
+  console.log(`Filtered to ${items.length} relevant ${type} items`);
   return items;
+}
+
+/**
+ * Filter out irrelevant items to reduce processing time
+ */
+function isRelevantItem(item: GW2Item): boolean {
+  // For UpgradeComponents: Only keep Exotic/Ascended rarity
+  if (item.type === 'UpgradeComponent') {
+    // Only keep Superior runes/sigils (Exotic), Ascended infusions
+    if (item.rarity !== 'Exotic' && item.rarity !== 'Ascended') {
+      return false;
+    }
+
+    // Skip PvP-only items
+    if (item.game_types && item.game_types.length === 1 && item.game_types[0] === 'Pvp') {
+      return false;
+    }
+  }
+
+  // For Consumables: Only keep food/utility with stat bonuses
+  if (item.type === 'Consumable') {
+    const consumableType = item.details?.type;
+
+    // Only food and utility
+    if (consumableType !== 'Food' && consumableType !== 'Utility') {
+      return false;
+    }
+
+    // Only keep items with stat bonuses in description
+    const desc = item.description?.toLowerCase() || '';
+    const hasStatBonus = (
+      desc.includes('power') ||
+      desc.includes('precision') ||
+      desc.includes('ferocity') ||
+      desc.includes('condition damage') ||
+      desc.includes('expertise') ||
+      desc.includes('concentration') ||
+      desc.includes('healing power') ||
+      desc.includes('vitality') ||
+      desc.includes('toughness')
+    );
+
+    if (!hasStatBonus) {
+      return false;
+    }
+
+    // Skip low-level food (level < 80)
+    if (item.level < 80) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 // ============================================================================
