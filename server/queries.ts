@@ -230,7 +230,7 @@ export const getGuilds = unstable_cache(
             },
             ExpressionAttributeValues: { ':type': DB_CONSTANTS.QUERY_TYPES.GUILD },
             // Project only the fields we need to reduce payload size
-            ProjectionExpression: 'id, #data, classification, allianceGuildId, memberGuildIds, description, contact_info, recruitment_status',
+            ProjectionExpression: 'id, #data, classification, allianceGuildId, memberGuildIds, description, contact_info, recruitment_status, glickoRating, primetimeTimezones',
             ExclusiveStartKey: lastEvaluatedKey,
           })
         );
@@ -260,6 +260,8 @@ export const getGuilds = unstable_cache(
         description: item.description,
         contact_info: item.contact_info,
         recruitment_status: item.recruitment_status,
+        glickoRating: item.glickoRating,
+        primetimeTimezones: item.primetimeTimezones,
       })) || [];
     } catch (error) {
       console.error('Error fetching guilds:', error);
