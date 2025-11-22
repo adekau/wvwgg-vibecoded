@@ -1,5 +1,5 @@
 import { Duration, aws_lambda as lambda, aws_lambda_nodejs as lambdaNode, aws_s3 as s3, aws_stepfunctions as sfn, aws_stepfunctions_tasks as sfnTasks } from 'aws-cdk-lib';
-import { DefinitionBody, QueryLanguage, S3JsonItemReader, StateMachine } from "aws-cdk-lib/aws-stepfunctions";
+import { DefinitionBody, QueryLanguage, S3JsonItemReader, S3ObjectsItemReader, StateMachine } from "aws-cdk-lib/aws-stepfunctions";
 import { Construct } from "constructs";
 import path from "path";
 
@@ -125,7 +125,10 @@ export class WvWGGSyncGameDataStepFunction extends Construct {
             itemBatcher: new sfn.ItemBatcher({
                 maxItemsPerBatch: 100 // Reduced from 200 to avoid timeouts
             }),
-            outputs: {}, // Prevent output accumulation
+            resultWriter: new sfn.ResultWriter({
+                bucket: this.props.bucket,
+                prefix: `game-data-sync/results/${mapName}/`
+            }),
             toleratedFailurePercentage: 5
         });
 
