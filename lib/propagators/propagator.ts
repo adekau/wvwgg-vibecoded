@@ -63,6 +63,9 @@ export class Propagator {
    * Execute the propagator's constraint function
    */
   private execute(): void {
+    // Determine if this is a bidirectional propagator
+    const isBidirectional = this.inverse && Object.keys(this.inverse).length > 0
+
     // Try forward propagation: inputs -> outputs
     if (this.forward && this.allInputsHaveValues()) {
       const inputValues = this.getInputValues()
@@ -72,10 +75,16 @@ export class Propagator {
         // Assume single output for now (can extend for multiple outputs)
         const outputCell = Object.values(this.outputs)[0]
         if (outputCell) {
-          try {
-            outputCell.setValue(outputValue)
-          } catch (error) {
-            console.error(`Propagator ${this.name} forward propagation failed:`, error)
+          // In bidirectional mode, prefer user-set output values over computed values
+          // Only update output if it doesn't have a value or if the inverse doesn't exist
+          const shouldUpdate = !isBidirectional || !outputCell.hasValue()
+
+          if (shouldUpdate) {
+            try {
+              outputCell.setValue(outputValue)
+            } catch (error) {
+              console.error(`Propagator ${this.name} forward propagation failed:`, error)
+            }
           }
         }
       }
@@ -85,9 +94,9 @@ export class Propagator {
     if (this.inverse) {
       for (const [inputName, inverseFunc] of Object.entries(this.inverse)) {
         const inputCell = this.inputs[inputName]
-        if (!inputCell || inputCell.hasValue()) continue // Skip if already has value
+        if (!inputCell) continue
 
-        // Check if all other dependencies are satisfied
+        // Check if output cell has a value to propagate from
         const outputValues = this.getOutputValues()
         const otherInputValues = this.getOtherInputValues(inputName)
 
@@ -97,6 +106,8 @@ export class Propagator {
 
           if (inputValue !== undefined) {
             try {
+              // setValue will handle detecting if value actually changed
+              // If value is unchanged, it returns false and no propagation occurs
               inputCell.setValue(inputValue)
             } catch (error) {
               console.error(`Propagator ${this.name} inverse propagation failed:`, error)
