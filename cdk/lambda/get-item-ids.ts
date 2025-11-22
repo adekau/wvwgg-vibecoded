@@ -42,25 +42,44 @@ export async function handler(event: Event): Promise<{ statusCode: number; body:
     const ids = await response.json() as number[];
     console.log(`Fetched ${ids.length} ${itemType} IDs`);
 
-    // Write IDs to S3 as JSON array
-    const s3Key = `game-data-sync/${itemType.toLowerCase()}-ids-${Date.now()}.json`;
+    // Split into chunks to avoid 256KB state limit
+    // Each chunk will be processed by a separate DistributedMap iteration
+    const CHUNK_SIZE = 5000; // Process 5k items per chunk
+    const chunks: number[][] = [];
 
-    await s3Client.send(new PutObjectCommand({
-      Bucket: BUCKET_NAME,
-      Key: s3Key,
-      Body: JSON.stringify(ids),
-      ContentType: 'application/json'
-    }));
+    for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+      chunks.push(ids.slice(i, i + CHUNK_SIZE));
+    }
 
-    console.log(`Wrote ${ids.length} IDs to S3: ${s3Key}`);
+    console.log(`Split ${ids.length} IDs into ${chunks.length} chunks of ~${CHUNK_SIZE} items`);
+
+    // Write each chunk to a separate S3 file
+    const s3Keys: string[] = [];
+    const timestamp = Date.now();
+
+    for (let i = 0; i < chunks.length; i++) {
+      const s3Key = `game-data-sync/${itemType.toLowerCase()}-ids-${timestamp}-chunk-${i}.json`;
+
+      await s3Client.send(new PutObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: s3Key,
+        Body: JSON.stringify(chunks[i]),
+        ContentType: 'application/json'
+      }));
+
+      s3Keys.push(s3Key);
+    }
+
+    console.log(`Wrote ${chunks.length} chunk files to S3`);
 
     return {
       statusCode: 200,
       body: {
-        fileNames: [s3Key],  // Return as array for Map iteration (guild sync pattern)
+        fileNames: s3Keys,  // Return array of S3 keys (one per chunk)
         success: true,
         itemType,
-        totalIds: ids.length
+        totalIds: ids.length,
+        totalChunks: chunks.length
       }
     };
 
