@@ -25,6 +25,7 @@ import { IGuild } from '@/server/queries'
 import { GuildEditModal } from '@/components/admin/guild-edit-modal'
 import { GuildSearchModal } from '@/components/guild-search-modal'
 import { useAuth } from '@/lib/auth-context'
+import { AdminSubNav } from '@/components/admin-sub-nav'
 
 interface AdminGuild extends IGuild {
   classification?: 'alliance' | 'member' | 'independent'
@@ -187,7 +188,9 @@ export default function AdminGuildsPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <>
+      <AdminSubNav />
+      <div className="container mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Guild Management</h1>
@@ -417,5 +420,6 @@ export default function AdminGuildsPage() {
         onGuildSelected={handleAddGuild}
       />
     </div>
+    </>
   )
 }
