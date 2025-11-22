@@ -57,10 +57,10 @@ export async function handler(event: Event): Promise<{ statusCode: number; body:
     return {
       statusCode: 200,
       body: {
+        fileNames: [s3Key],  // Return as array for Map iteration (guild sync pattern)
         success: true,
         itemType,
-        totalIds: ids.length,
-        s3Key
+        totalIds: ids.length
       }
     };
 

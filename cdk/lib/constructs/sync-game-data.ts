@@ -104,28 +104,35 @@ export class WvWGGSyncGameDataStepFunction extends Construct {
             payload: sfn.TaskInput.fromObject({
                 itemType: itemType
             }),
-            outputs: '{% $states.result.Payload.body %}',
+            outputs: '{% $states.result.Payload.body.fileNames %}',  // Return array of S3 keys
             comment: `Get ${itemType} IDs and write to S3`
         });
     }
 
     /**
      * Step 3/5: Process item batches using DistributedMap
-     * Same pattern as guild sync with rate limiting
+     * Wrapped in regular Map to prevent output size limit (same as guild sync)
      */
     private createProcessItemsMap(mapName: string) {
-        const map = new sfn.DistributedMap(this, `process-${mapName}-map`, {
+        // Outer regular Map (like create-batches-map in guild sync)
+        const outerMap = new sfn.Map(this, `${mapName}-outer-map`, {
+            maxConcurrency: 1,
+            outputs: {} // Discards all output from inner map
+        });
+
+        // Inner DistributedMap (like process-batches-map in guild sync)
+        const innerMap = new sfn.DistributedMap(this, `process-${mapName}-map`, {
             queryLanguage: QueryLanguage.JSONATA,
             maxConcurrency: 1, // Same as guild sync
             mapExecutionType: sfn.StateMachineType.EXPRESS,
             itemReader: new S3JsonItemReader({
                 bucket: this.props.bucket,
-                key: '{% $states.input.s3Key %}'
+                key: '{% $states.input %}'  // Outer map passes S3 key as input
             }),
             itemBatcher: new sfn.ItemBatcher({
                 maxItemsPerBatch: 200
             }),
-            outputs: {}, // Discard outputs to prevent 256KB limit (JSONata compatible)
+            outputs: {}, // Minimize inner output
             toleratedFailurePercentage: 5
         });
 
@@ -138,7 +145,7 @@ export class WvWGGSyncGameDataStepFunction extends Construct {
         // Lambda to fetch and process a batch of items
         const fetchItemsBatchTask = this.createFetchItemsBatchTask(mapName);
 
-        map.itemProcessor(
+        innerMap.itemProcessor(
             waitState.next(fetchItemsBatchTask),
             {
                 mode: sfn.ProcessorMode.DISTRIBUTED,
@@ -146,7 +153,13 @@ export class WvWGGSyncGameDataStepFunction extends Construct {
             }
         );
 
-        return map;
+        // Outer map contains the inner DistributedMap
+        outerMap.itemProcessor(innerMap, {
+            mode: sfn.ProcessorMode.INLINE,
+            executionType: sfn.ProcessorType.EXPRESS
+        });
+
+        return outerMap;
     }
 
     /**
