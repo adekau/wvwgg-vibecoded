@@ -18,12 +18,13 @@ const docClient = DynamoDBDocumentClient.from(client, {
 })
 
 interface UpdateGuildRequest {
-  classification?: 'alliance' | 'member' | 'independent'
+  classification?: 'alliance' | 'solo-alliance' | 'member' | 'independent'
   allianceGuildId?: string | null
   memberGuildIds?: string[]
   description?: string
   contact_info?: string
   recruitment_status?: 'open' | 'closed' | 'by_application'
+  primetimeTimezones?: string[]
   notes?: string
   updatedBy?: string
 }
@@ -71,6 +72,9 @@ export async function PATCH(
     }
     if (body.recruitment_status !== undefined && body.recruitment_status !== currentGuild.Item.recruitment_status) {
       changes.recruitment_status = { from: currentGuild.Item.recruitment_status, to: body.recruitment_status }
+    }
+    if (body.primetimeTimezones !== undefined && JSON.stringify(body.primetimeTimezones) !== JSON.stringify(currentGuild.Item.primetimeTimezones)) {
+      changes.primetimeTimezones = { from: currentGuild.Item.primetimeTimezones, to: body.primetimeTimezones }
     }
     if (body.notes !== undefined && body.notes !== currentGuild.Item.notes) {
       changes.notes = { from: currentGuild.Item.notes, to: body.notes }
@@ -148,6 +152,17 @@ export async function PATCH(
       } else {
         removeExpressions.push('#recruitmentStatus')
         expressionAttributeNames['#recruitmentStatus'] = 'recruitment_status'
+      }
+    }
+
+    if (body.primetimeTimezones !== undefined) {
+      if (body.primetimeTimezones && body.primetimeTimezones.length > 0) {
+        updateExpressions.push('#primetimeTimezones = :primetimeTimezones')
+        expressionAttributeNames['#primetimeTimezones'] = 'primetimeTimezones'
+        expressionAttributeValues[':primetimeTimezones'] = body.primetimeTimezones
+      } else {
+        removeExpressions.push('#primetimeTimezones')
+        expressionAttributeNames['#primetimeTimezones'] = 'primetimeTimezones'
       }
     }
 
