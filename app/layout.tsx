@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import NextTopLoader from 'nextjs-toploader'
 import './globals.css'
 import { ThemeProvider } from '@/components/theme-provider'
 import { AuthProvider } from '@/lib/auth-context'
@@ -52,6 +53,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`font-sans antialiased brushstroke-texture-bg relative`}>
+        <NextTopLoader
+          color="hsl(var(--primary))"
+          height={3}
+          showSpinner={false}
+          shadow="0 0 10px hsl(var(--primary)),0 0 5px hsl(var(--primary))"
+        />
         <QueryProvider>
           <ThemeProvider
             attribute="class"
