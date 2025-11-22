@@ -2,6 +2,7 @@
 
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { Users, Shield } from 'lucide-react'
 import { IGuild } from '@/server/queries'
 import Link from 'next/link'
@@ -113,32 +114,38 @@ export function WorldAlliances({ worlds, guilds }: WorldAlliancesProps) {
                       <div className="space-y-2">
                         {world.alliances.map((alliance) => (
                           <div key={alliance.id} className="space-y-1">
-                            <Link
-                              href={`/guilds/${alliance.id}`}
-                              className="flex items-center gap-2 hover:underline"
-                            >
-                              <Shield className="h-3 w-3" />
-                              <span className="font-semibold text-sm">
-                                [{alliance.tag}] {alliance.name}
-                              </span>
-                            </Link>
-                            {alliance.members.length > 0 && (
-                              <div className="ml-5 flex flex-wrap gap-1">
-                                {alliance.members.map((member) => (
-                                  <Link
-                                    key={member.id}
-                                    href={`/guilds/${member.id}`}
-                                  >
+                            <div className="flex items-center gap-2">
+                              <Link
+                                href={`/guilds/${alliance.id}`}
+                                className="flex items-center gap-2 hover:underline"
+                              >
+                                <Shield className="h-3 w-3" />
+                                <span className="font-semibold text-sm">
+                                  [{alliance.tag}] {alliance.name}
+                                </span>
+                              </Link>
+                              {alliance.members.length > 0 && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
                                     <Badge
                                       variant="outline"
-                                      className={`text-xs h-5 ${classes.badge} border cursor-pointer hover:opacity-80 transition-opacity`}
+                                      className={`text-xs h-5 ${classes.badge} border cursor-help`}
                                     >
-                                      [{member.tag}]
+                                      {alliance.members.length} {alliance.members.length === 1 ? 'guild' : 'guilds'}
                                     </Badge>
-                                  </Link>
-                                ))}
-                              </div>
-                            )}
+                                  </TooltipTrigger>
+                                  <TooltipContent side="right" className="max-w-xs">
+                                    <div className="text-xs space-y-1">
+                                      {alliance.members.map((member) => (
+                                        <div key={member.id}>
+                                          [{member.tag}] {member.name}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>
