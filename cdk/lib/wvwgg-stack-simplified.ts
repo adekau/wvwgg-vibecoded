@@ -71,6 +71,32 @@ export class WvWGGStack extends cdk.Stack {
       resources: [this.dynamoDbTable.tableArn]
     }));
 
+    // Grant game data sync lambdas permission to write to DynamoDB
+    const gameDataSyncLambdas = [
+      props.automationStack.gameDataStepFunction.syncBaseDataLambda,
+      props.automationStack.gameDataStepFunction.fetchItemsBatchUpgradeLambda,
+      props.automationStack.gameDataStepFunction.fetchItemsBatchConsumableLambda
+    ];
+
+    gameDataSyncLambdas.forEach(lambda => {
+      // Add TABLE_NAME environment variable
+      lambda.addEnvironment('TABLE_NAME', this.dynamoDbTable.tableName);
+
+      // Grant DynamoDB permissions
+      lambda.addToRolePolicy(new PolicyStatement({
+        actions: [
+          'dynamodb:PutItem',
+          'dynamodb:BatchWriteItem',
+          'dynamodb:GetItem',
+          'dynamodb:Query'
+        ],
+        resources: [
+          this.dynamoDbTable.tableArn,
+          `${this.dynamoDbTable.tableArn}/index/*` // For GSI access
+        ]
+      }));
+    });
+
     // Lambda: Fetch Matches (runs every 60 seconds)
     const fetchMatchesLambda = new lambdaNodejs.NodejsFunction(this, `WvWGGFetchMatchesLambda-${props.stage}`, {
       entry: path.join(__dirname, '../lambda/get-matches.ts'),
