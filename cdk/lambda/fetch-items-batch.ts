@@ -170,33 +170,14 @@ function isRelevantItem(item: GW2Item): boolean {
       return false;
     }
 
-    // Only keep items with stat bonuses in description
-    const desc = item.description?.toLowerCase() || '';
-    const hasStatBonus = (
-      desc.includes('power') ||
-      desc.includes('precision') ||
-      desc.includes('ferocity') ||
-      desc.includes('condition damage') ||
-      desc.includes('expertise') ||
-      desc.includes('concentration') ||
-      desc.includes('healing power') ||
-      desc.includes('vitality') ||
-      desc.includes('toughness')
-    );
-
-    if (!hasStatBonus) {
-      return false;
-    }
-
     // Skip low-level food (level < 80)
     if (item.level < 80) {
       return false;
     }
 
-    // Skip nourishment with very short durations (< 30min)
-    if (item.details?.duration_ms && item.details.duration_ms < 1800000) {
-      return false;
-    }
+    // Relaxed: Accept all level 80 food/utility
+    // We'll filter more intelligently later based on actual data
+    return true;
   }
 
   return true;
