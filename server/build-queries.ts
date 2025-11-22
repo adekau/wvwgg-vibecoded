@@ -2,17 +2,23 @@
  * Server-side queries for build system data
  */
 
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, QueryCommand, GetCommand } from '@aws-sdk/lib-dynamodb'
-import { getDynamoDBClient } from './aws-credentials'
+import { createCredentialsProvider } from './aws-credentials'
 import type { ItemStatEntity, EnhancedItemEntity, StatFormulaEntity } from '@/lib/gw2/build-data-types'
+
+// Initialize DynamoDB client
+const credentials = createCredentialsProvider()
+const client = new DynamoDBClient({
+  region: process.env.AWS_REGION || 'us-east-1',
+  ...(credentials && { credentials })
+})
+const docClient = DynamoDBDocumentClient.from(client)
 
 /**
  * Get all itemstats from DynamoDB
  */
 export async function getAllItemStats(): Promise<ItemStatEntity[]> {
-  const client = await getDynamoDBClient()
-  const docClient = DynamoDBDocumentClient.from(client)
-
   const command = new QueryCommand({
     TableName: process.env.TABLE_NAME,
     KeyConditionExpression: '#type = :type',
@@ -32,9 +38,6 @@ export async function getAllItemStats(): Promise<ItemStatEntity[]> {
  * Get a single itemstat by ID
  */
 export async function getItemStatById(id: string): Promise<ItemStatEntity | null> {
-  const client = await getDynamoDBClient()
-  const docClient = DynamoDBDocumentClient.from(client)
-
   const command = new GetCommand({
     TableName: process.env.TABLE_NAME,
     Key: {
@@ -51,9 +54,6 @@ export async function getItemStatById(id: string): Promise<ItemStatEntity | null
  * Get all stat formulas from DynamoDB
  */
 export async function getAllFormulas(): Promise<StatFormulaEntity[]> {
-  const client = await getDynamoDBClient()
-  const docClient = DynamoDBDocumentClient.from(client)
-
   const command = new QueryCommand({
     TableName: process.env.TABLE_NAME,
     KeyConditionExpression: '#type = :type',
@@ -73,9 +73,6 @@ export async function getAllFormulas(): Promise<StatFormulaEntity[]> {
  * Get enhanced items by category (rune, sigil, food, utility, etc.)
  */
 export async function getItemsByCategory(category: string): Promise<EnhancedItemEntity[]> {
-  const client = await getDynamoDBClient()
-  const docClient = DynamoDBDocumentClient.from(client)
-
   const command = new QueryCommand({
     TableName: process.env.TABLE_NAME,
     IndexName: 'itemCategory-gameVersion-index',
