@@ -51,12 +51,16 @@ export function WorldAlliances({ worlds, guilds }: WorldAlliancesProps) {
     const independents = worldGuilds.filter((guild) => guild.classification === 'independent')
 
     // Get member guilds for each alliance
-    // Member guilds are shown under their alliance regardless of their own worldId
+    // IMPORTANT: Member guilds are ALWAYS shown under their alliance regardless of
+    // what worldId the member guild has assigned. We filter by allianceGuildId ONLY,
+    // not by worldId. This ensures member guild tags appear under their alliance
+    // even if the member guild's worldId differs from the alliance's worldId.
     const alliancesWithMembers = relevantAlliances.map((alliance) => {
       const members = guilds.filter(
         (guild) =>
           guild.classification === 'member' &&
           guild.allianceGuildId === alliance.id
+          // Note: We deliberately do NOT filter by worldId here
       )
       return {
         ...alliance,
