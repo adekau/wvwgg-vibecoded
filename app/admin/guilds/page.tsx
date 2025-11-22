@@ -424,6 +424,13 @@ export default function AdminGuildsPage() {
               throw new Error('Failed to update guild')
             }
 
+            const data = await response.json()
+
+            // Show warnings if any bidirectional updates failed
+            if (data.warnings && data.warnings.length > 0) {
+              alert(`Guild updated with warnings:\n\n${data.warnings.join('\n')}`)
+            }
+
             // Refresh guild list
             await fetchData()
           } catch (error) {
