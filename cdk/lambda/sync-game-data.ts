@@ -130,6 +130,7 @@ async function fetchItemsByType(type: 'UpgradeComponent' | 'Consumable'): Promis
   // Fetch in batches and filter as we go
   const batchSize = 200;
   const items: GW2Item[] = [];
+  const seenNames = new Set<string>(); // Deduplicate by name
   let fetchedCount = 0;
 
   for (let i = 0; i < ids.length; i += batchSize) {
@@ -139,17 +140,25 @@ async function fetchItemsByType(type: 'UpgradeComponent' | 'Consumable'): Promis
     );
 
     // Filter items immediately to reduce memory usage
-    const filtered = batchData.filter(item => isRelevantItem(item));
+    const filtered = batchData.filter(item => {
+      if (!isRelevantItem(item)) return false;
+
+      // Deduplicate by name (keep first occurrence only)
+      if (seenNames.has(item.name)) return false;
+      seenNames.add(item.name);
+
+      return true;
+    });
     items.push(...filtered);
     fetchedCount += batchData.length;
 
-    console.log(`Fetched ${fetchedCount}/${ids.length} ${type} items (${items.length} relevant)`);
+    console.log(`Fetched ${fetchedCount}/${ids.length} ${type} items (${items.length} unique)`);
 
-    // Rate limiting
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Rate limiting - reduce to 50ms for faster processing
+    await new Promise(resolve => setTimeout(resolve, 50));
   }
 
-  console.log(`Filtered to ${items.length} relevant ${type} items`);
+  console.log(`Filtered to ${items.length} unique ${type} items`);
   return items;
 }
 
@@ -157,6 +166,22 @@ async function fetchItemsByType(type: 'UpgradeComponent' | 'Consumable'): Promis
  * Filter out irrelevant items to reduce processing time
  */
 function isRelevantItem(item: GW2Item): boolean {
+  // Skip account-bound items (usually duplicates or special acquisition)
+  if (item.flags?.includes('AccountBound') || item.flags?.includes('SoulbindOnAcquire')) {
+    return false;
+  }
+
+  // Skip items with suspicious/legacy patterns in name
+  const nameLower = item.name.toLowerCase();
+  if (
+    nameLower.includes('(beta)') ||
+    nameLower.includes('(legacy)') ||
+    nameLower.includes('test ') ||
+    nameLower.includes('[test]')
+  ) {
+    return false;
+  }
+
   // For UpgradeComponents: Only keep Exotic/Ascended rarity
   if (item.type === 'UpgradeComponent') {
     // Only keep Superior runes/sigils (Exotic), Ascended infusions
@@ -166,6 +191,18 @@ function isRelevantItem(item: GW2Item): boolean {
 
     // Skip PvP-only items
     if (item.game_types && item.game_types.length === 1 && item.game_types[0] === 'Pvp') {
+      return false;
+    }
+
+    const upgradeType = item.details?.type;
+
+    // For runes: Must have "Superior Rune" in name
+    if (upgradeType === 'Rune' && !item.name.includes('Superior Rune')) {
+      return false;
+    }
+
+    // For sigils: Must have "Superior Sigil" in name
+    if (upgradeType === 'Sigil' && !item.name.includes('Superior Sigil')) {
       return false;
     }
   }
@@ -199,6 +236,11 @@ function isRelevantItem(item: GW2Item): boolean {
 
     // Skip low-level food (level < 80)
     if (item.level < 80) {
+      return false;
+    }
+
+    // Skip nourishment with very short durations (< 30min)
+    if (item.details?.duration_ms && item.details.duration_ms < 1800000) {
       return false;
     }
   }
