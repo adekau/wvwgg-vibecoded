@@ -43,7 +43,10 @@ export function WorldAlliances({ worlds, guilds }: WorldAlliancesProps) {
 
     // Find all alliances on this world based on the alliance's worldId
     // Member guilds inherit their alliance's world placement
-    const allAllianceGuilds = guilds.filter((guild) => guild.classification === 'alliance')
+    // Include both regular alliances and solo alliances
+    const allAllianceGuilds = guilds.filter((guild) =>
+      guild.classification === 'alliance' || guild.classification === 'solo-alliance'
+    )
     const relevantAlliances = allAllianceGuilds.filter((alliance) => {
       return alliance.worldId === world.id
     })
@@ -51,12 +54,16 @@ export function WorldAlliances({ worlds, guilds }: WorldAlliancesProps) {
     const independents = worldGuilds.filter((guild) => guild.classification === 'independent')
 
     // Get member guilds for each alliance
-    // Member guilds are shown under their alliance regardless of their own worldId
+    // IMPORTANT: Member guilds are ALWAYS shown under their alliance regardless of
+    // what worldId the member guild has assigned. We filter by allianceGuildId ONLY,
+    // not by worldId. This ensures member guild tags appear under their alliance
+    // even if the member guild's worldId differs from the alliance's worldId.
     const alliancesWithMembers = relevantAlliances.map((alliance) => {
       const members = guilds.filter(
         (guild) =>
           guild.classification === 'member' &&
           guild.allianceGuildId === alliance.id
+          // Note: We deliberately do NOT filter by worldId here
       )
       return {
         ...alliance,
