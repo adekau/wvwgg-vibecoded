@@ -9,7 +9,13 @@ import type {
   BaseStats,
   GearSelection,
 } from '@/lib/gw2/types'
-import { optimizeGear, getOptimizationPresets } from '@/lib/gw2/gear-optimizer'
+import {
+  optimizeGear as optimizeGearSimple,
+  getOptimizationPresets,
+  type TargetStats as SimpleTargetStats
+} from '@/lib/gw2/gear-optimizer'
+import type { ItemStatEntity } from '@/lib/gw2/build-data-types'
+import { calculateBuildStats } from '@/lib/gw2/build-calculator'
 import {
   Dialog,
   DialogContent,
@@ -32,9 +38,61 @@ interface GearOptimizerProps {
   build: Build
   itemStats: ItemStat[]
   onApplyGear: (gear: GearSelection) => void
+  targetStats?: {
+    power?: number
+    precision?: number
+    ferocity?: number
+    vitality?: number
+    toughness?: number
+    conditionDamage?: number
+    expertise?: number
+    concentration?: number
+    healingPower?: number
+  }
 }
 
 type OptimizationState = 'idle' | 'optimizing' | 'success' | 'error'
+
+/**
+ * Convert optimized build result to GearSelection format
+ */
+function convertOptimizedBuildToGear(
+  optimizedBuild: ReturnType<typeof optimizeGearSimple>,
+  currentGear: GearSelection
+): GearSelection {
+  const gear: GearSelection = { ...currentGear }
+
+  // Map slot names to gear properties
+  const slotMap: Record<string, keyof GearSelection> = {
+    'Helm': 'helm',
+    'Shoulders': 'shoulders',
+    'Coat': 'coat',
+    'Gloves': 'gloves',
+    'Leggings': 'leggings',
+    'Boots': 'boots',
+    'Amulet': 'amulet',
+    'Ring 1': 'ring1',
+    'Ring 2': 'ring2',
+    'Accessory 1': 'accessory1',
+    'Accessory 2': 'accessory2',
+    'Back': 'backItem',
+    'Weapon 1': 'weaponSet1Main',
+    'Weapon 2': 'weaponSet2Main',
+  }
+
+  // Update each slot with optimized stat
+  for (const slot of optimizedBuild.slots) {
+    const gearKey = slotMap[slot.slot]
+    if (gearKey && gear[gearKey]) {
+      const piece = gear[gearKey]
+      if (piece && typeof piece === 'object' && 'statId' in piece) {
+        piece.statId = parseInt(slot.statId)
+      }
+    }
+  }
+
+  return gear
+}
 
 /**
  * GearOptimizer - Modal for optimizing gear selection
@@ -45,9 +103,10 @@ export function GearOptimizer({
   build,
   itemStats,
   onApplyGear,
+  targetStats = {},
 }: GearOptimizerProps) {
   const [state, setState] = useState<OptimizationState>('idle')
-  const [selectedPreset, setSelectedPreset] = useState('maximize-ep')
+  const [selectedPreset, setSelectedPreset] = useState('match-target-stats')
   const [result, setResult] = useState<any>(null)
 
   const presets = getOptimizationPresets()
@@ -68,28 +127,63 @@ export function GearOptimizer({
       return
     }
 
-    // Run optimization
-    const options: OptimizationOptions = {
-      allowedRarities: ['Ascended'], // Only ascended for now
-      useInfusions: false,
-      includeFood: false,
-      includeUtility: false,
-    }
-
     try {
-      const optimizationResult = await optimizeGear(
-        build,
-        itemStats,
-        preset.goal,
-        options
-      )
+      // Handle target stats optimization
+      if (preset.goal.type === 'match-target-stats') {
+        // Check if target stats are set
+        const hasTargetStats = Object.values(targetStats).some(v => v !== undefined && v > 0)
+        if (!hasTargetStats) {
+          setState('error')
+          setResult({
+            success: false,
+            message: 'Please set target stats first using the pencil icon in the stats panel',
+          })
+          return
+        }
 
-      setResult(optimizationResult)
+        // Convert ItemStat to ItemStatEntity format
+        const itemStatsEntities: ItemStatEntity[] = itemStats.map(stat => ({
+          id: stat.id.toString(),
+          name: stat.name,
+          attributes: stat.attributes.map(attr => ({
+            attribute: attr.attribute,
+            multiplier: attr.multiplier,
+            value: attr.value
+          }))
+        }))
 
-      if (optimizationResult.success) {
+        // Run simple greedy optimizer
+        const optimizationResult = optimizeGearSimple(itemStatsEntities, targetStats)
+
+        // Convert result to expected format
+        const gear = convertOptimizedBuildToGear(optimizationResult, build.gear)
+
+        // Calculate current and new stats for comparison
+        const itemStatsMap = new Map(itemStats.map(s => [s.id, s]))
+        const currentStats = calculateBuildStats(build, itemStatsMap, new Map())
+        const newBuild = { ...build, gear }
+        const newStats = calculateBuildStats(newBuild, itemStatsMap, new Map())
+
+        setResult({
+          success: true,
+          message: `Found gear matching target stats (distance: ${Math.round(optimizationResult.distance)})`,
+          gear,
+          improvements: {
+            effectivePower: newStats.effectivePower - currentStats.effectivePower,
+            effectiveHealth: newStats.effectiveHealth - currentStats.effectiveHealth,
+            effectiveHealthPower: newStats.effectiveHealthPower - currentStats.effectiveHealthPower,
+          },
+          solveTime: 0
+        })
+
         setState('success')
       } else {
+        // Other optimization types not implemented yet
         setState('error')
+        setResult({
+          success: false,
+          message: 'This optimization type is not yet implemented. Please use "Match Target Stats" preset.',
+        })
       }
     } catch (error) {
       setState('error')

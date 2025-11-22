@@ -31,21 +31,23 @@ export interface OptimizedBuild {
 }
 
 // Ascended gear slots and their stat values
+// These multipliers match the actual GW2 ascended gear values
+// See: https://wiki.guildwars2.com/wiki/Attribute_combinations
 const ASCENDED_GEAR_SLOTS = [
-  { slot: 'Helm', statMultiplier: 1 }, // 63/45/45 for major/minor/minor
-  { slot: 'Shoulders', statMultiplier: 1 },
-  { slot: 'Coat', statMultiplier: 1 },
-  { slot: 'Gloves', statMultiplier: 1 },
-  { slot: 'Leggings', statMultiplier: 1 },
-  { slot: 'Boots', statMultiplier: 1 },
-  { slot: 'Amulet', statMultiplier: 1.5 }, // Trinkets have higher stats
-  { slot: 'Ring 1', statMultiplier: 1.5 },
-  { slot: 'Ring 2', statMultiplier: 1.5 },
-  { slot: 'Accessory 1', statMultiplier: 1.3 },
-  { slot: 'Accessory 2', statMultiplier: 1.3 },
-  { slot: 'Back', statMultiplier: 1.2 },
-  { slot: 'Weapon 1', statMultiplier: 1 },
-  { slot: 'Weapon 2', statMultiplier: 1 }
+  { slot: 'Helm', statMultiplier: 1.0 }, // Base: 63 major / 45 minor
+  { slot: 'Shoulders', statMultiplier: 1.0 },
+  { slot: 'Coat', statMultiplier: 1.0 },
+  { slot: 'Gloves', statMultiplier: 1.0 },
+  { slot: 'Leggings', statMultiplier: 1.0 },
+  { slot: 'Boots', statMultiplier: 1.0 },
+  { slot: 'Amulet', statMultiplier: 2.492 }, // 157 major / 63 base
+  { slot: 'Ring 1', statMultiplier: 2.0 }, // 126 major / 63 base
+  { slot: 'Ring 2', statMultiplier: 2.0 },
+  { slot: 'Accessory 1', statMultiplier: 1.746 }, // 110 major / 63 base
+  { slot: 'Accessory 2', statMultiplier: 1.746 },
+  { slot: 'Back', statMultiplier: 0.857 }, // 54 major / 63 base
+  { slot: 'Weapon 1', statMultiplier: 1.984 }, // 125 major / 63 base (1-handed)
+  { slot: 'Weapon 2', statMultiplier: 1.984 }
 ] as const
 
 /**

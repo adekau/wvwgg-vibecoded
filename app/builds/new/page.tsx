@@ -33,6 +33,7 @@ import {
 import { InGameGearPanel } from '@/components/build-editor/in-game-gear-panel'
 import { InGameStatsPanel } from '@/components/build-editor/in-game-stats-panel'
 import { InGameSkillPanel } from '@/components/build-editor/in-game-skill-panel'
+import { EditableStatsPanel, type TargetStats } from '@/components/build-editor/editable-stats-panel'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -56,6 +57,9 @@ export default function BuildEditorPage() {
 
   // Build state
   const [build, setBuild] = useState<Build>(createDefaultBuild())
+
+  // Target stats for gear optimization
+  const [targetStats, setTargetStats] = useState<TargetStats>({})
 
   // Optimizer modal state
   const [optimizerOpen, setOptimizerOpen] = useState(false)
@@ -274,7 +278,11 @@ export default function BuildEditorPage() {
 
           {/* Right Column - Stats Panel */}
           <div className="col-span-3">
-            <InGameStatsPanel stats={stats} />
+            <EditableStatsPanel
+              stats={stats}
+              targetStats={targetStats}
+              onTargetStatsChange={setTargetStats}
+            />
           </div>
         </div>
       </div>
@@ -287,6 +295,7 @@ export default function BuildEditorPage() {
           build={build}
           itemStats={itemStats}
           onApplyGear={handleGearChange}
+          targetStats={targetStats}
         />
       )}
     </div>
